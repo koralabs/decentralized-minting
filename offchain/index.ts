@@ -13,6 +13,9 @@ import { publish_tx } from "./src/publish";
 import { request_handle } from "./src/order";
 import { mint_handle } from "./src/mint";
 
+import { config } from "dotenv";
+config();
+
 async function run() {
   const provider = new Blockfrost({
     network: blockfrost_network(),
@@ -20,12 +23,12 @@ async function run() {
   });
   const wallet = await load_wallet(provider);
   const blaze = await Blaze.from(provider, wallet);
-  let seed;
+  let seed: string = "";
   if (existsSync("seed-utxo")) {
     seed = (await fs.readFile("seed-utxo")).toString();
   }
 
-  let db;
+  let db: Trie | null = null;
   if (existsSync("db")) {
     db = await Trie.load(new Store("db"));
     console.log("Database exists, current state: ");
@@ -73,7 +76,8 @@ async function run() {
         {
           title: "fill",
           value: "fill",
-          disabled: !db || Buffer.alloc(32).compare(db.hash) !== 0,
+          disabled:
+            !db || (!!db.hash && Buffer.alloc(32).compare(db.hash) !== 0),
           description: "Fill the database with all existing ADA handles",
         },
         {
@@ -176,7 +180,9 @@ async function run() {
           const { confirm } = await prompts({
             name: "confirm",
             type: "confirm",
-            message: `Are you sure you want to add ${colors.green(`${handles.length}`)} handles to the database?`,
+            message: `Are you sure you want to add ${colors.green(
+              `${handles.length}`
+            )} handles to the database?`,
           });
 
           if (confirm) {

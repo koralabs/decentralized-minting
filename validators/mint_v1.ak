@@ -1,7 +1,7 @@
-use aiken/dict
-use aiken/hash.{Blake2b_224, Hash}
 use aiken/bytearray
 use aiken/cbor
+use aiken/dict
+use aiken/hash.{Blake2b_224, Hash}
 use aiken/list
 use aiken/merkle_patricia_forestry as mpf
 use aiken/transaction.{
@@ -49,10 +49,11 @@ validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
             0,
             [],
           )
-        expect list.any(
-          settings_datum.allowed_minters,
-          fn(m) { list.has(transaction.extra_signatories, m) },
-        )
+        expect
+          list.any(
+            settings_datum.allowed_minters,
+            fn(m) { list.has(transaction.extra_signatories, m) },
+          )
         expect value.lovelace_of(treasury.value) >= treasury_fee
         expect value.lovelace_of(minter.value) >= minter_fee
         expect actual_minted_handles == expected_minted_handles
@@ -79,14 +80,8 @@ fn all_orders_satisfied(
   when inputs is {
     [] -> continuation(treasury_fee, minter_fee, minted_handles)
     [i, ..rest] -> {
-      let Output {
-        address: Address {
-          payment_credential,
-          ..
-        },
-        datum,
-        ..
-      } = i.output
+      let Output { address: Address { payment_credential, .. }, datum, .. } =
+        i.output
       when payment_credential is {
         ScriptCredential(sc) if sc == order_script -> {
           expect InlineDatum(datum) = datum
@@ -123,7 +118,7 @@ fn all_orders_satisfied(
             continuation,
           )
         }
-        _ -> {
+        _ ->
           all_orders_satisfied(
             order_script,
             handle_policy,
@@ -137,7 +132,6 @@ fn all_orders_satisfied(
             minted_handles,
             continuation,
           )
-        }
       }
     }
   }

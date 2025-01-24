@@ -7,4 +7,5 @@ docs/
 
 node_modules/
 
+# merkle patricia tree db
 db/

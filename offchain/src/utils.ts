@@ -1,5 +1,5 @@
 import { Blockfrost, Core, HotWallet } from "@blaze-cardano/sdk";
-import * as handle from "./types/handle-mint";
+import * as handle from "./types/handle-mint.js";
 
 // Convert a network into the blockfrost format
 export function blockfrost_network(): "cardano-mainnet" | "cardano-preview" {
@@ -28,7 +28,7 @@ export async function load_wallet(provider: Blockfrost): Promise<HotWallet> {
   const entropy = Core.mnemonicToEntropy(mnemonic, Core.wordlist);
   const masterkey = Core.Bip32PrivateKey.fromBip39Entropy(
     Buffer.from(entropy),
-    "",
+    ""
   );
   return HotWallet.fromMasterkey(masterkey.hex(), provider);
 }
@@ -38,7 +38,7 @@ export const plutusVoid = () =>
   Core.PlutusData.fromCbor(Core.HexBlob("d87980"));
 
 export function address_to_address(
-  address: typeof handle.OrderSpend.datum.destination.address,
+  address: typeof handle.OrderSpend.datum.destination.address
 ): Core.Address {
   let payment_credential_type;
   let payment_credential_hash;
@@ -90,7 +90,7 @@ export function address_to_address(
 }
 
 export function proof_to_proof(
-  proof: any,
+  proof: any
 ): (typeof handle.MintV1Withdraw.proofs)[0] {
   let ret: (typeof handle.MintV1Withdraw.proofs)[0] = [];
   for (const step of proof) {

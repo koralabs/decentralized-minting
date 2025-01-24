@@ -1,6 +1,6 @@
 import { Core } from "@blaze-cardano/sdk";
-import * as contracts from "./types/handle-mint";
-import { network_id } from "./utils";
+import * as contracts from "./types/handle-mint.js";
+import { network_id } from "./utils.js";
 
 export function build_contracts(transaction_id: string, output: bigint) {
   let init_utxo = {
@@ -13,15 +13,15 @@ export function build_contracts(transaction_id: string, output: bigint) {
   const mint_proxy = new contracts.MintProxyMint(settings_proxy.hash());
   const mint_v1 = new contracts.MintV1Withdraw(
     settings_proxy.hash(),
-    order.hash(),
+    order.hash()
   );
   const settings_policy = Core.PolicyId(settings_proxy.hash());
   const settings_asset_name = Core.AssetName(
-    Core.toHex(Buffer.from("ADA Handle Settings")),
+    Core.toHex(Buffer.from("ADA Handle Settings"))
   );
   const settings_asset_id = Core.AssetId.fromParts(
     settings_policy,
-    settings_asset_name,
+    settings_asset_name
   );
   const settings_address: Core.Address = new Core.Address({
     type: Core.AddressType.EnterpriseScript,
@@ -42,11 +42,11 @@ export function build_contracts(transaction_id: string, output: bigint) {
   const handle_policy_id = Core.PolicyId(mint_proxy.hash());
   const mint_v1_withdraw = Core.RewardAccount.fromCredential(
     { type: Core.CredentialType.ScriptHash, hash: mint_v1.hash() },
-    network_id(),
+    network_id()
   );
   const settings_v1_withdraw = Core.RewardAccount.fromCredential(
     { type: Core.CredentialType.ScriptHash, hash: settings_v1.hash() },
-    network_id(),
+    network_id()
   );
   const mint_v1_credential = Core.Credential.fromCore({
     type: Core.CredentialType.ScriptHash,

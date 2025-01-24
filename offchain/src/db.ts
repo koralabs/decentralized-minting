@@ -1,16 +1,17 @@
 import { Store, Trie } from "@aiken-lang/merkle-patricia-forestry";
-import { promises as fs } from "fs";
+import fs from "fs/promises";
 
-export async function init(folder: string) {
+export const init = async (folder: string): Promise<Trie> => {
   const db = new Trie(new Store(folder));
+  // @ts-expect-error: Library issue
   await db.save();
   return db;
-}
+};
 
-export async function inspect(db: any) {
+export const inspect = async (db: Trie) => {
   console.log(db);
-}
+};
 
-export async function clear(folder: string) {
+export const clear = async (folder: string) => {
   await fs.rm(folder, { recursive: true });
-}
+};
