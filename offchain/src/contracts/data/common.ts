@@ -1,5 +1,4 @@
 import {
-  Address,
   makeAddress,
   makeDatumHash,
   makeHashedTxOutputDatum,
@@ -17,6 +16,7 @@ import {
   expectConstrData,
   makeByteArrayData,
   makeConstrData,
+  makeListData,
   UplcData,
 } from "@helios-lang/uplc";
 
@@ -100,7 +100,7 @@ const buildAddressData = (address: ShelleyAddress): UplcData => {
   ]);
 };
 
-const decodeAddressFromData = (data: UplcData): Address => {
+const decodeAddressFromData = (data: UplcData): ShelleyAddress => {
   const isMainnet = NETWORK == "mainnet";
 
   const addressConstrData = expectConstrData(data, 0, 2);
@@ -131,6 +131,8 @@ const decodeDatumFromData = (data: UplcData): TxOutputDatum | undefined => {
   }
 };
 
+const makeEmptyData = (): UplcData => makeListData([]);
+
 export {
   buildAddressData,
   buildCredentialData,
@@ -139,4 +141,5 @@ export {
   decodeCredentialFromData,
   decodeDatumFromData,
   decodeStakingCredentialFromData,
+  makeEmptyData,
 };

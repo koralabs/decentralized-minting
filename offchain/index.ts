@@ -1,19 +1,19 @@
-import { Blaze, Blockfrost } from "@blaze-cardano/sdk";
-import { handleTx } from "./src/transaction";
-import prompts from "prompts";
-import { existsSync, promises as fs } from "fs";
-import { blockfrost_network, load_wallet } from "./src/utils";
 import { Store, Trie } from "@aiken-lang/merkle-patricia-forestry";
-import cliProgress from "cli-progress";
+import { Blaze, Blockfrost } from "@blaze-cardano/sdk";
 import colors from "ansi-colors";
-import { clear, init, inspect } from "./src/db";
-import { add_handle, print_proof, remove_handle } from "./src/simulation";
-import { fill_handles, get_all_handles } from "./src/fill";
-import { publish_tx } from "./src/publish";
-import { request_handle } from "./src/order";
-import { mint_handle } from "./src/mint";
-
+import cliProgress from "cli-progress";
 import { config } from "dotenv";
+import { existsSync, promises as fs } from "fs";
+import prompts from "prompts";
+
+import { clear, init, inspect } from "./src/db";
+import { fill_handles, get_all_handles } from "./src/fill";
+import { mint_handle } from "./src/mint";
+import { request_handle } from "./src/order";
+import { publish_tx } from "./src/publish";
+import { add_handle, print_proof, remove_handle } from "./src/simulation";
+import { handleTx } from "./src/transaction";
+import { blockfrost_network, load_wallet } from "./src/utils";
 config();
 
 async function run() {
@@ -176,7 +176,7 @@ async function run() {
           break;
         }
         case "fill": {
-          let handles = await get_all_handles();
+          const handles = await get_all_handles();
           const { confirm } = await prompts({
             name: "confirm",
             type: "confirm",

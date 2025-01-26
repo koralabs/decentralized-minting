@@ -1,8 +1,8 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
-import { Blaze, Blockfrost, Core, Data, Wallet } from "@blaze-cardano/sdk";
 import {
   makeAssetClass,
   makeAssets,
+  makeInlineTxOutputDatum,
   makePubKeyHash,
   makeTxOutputId,
   makeValue,
@@ -18,18 +18,21 @@ import fs from "fs/promises";
 import { buildContractsConfig } from "./config.js";
 import {
   buildProofsRedeemer,
+  buildSettingsData,
   buildSettingsV1Data,
   decodeOrderDatum,
   decodeSettingsDatum,
   decodeSettingsV1Data,
+  makeEmptyData,
   parseProofJSON,
   Proof,
 } from "./contracts/index.js";
-import * as handle from "./types/handle-mint.js";
-import { address_to_address, plutusVoid, proof_to_proof } from "./utils.js";
+import { mayFailTransaction } from "./helpers/index.js";
 
 const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
   return async (wallet: SimpleWallet) => {
+    const address = wallet.address;
+    const spareUtxos = await wallet.utxos;
     const blockfrostApi = wallet.cardanoClient as BlockfrostV0Client;
     const references = JSON.parse((await fs.readFile("references")).toString());
     const contractsConfig = buildContractsConfig(initialTxOutputId);
@@ -42,7 +45,7 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
       handlePolicyHash,
     } = contractsConfig;
 
-    const mintScriptUtxo = await blockfrostApi.getUtxo(
+    const mintV1ScriptUtxo = await blockfrostApi.getUtxo(
       makeTxOutputId(`${references[0][0]}#${references[0][1]}`)
     );
 
@@ -77,14 +80,14 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
         decodedOrder.requested_handle,
         "hex"
       ).toString();
-      const mintedHandleAssetClass = makeAssetClass(
+      const mintingHandleAssetClass = makeAssetClass(
         handlePolicyHash,
         decodedOrder.requested_handle
       );
       const lovelace = orderUtxo.value.lovelace;
       const handleValue = makeValue(
         lovelace - 2_000_000n,
-        makeAssets([[mintedHandleAssetClass, 1n]])
+        makeAssets([[mintingHandleAssetClass, 1n]])
       );
       const destinationAddress = decodedOrder.destination.address;
 
@@ -96,11 +99,11 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
           utxo: orderUtxo,
           destinationAddress,
           handleValue,
-          mintedHandleAssetClass,
+          mintingHandleAssetClass,
           destinationDatum: decodedOrder.destination.datum,
         });
       } catch (e) {
-        console.warn("Handle already exists", decodedOrder.requested_handle);
+        console.warn("Handle already exists", decodedOrder.requested_handle, e);
       }
     }
 
@@ -121,9 +124,6 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
       isMainnet: blockfrostApi.networkName != "mainnet",
     });
 
-    // <-- add mint script reference input
-    txBuilder.refer(mintScriptUtxo);
-
     // <-- add required signer
     txBuilder.addSigners(makePubKeyHash(decodedSettingsV1.allowed_minters[0]));
 
@@ -133,15 +133,27 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
     );
 
     // <-- spend settings utxo
-    // TODO: void data as redeemer
-    txBuilder.spendUnsafe(settingsProxyAssetUtxo);
+    txBuilder.spendUnsafe(settingsProxyAssetUtxo, makeEmptyData());
+
+    // <-- pay settings value with new settings
+    txBuilder.payUnsafe(
+      settingsProxyConfig.settingsProxyScriptAddress,
+      settingsValue,
+      makeInlineTxOutputDatum(buildSettingsData(decodedSettings))
+    );
 
     // <-- attach settings v1 withdrawl validator
     txBuilder.attachUplcProgram(settingsV1Config.settingsV1StakeUplcProgram);
 
     // <-- withdraw from settings v1 validator
-    // TODO: void data as redeemer
-    txBuilder.withdrawUnsafe(settingsV1Config.settingsV1StakingAddress, 0n);
+    txBuilder.withdrawUnsafe(
+      settingsV1Config.settingsV1StakingAddress,
+      0n,
+      makeEmptyData()
+    );
+
+    // <-- add mint v1 script reference input
+    txBuilder.refer(mintV1ScriptUtxo);
 
     // <-- withdraw from mint v1 withdraw validator (script from reference input)
     txBuilder.withdrawUnsafe(
@@ -150,62 +162,45 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
       proofsRedeemer
     );
 
+    // <-- attach mint prxoy validator
+    txBuilder.attachUplcProgram(mintProxyConfig.mintProxyMintUplcProgram);
+
     // <-- attach order script
     txBuilder.attachUplcProgram(orderConfig.orderSpendUplcProgram);
 
-    // <-- spend order utxos
+    // <-- spend order utxos and mint handle
+    // and send minted handle to destination with datum
     for (const handle of handles) {
-      // TODO: void data as redeemer
       txBuilder
-        .spendUnsafe(handle.utxo)
-        .payWithDatum(
+        .spendUnsafe(handle.utxo, makeEmptyData())
+        .mintAssetClassUnsafe(
+          handle.mintingHandleAssetClass,
+          1n,
+          makeEmptyData()
+        )
+        .payUnsafe(
           handle.destinationAddress,
           handle.handleValue,
           handle.destinationDatum
         );
     }
 
-    const tx = blaze
-      .newTransaction()
-      .addReferenceInput(mint_script_utxo)
-      .addRequiredSigner(
-        Core.Ed25519KeyHashHex(settings_v1_datum.allowedMinters[0])
-      )
-      .addInput(
-        settings_utxo,
-        Data.to({ wrapper: plutusVoid() }, handle.SettingsProxySpend._r)
-      )
-      .provideScript(contracts.scripts.settings_proxy)
-      .addWithdrawal(contracts.utils.settings_v1_withdraw, 0n, plutusVoid())
-      .provideScript(contracts.scripts.settings_v1)
-      .addWithdrawal(contracts.utils.mint_v1_withdraw, 0n, proofs_redeemer)
-      // .provideScript(contracts.scripts.mint_v1) // Don't need to provide this script, because reference input'
-      .provideScript(contracts.scripts.order)
-      .provideScript(contracts.scripts.mint_proxy)
-      .lockAssets(
-        contracts.utils.settings_address,
-        settings_value,
-        Data.to(settings_datum, handle.SettingsProxySpend.datum)
-      )
-      .lockLovelace(
-        address_to_address(settings_v1_datum.treasuryAddress),
-        settings_v1_datum.treasuryFee * BigInt(handles.length),
-        plutusVoid()
-      )
-      .payLovelace(
-        await blaze.wallet.getChangeAddress(),
-        settings_v1_datum.minterFee * BigInt(handles.length)
-      );
-    for (const handle of handles) {
-      tx.addInput(handle.utxo, plutusVoid())
-        .payAssets(handle.destination_address, handle.handle_value) // TODO: datum
-        .addMint(
-          Core.PolicyId(contracts.scripts.mint_proxy.hash()),
-          new Map([[handle.handle_asset_name, 1n]]),
-          plutusVoid()
-        );
-    }
-    return await tx.complete();
+    // <-- pay treasury fee
+    txBuilder.payUnsafe(
+      decodedSettingsV1.treasury_address,
+      makeValue(decodedSettingsV1.treasury_fee * BigInt(handles.length))
+    );
+
+    // <-- pay minter fee
+    txBuilder.payUnsafe(address, makeValue(decodedSettingsV1.minter_fee));
+
+    const txResult = await mayFailTransaction(
+      txBuilder,
+      address,
+      spareUtxos
+    ).complete();
+
+    return txResult;
   };
 };
 

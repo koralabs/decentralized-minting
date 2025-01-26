@@ -1,15 +1,53 @@
-import { Address, TxInput } from "@helios-lang/ledger";
+import { bytesToHex } from "@helios-lang/codec-utils";
+import { Address, Tx, TxInput } from "@helios-lang/ledger";
 import { TxBuilder } from "@helios-lang/tx-utils";
 import { makeBasicUplcLogger, UplcLogger } from "@helios-lang/uplc";
 import { Err, Ok, Result } from "ts-res";
 
-import { BuildTxError, SuccessResult } from "../../types.js";
 import convertError from "./convert.js";
+
+class BuildTxError extends Error {
+  code: number;
+  failedTxCbor: string;
+  failedTxJson: object;
+
+  static fromError(error: Error, failedTx: Tx) {
+    const err = new BuildTxError(
+      error.message,
+      bytesToHex(failedTx.toCbor()),
+      failedTx.dump()
+    );
+    err.stack = error.stack;
+    err.cause = error.cause;
+    return err;
+  }
+
+  constructor(message: string, failedTxCbor: string, failedTxJson: object) {
+    super(message);
+    this.name = "BuildTxError";
+    this.code = 500;
+    this.failedTxCbor = failedTxCbor;
+    this.failedTxJson = failedTxJson;
+  }
+}
+
+/**
+ * SuccessResult - attached to handles listed on marketplace
+ * @interface
+ * @typedef {object} SuccessResult
+ * @property {string} cbor CBOR Hex of transaction, you can sign and submit
+ * @property {any} dump Transaction's Dump
+ */
+interface TxSuccessResult {
+  tx: Tx;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  dump: any;
+}
 
 type ErrType = string | Error | BuildTxError | void | undefined;
 type HandleableResult<E extends ErrType> = {
   handle: (handler: (e: E) => void) => HandleableResult<E>;
-  complete: () => Promise<Result<SuccessResult, E>>;
+  complete: () => Promise<Result<TxSuccessResult, E>>;
 };
 
 const halfArray = <T>(array: T[]): T[] =>
@@ -26,7 +64,7 @@ const mayFailTransaction = (
     return {
       handle: (handler) => createHandleable(handler),
       complete: async (): Promise<
-        Result<SuccessResult, Error | BuildTxError>
+        Result<TxSuccessResult, Error | BuildTxError>
       > => {
         const logs: string[] = [];
         const logger: UplcLogger = {
@@ -61,36 +99,6 @@ const mayFailTransaction = (
           handler(txError);
           return Err(txError);
         }
-        // catch (txError) {
-        //   if (logs.length == 0) {
-        //     /// when the error is not related to Tx Validation
-        //     const txBuildError = new Error(
-        //       `Tx Build error: ${convertError(txError)}`
-        //     );
-        //     handler(txBuildError);
-        //     return Err(txBuildError);
-        //   }
-        //   try {
-        //     const failedTx = await txBuilder.buildUnsafe({
-        //       changeAddress,
-        //       spareUtxos,
-        //       throwBuildPhaseScriptErrors: false,
-        //     });
-        //     const txValidationError = new Error(
-        //       convertError(txError) +
-        //         "\nValidation logs:" +
-        //         logs.map((log) => "\nLog: " + log)
-        //     );
-        //     handler(BuildTxError.fromError(txValidationError, failedTx));
-        //     return Err(txValidationError);
-        //   } catch (unexpectedError) {
-        //     const txError = new Error(
-        //       `Unexpected Error: ${convertError(unexpectedError)}`
-        //     );
-        //     handler(txError);
-        //     return Err(txError);
-        //   }
-        // }
       },
     };
   };
@@ -98,4 +106,5 @@ const mayFailTransaction = (
   return createHandleable(() => {});
 };
 
-export { mayFailTransaction };
+export { BuildTxError, mayFailTransaction };
+export type { TxSuccessResult };

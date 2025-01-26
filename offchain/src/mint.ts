@@ -1,72 +1,73 @@
 import { Blaze, Blockfrost, Core, Data, Wallet } from "@blaze-cardano/sdk";
+import { promises as fs } from "fs";
+
 import { build_contracts } from "./contracts.js";
 import * as handle from "./types/handle-mint.js";
 import { address_to_address, plutusVoid, proof_to_proof } from "./utils.js";
-import { promises as fs } from "fs";
 
 export function mint_handle(db: any, seed: string) {
   return async (blaze: Blaze<Blockfrost, Wallet>) => {
-    let references = JSON.parse((await fs.readFile("references")).toString());
-    let seed_parts = seed.split("#");
-    let transaction_id = seed_parts[0];
-    let output = BigInt(seed_parts[1]);
-    let contracts = build_contracts(transaction_id, output);
+    const references = JSON.parse((await fs.readFile("references")).toString());
+    const seed_parts = seed.split("#");
+    const transaction_id = seed_parts[0];
+    const output = BigInt(seed_parts[1]);
+    const contracts = build_contracts(transaction_id, output);
 
-    let [mint_script_utxo] = await blaze.provider.resolveUnspentOutputs([
+    const [mint_script_utxo] = await blaze.provider.resolveUnspentOutputs([
       new Core.TransactionInput(
         Core.TransactionId(references[0][0]),
         BigInt(references[0][1])
       ),
     ]);
 
-    let order_utxos = await blaze.provider.getUnspentOutputs(
+    const order_utxos = await blaze.provider.getUnspentOutputs(
       contracts.utils.order_address
     );
 
     console.log(contracts.utils.settings_asset_id);
-    let settings_utxo = await blaze.provider.getUnspentOutputByNFT(
+    const settings_utxo = await blaze.provider.getUnspentOutputByNFT(
       contracts.utils.settings_asset_id
     );
-    let settings_datum = Data.from(
+    const settings_datum = Data.from(
       settings_utxo.output().datum()?.asInlineData()!,
       handle.SettingsProxySpend.datum
     );
-    let settings_v1_datum = Data.from(
+    const settings_v1_datum = Data.from(
       settings_datum.data,
       handle.SettingsV1Documentation._datum
     );
 
-    let handles = [];
-    let proofs: typeof handle.MintV1Withdraw.proofs = [];
+    const handles = [];
+    const proofs: typeof handle.MintV1Withdraw.proofs = [];
     for (const order of order_utxos) {
-      let order_datum = Data.from(
+      const order_datum = Data.from(
         order.output().datum()?.asInlineData()!,
         handle.OrderSpend.datum
       );
-      let handle_name = Buffer.from(
+      const handle_name = Buffer.from(
         order_datum.requestedHandle,
         "hex"
       ).toString();
-      let minted_handle_asset_name = Core.AssetName(
+      const minted_handle_asset_name = Core.AssetName(
         order_datum.requestedHandle
       );
-      let minted_handle_asset_id = Core.AssetId.fromParts(
+      const minted_handle_asset_id = Core.AssetId.fromParts(
         contracts.utils.handle_policy_id,
         minted_handle_asset_name
       );
 
-      let lovelace = order.output().amount().coin();
+      const lovelace = order.output().amount().coin();
 
-      let handle_value = new Core.Value(
+      const handle_value = new Core.Value(
         lovelace - 2_000_000n,
         new Map([[minted_handle_asset_id, 1n]])
       );
-      let destination_address = address_to_address(
+      const destination_address = address_to_address(
         order_datum.destination.address
       );
       try {
         await db.insert(handle_name, "NEW");
-        let proof = await db.prove(handle_name);
+        const proof = await db.prove(handle_name);
         proofs.push(proof_to_proof(proof.toJSON()));
         handles.push({
           utxo: order,
@@ -86,14 +87,14 @@ export function mint_handle(db: any, seed: string) {
       handle.SettingsV1Documentation._datum
     );
 
-    let settings_value = new Core.Value(
+    const settings_value = new Core.Value(
       5_000_000n,
       new Map([[contracts.utils.settings_asset_id, 1n]])
     );
 
-    let proofs_redeemer = Data.to(proofs, handle.MintV1Withdraw.proofs);
+    const proofs_redeemer = Data.to(proofs, handle.MintV1Withdraw.proofs);
 
-    let tx = blaze
+    const tx = blaze
       .newTransaction()
       .addReferenceInput(mint_script_utxo)
       .addRequiredSigner(

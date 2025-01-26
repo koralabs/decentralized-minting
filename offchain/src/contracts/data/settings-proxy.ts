@@ -1,8 +1,24 @@
 import { TxOutputDatum } from "@helios-lang/ledger";
-import { expectByteArrayData, expectConstrData } from "@helios-lang/uplc";
+import {
+  expectByteArrayData,
+  expectConstrData,
+  makeByteArrayData,
+  makeConstrData,
+  UplcData,
+} from "@helios-lang/uplc";
 import { invariant } from "helpers/index.js";
 
 import { Settings } from "../types/index.js";
+
+const buildSettingsData = (settings: Settings): UplcData => {
+  const { settings_governor, mint_governor, data } = settings;
+
+  return makeConstrData(0, [
+    makeByteArrayData(settings_governor),
+    makeByteArrayData(mint_governor),
+    data,
+  ]);
+};
 
 const decodeSettingsDatum = (datum: TxOutputDatum | undefined): Settings => {
   invariant(
@@ -31,4 +47,4 @@ const decodeSettingsDatum = (datum: TxOutputDatum | undefined): Settings => {
   };
 };
 
-export { decodeSettingsDatum };
+export { buildSettingsData, decodeSettingsDatum };
