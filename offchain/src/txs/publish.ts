@@ -1,4 +1,5 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
+import { bytesToHex } from "@helios-lang/codec-utils";
 import {
   makeAssets,
   makeInlineTxOutputDatum,
@@ -25,8 +26,8 @@ import { BuildTx, mayFailTransaction } from "../helpers/index.js";
 export const publish =
   (db: Trie): BuildTx =>
   async (wallet: SimpleWallet) => {
-    const address = wallet.address;
     const networkParams = await wallet.cardanoClient.parameters;
+    const address = wallet.address;
     const spareUtxos = await wallet.utxos;
     const initialUtxo = spareUtxos.shift()!;
     await fs.writeFile(
@@ -81,7 +82,7 @@ export const publish =
     const referenceOutput = makeTxOutput(
       settingsProxyConfig.settingsProxyScriptAddress,
       makeValue(2_000_000n),
-      undefined,
+      makeInlineTxOutputDatum(makeVoidData()),
       mintV1Config.mintV1WithdrawUplcProgram
     );
     referenceOutput.correctLovelace(networkParams);
@@ -113,7 +114,7 @@ export const publish =
     if (txResult.ok) {
       await fs.writeFile(
         REFERENCE_SCRIPT_UTXO_PATH,
-        JSON.stringify([[txResult.data.tx.body.hash(), 1]])
+        JSON.stringify([[bytesToHex(txResult.data.tx.body.hash()), 1]])
       );
     }
     return txResult;

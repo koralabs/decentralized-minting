@@ -72,7 +72,7 @@ const handleTx = async (
 
     switch (next["next"]) {
       case "print": {
-        console.log(dump);
+        console.log({ cbor: bytesToHex(tx.toCbor()), dump });
         break;
       }
       case "txid": {
