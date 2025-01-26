@@ -2,12 +2,19 @@ import { TxOutputDatum } from "@helios-lang/ledger";
 import {
   expectByteArrayData,
   expectConstrData,
+  makeByteArrayData,
+  makeConstrData,
   UplcData,
 } from "@helios-lang/uplc";
 import { invariant } from "helpers/index.js";
 
 import { Destination, OrderDatum } from "../types/index.js";
-import { decodeAddressFromData, decodeDatumFromData } from "./common.js";
+import {
+  buildAddressData,
+  buildDatumData,
+  decodeAddressFromData,
+  decodeDatumFromData,
+} from "./common.js";
 
 const decodeDestinationFromData = (data: UplcData): Destination => {
   const constrData = expectConstrData(data, 0, 2);
@@ -17,6 +24,11 @@ const decodeDestinationFromData = (data: UplcData): Destination => {
     address,
     datum,
   };
+};
+
+const buildDestinationData = (destination: Destination): UplcData => {
+  const { address, datum } = destination;
+  return makeConstrData(0, [buildAddressData(address), buildDatumData(datum)]);
 };
 
 const decodeOrderDatum = (datum: TxOutputDatum | undefined): OrderDatum => {
@@ -40,4 +52,18 @@ const decodeOrderDatum = (datum: TxOutputDatum | undefined): OrderDatum => {
   };
 };
 
-export { decodeOrderDatum };
+const buildOrderData = (order: OrderDatum): UplcData => {
+  const { owner, destination, requested_handle } = order;
+  return makeConstrData(0, [
+    owner,
+    makeByteArrayData(requested_handle),
+    buildDestinationData(destination),
+  ]);
+};
+
+export {
+  buildDestinationData,
+  buildOrderData,
+  decodeDestinationFromData,
+  decodeOrderDatum,
+};

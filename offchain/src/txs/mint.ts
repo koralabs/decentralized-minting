@@ -15,26 +15,29 @@ import {
 } from "@helios-lang/tx-utils";
 import fs from "fs/promises";
 
-import { buildContractsConfig } from "./config.js";
+import { REFERENCE_SCRIPT_UTXO_PATH } from "../configs/index.js";
 import {
+  buildContractsConfig,
   buildProofsRedeemer,
   buildSettingsData,
   buildSettingsV1Data,
   decodeOrderDatum,
   decodeSettingsDatum,
   decodeSettingsV1Data,
-  makeEmptyData,
+  makeVoidData,
   parseProofJSON,
   Proof,
-} from "./contracts/index.js";
-import { mayFailTransaction } from "./helpers/index.js";
+} from "../contracts/index.js";
+import { BuildTx, mayFailTransaction } from "../helpers/index.js";
 
-const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
+const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
   return async (wallet: SimpleWallet) => {
     const address = wallet.address;
     const spareUtxos = await wallet.utxos;
     const blockfrostApi = wallet.cardanoClient as BlockfrostV0Client;
-    const references = JSON.parse((await fs.readFile("references")).toString());
+    const references = JSON.parse(
+      (await fs.readFile(REFERENCE_SCRIPT_UTXO_PATH)).toString()
+    );
     const contractsConfig = buildContractsConfig(initialTxOutputId);
     const {
       order: orderConfig,
@@ -121,7 +124,7 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
 
     // start building tx
     const txBuilder = makeTxBuilder({
-      isMainnet: blockfrostApi.networkName != "mainnet",
+      isMainnet: await wallet.isMainnet(),
     });
 
     // <-- add required signer
@@ -133,9 +136,9 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
     );
 
     // <-- spend settings utxo
-    txBuilder.spendUnsafe(settingsProxyAssetUtxo, makeEmptyData());
+    txBuilder.spendUnsafe(settingsProxyAssetUtxo, makeVoidData());
 
-    // <-- pay settings value with new settings
+    // <-- lock settings value with new settings
     txBuilder.payUnsafe(
       settingsProxyConfig.settingsProxyScriptAddress,
       settingsValue,
@@ -149,7 +152,7 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
     txBuilder.withdrawUnsafe(
       settingsV1Config.settingsV1StakingAddress,
       0n,
-      makeEmptyData()
+      makeVoidData()
     );
 
     // <-- add mint v1 script reference input
@@ -172,11 +175,11 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId) => {
     // and send minted handle to destination with datum
     for (const handle of handles) {
       txBuilder
-        .spendUnsafe(handle.utxo, makeEmptyData())
+        .spendUnsafe(handle.utxo, makeVoidData())
         .mintAssetClassUnsafe(
           handle.mintingHandleAssetClass,
           1n,
-          makeEmptyData()
+          makeVoidData()
         )
         .payUnsafe(
           handle.destinationAddress,

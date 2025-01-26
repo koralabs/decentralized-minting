@@ -12,15 +12,15 @@ import {
   TxOutputDatum,
 } from "@helios-lang/ledger";
 import {
+  decodeUplcData,
   expectByteArrayData,
   expectConstrData,
   makeByteArrayData,
   makeConstrData,
-  makeListData,
   UplcData,
 } from "@helios-lang/uplc";
 
-import { NETWORK } from "../../constants/index.js";
+import { NETWORK } from "../../configs/index.js";
 
 const buildCredentialData = (credential: SpendingCredential): UplcData => {
   return makeConstrData(credential.kind == "PubKeyHash" ? 0 : 1, [
@@ -131,15 +131,30 @@ const decodeDatumFromData = (data: UplcData): TxOutputDatum | undefined => {
   }
 };
 
-const makeEmptyData = (): UplcData => makeListData([]);
+const buildDatumData = (datum: TxOutputDatum | undefined): UplcData => {
+  if (!datum) {
+    // Nodatum
+    return makeConstrData(0, []);
+  } else if (datum.kind == "HashedTxOutputDatum") {
+    // DatumHash
+    return makeConstrData(1, [makeByteArrayData(datum.hash.toHex())]);
+  } else {
+    // InlineDatum
+    return makeConstrData(2, [datum.data]);
+  }
+};
+
+const makeVoidData = (): UplcData =>
+  decodeUplcData(Buffer.from("d87980", "hex"));
 
 export {
   buildAddressData,
   buildCredentialData,
+  buildDatumData,
   buildingStakingCredentialData,
   decodeAddressFromData,
   decodeCredentialFromData,
   decodeDatumFromData,
   decodeStakingCredentialFromData,
-  makeEmptyData,
+  makeVoidData,
 };

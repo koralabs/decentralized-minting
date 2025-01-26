@@ -2,13 +2,14 @@ import {
   makeAddress,
   makeAssetClass,
   makeMintingPolicyHash,
+  makeRegistrationDCert,
   makeStakingAddress,
   makeStakingValidatorHash,
   makeValidatorHash,
   TxOutputId,
 } from "@helios-lang/ledger";
 
-import { NETWORK, SETTINGS_UTF8_ASSET_NAME } from "./constants/index.js";
+import { NETWORK, SETTINGS_UTF8_ASSET_NAME } from "../configs/index.js";
 import {
   getMintProxyMintUplcProgram,
   getMintV1WithdrawUplcProgram,
@@ -16,7 +17,7 @@ import {
   getSettingsProxyMintUplcProgram,
   getSettingsProxySpendUplcProgram,
   getSettingsV1StakeUplcProgram,
-} from "./contracts/index.js";
+} from "./validators.js";
 
 const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
   const isMainnet = NETWORK == "mainnet";
@@ -38,8 +39,14 @@ const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
   );
 
   const settingsV1StakeUplcProgram = getSettingsV1StakeUplcProgram();
+  const settingsV1ValidatorHash = makeValidatorHash(
+    settingsV1StakeUplcProgram.hash()
+  );
   const settingsV1StakingAddress = makeStakingAddress(
     isMainnet,
+    makeStakingValidatorHash(settingsV1StakeUplcProgram.hash())
+  );
+  const settingsV1RegistrationDCert = makeRegistrationDCert(
     makeStakingValidatorHash(settingsV1StakeUplcProgram.hash())
   );
 
@@ -61,8 +68,14 @@ const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
     settingsProxyPolicyHash.toHex(),
     orderScriptHash.toHex()
   );
+  const mintV1ValiatorHash = makeValidatorHash(
+    mintV1WithdrawUplcProgram.hash()
+  );
   const mintV1StakingAddress = makeStakingAddress(
     isMainnet,
+    makeStakingValidatorHash(mintV1WithdrawUplcProgram.hash())
+  );
+  const mintV1RegistrationDCert = makeRegistrationDCert(
     makeStakingValidatorHash(mintV1WithdrawUplcProgram.hash())
   );
 
@@ -76,7 +89,9 @@ const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
     },
     settingsV1: {
       settingsV1StakeUplcProgram,
+      settingsV1ValidatorHash,
       settingsV1StakingAddress,
+      settingsV1RegistrationDCert,
     },
     order: {
       orderSpendUplcProgram,
@@ -89,7 +104,9 @@ const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
     },
     mintV1: {
       mintV1WithdrawUplcProgram,
+      mintV1ValiatorHash,
       mintV1StakingAddress,
+      mintV1RegistrationDCert,
     },
     handlePolicyHash,
   };
