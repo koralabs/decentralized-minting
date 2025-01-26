@@ -216,7 +216,7 @@ const main = async () => {
               etaBuffer: 50,
             });
             progress.start(handles.length, 0);
-            await fillHandles(db!, handles, progress.increment);
+            await fillHandles(db!, handles, () => progress.increment());
             progress.stop();
             console.log(db);
           }
@@ -257,7 +257,7 @@ const main = async () => {
             message: "Are you sure you want to clear the database?",
           });
           if (confirm) {
-            await clear("db");
+            await clear(MPF_STORE_PATH);
             db = null;
           }
           break;
