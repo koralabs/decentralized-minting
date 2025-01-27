@@ -26,6 +26,7 @@ import {
   decodeOrderDatum,
   decodeSettingsDatum,
   decodeSettingsV1Data,
+  makeRedeemerWrapper,
   makeVoidData,
   parseProofJSON,
   Proof,
@@ -49,6 +50,22 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
       mintProxy: mintProxyConfig,
       handlePolicyHash,
     } = contractsConfig;
+
+    console.log({
+      handlePolicyHash: handlePolicyHash.toHex(),
+    });
+    console.log({
+      settingsProxyScriptAddress:
+        settingsProxyConfig.settingsProxyScriptAddress.toBech32(),
+      settingsProxyPolicyHash:
+        settingsProxyConfig.settingsProxyPolicyHash.toHex(),
+    });
+
+    console.log({
+      settingsV1StakingAddress:
+        settingsV1Config.settingsV1StakingAddress.toBech32(),
+      mintV1StakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
+    });
 
     const mintV1ScriptUtxo = await blockfrostApi.getUtxo(
       makeTxOutputId(`${references[0][0]}#${references[0][1]}`)
@@ -135,7 +152,10 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
     );
 
     // <-- spend settings utxo
-    txBuilder.spendUnsafe(settingsProxyAssetUtxo, makeVoidData());
+    txBuilder.spendUnsafe(
+      settingsProxyAssetUtxo,
+      makeRedeemerWrapper(makeVoidData())
+    );
 
     // <-- lock settings value with new settings
     txBuilder.payUnsafe(
@@ -164,6 +184,16 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
       proofsRedeemer
     );
 
+    // <-- pay treasury fee
+    txBuilder.payUnsafe(
+      decodedSettingsV1.treasury_address,
+      makeValue(decodedSettingsV1.treasury_fee * BigInt(handles.length)),
+      makeInlineTxOutputDatum(makeVoidData())
+    );
+
+    // <-- pay minter fee
+    txBuilder.payUnsafe(address, makeValue(decodedSettingsV1.minter_fee));
+
     // <-- attach mint prxoy validator
     txBuilder.attachUplcProgram(mintProxyConfig.mintProxyMintUplcProgram);
 
@@ -189,15 +219,6 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
           handle.destinationDatum
         );
     }
-
-    // <-- pay treasury fee
-    txBuilder.payUnsafe(
-      decodedSettingsV1.treasury_address,
-      makeValue(decodedSettingsV1.treasury_fee * BigInt(handles.length))
-    );
-
-    // <-- pay minter fee
-    txBuilder.payUnsafe(address, makeValue(decodedSettingsV1.minter_fee));
 
     const txResult = await mayFailTransaction(
       txBuilder,

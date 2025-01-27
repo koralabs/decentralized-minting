@@ -147,6 +147,10 @@ const buildDatumData = (datum: TxOutputDatum | undefined): UplcData => {
 const makeVoidData = (): UplcData =>
   decodeUplcData(Buffer.from("d87980", "hex"));
 
+const makeRedeemerWrapper = (data: UplcData): UplcData => {
+  return makeConstrData(1, [data]);
+};
+
 export {
   buildAddressData,
   buildCredentialData,
@@ -156,5 +160,6 @@ export {
   decodeCredentialFromData,
   decodeDatumFromData,
   decodeStakingCredentialFromData,
+  makeRedeemerWrapper,
   makeVoidData,
 };
