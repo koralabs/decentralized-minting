@@ -17,32 +17,21 @@ validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
     let ScriptContext { purpose, transaction } = ctx
     when purpose is {
       WithdrawFrom(_) -> {
-        trace @"Withdraw purpose pass"
         let (settings_input, Settings { data, .. }) =
           find_settings_datum(transaction.inputs, settings_policy)
-        trace @"Settings datum found and parsed"
         expect settings_datum: SettingsV1 = data
-        trace @"Settings V1 parsed"
         expect [settings, treasury, minter, ..outputs] = transaction.outputs
-        trace @"Outputs are parsed"
         expect settings.address == settings_input.address
-        trace @"Settings address match"
         expect settings.value == settings_input.value
-        trace @"Settings value match"
         expect treasury.address == settings_datum.treasury_address
-        trace @"Treasury address match with datum's"
         expect treasury.datum == InlineDatum(Void)
-        trace @"Treasury datum is inline void"
         let root = mpf.from_root(settings_datum.all_handles)
-        trace @"mpf root is made from root hash"
         let actual_minted_handles =
           transaction.mint
             |> value.from_minted_value()
             |> value.tokens(settings_datum.policy_id)
             |> dict.keys()
             |> list.reverse()
-        trace @"Actual minted handles"
-        trace cbor.diagnostic(actual_minted_handles)
         let
           treasury_fee,
           minter_fee,
@@ -60,13 +49,6 @@ validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
             0,
             [],
           )
-        trace @"All Orders satisfied"
-        trace @"treasury_fee"
-        trace cbor.diagnostic(treasury_fee)
-        trace @"minter_fee"
-        trace cbor.diagnostic(minter_fee)
-        trace @"expected_minted_handles"
-        trace cbor.diagnostic(expected_minted_handles)
         expect
           list.any(
             settings_datum.allowed_minters,
