@@ -209,7 +209,10 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
     );
 
     // <-- pay minter fee
-    txBuilder.payUnsafe(address, makeValue(decodedSettingsV1.minter_fee));
+    txBuilder.payUnsafe(
+      address,
+      makeValue(decodedSettingsV1.minter_fee * BigInt(handles.length))
+    );
 
     // <-- attach mint prxoy validator
     txBuilder.attachUplcProgram(mintProxyConfig.mintProxyMintUplcProgram);

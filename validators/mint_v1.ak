@@ -1,6 +1,6 @@
 use aiken/bytearray
 use aiken/cbor
-use aiken/dict
+use aiken/dict.{Dict}
 use aiken/hash.{Blake2b_224, Hash}
 use aiken/list
 use aiken/merkle_patricia_forestry as mpf
@@ -30,8 +30,6 @@ validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
           transaction.mint
             |> value.from_minted_value()
             |> value.tokens(settings_datum.policy_id)
-            |> dict.keys()
-            |> list.reverse()
         let
           treasury_fee,
           minter_fee,
@@ -47,7 +45,7 @@ validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
             root,
             0,
             0,
-            [],
+            dict.new(),
           )
         expect
           list.any(
@@ -74,8 +72,8 @@ fn all_orders_satisfied(
   root: mpf.MerklePatriciaForestry,
   treasury_fee: Int,
   minter_fee: Int,
-  minted_handles: List<AssetName>,
-  continuation: fn(Int, Int, List<AssetName>) -> Bool,
+  minted_handles: Dict<AssetName, Int>,
+  continuation: fn(Int, Int, Dict<AssetName, Int>) -> Bool,
 ) -> Bool {
   when inputs is {
     [] -> continuation(treasury_fee, minter_fee, minted_handles)
@@ -90,7 +88,7 @@ fn all_orders_satisfied(
           expect [proof, ..rest_proofs] = proofs
           expect [output, ..rest_outputs] = outputs
           // This fails if the handle already exists
-          let new_root = mpf.insert(root, requested_handle, #"", proof)
+          let new_root = mpf.insert(root, requested_handle, "NEW", proof)
           expect output.address == destination.address
           expect output.datum == destination.datum
           let remainder =
@@ -114,7 +112,8 @@ fn all_orders_satisfied(
             new_root,
             treasury_fee + settings.treasury_fee,
             minter_fee + settings.minter_fee,
-            list.push(minted_handles, requested_handle),
+            dict.insert(minted_handles, requested_handle, 1),
+            // this also check only 1 requested_handle is minted
             continuation,
           )
         }
