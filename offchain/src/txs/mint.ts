@@ -92,6 +92,13 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
 
     const handles = [];
     const proofs: Proof[] = [];
+
+    // NOTE:
+    // sort orderUtxos before process
+    // because tx inputs is sorted lexicographically
+    // we have to insert handle in same order as tx inputs
+    orderUtxos.sort((a, b) => (a.id.toString() > b.id.toString() ? 1 : -1));
+
     console.log(`${orderUtxos.length} Handles are ordered`);
     for (const orderUtxo of orderUtxos) {
       const decodedOrder = decodeOrderDatum(orderUtxo.datum);
@@ -125,6 +132,16 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
         console.warn("Handle already exists", decodedOrder.requested_handle, e);
       }
     }
+
+    console.log("Handles:");
+    handles.forEach((handle) =>
+      console.log({
+        utxo: handle.utxo.dump(),
+        destinationAddress: handle.destinationAddress.toBech32(),
+        mintingHandleAssetClass: handle.mintingHandleAssetClass.toString(),
+        destinationDatum: handle.destinationDatum?.dump() || "NoDatum",
+      })
+    );
 
     // update all handles (mpf root hash)
     decodedSettingsV1.all_handles = db.hash.toString("hex");
