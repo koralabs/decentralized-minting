@@ -13,6 +13,7 @@
     "@blaze-cardano/core": "^0.6.0",
     "@blaze-cardano/sdk": "^0.2.16",
     "@blaze-cardano/uplc": "^0.2.1",
+    "@blockfrost/blockfrost-js": "^5.7.0",
     "@helios-lang/codec-utils": "^0.3.4",
     "@helios-lang/compiler": "^0.17.11",
     "@helios-lang/crypto": "^0.2.3",

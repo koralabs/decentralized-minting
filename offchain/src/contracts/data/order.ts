@@ -61,9 +61,19 @@ const buildOrderData = (order: OrderDatum): UplcData => {
   ]);
 };
 
+const buildOrderExecuteRedeemer = (): UplcData => {
+  return makeConstrData(0, []);
+};
+
+const buildOrderCancelRedeemer = (): UplcData => {
+  return makeConstrData(1, []);
+};
+
 export {
   buildDestinationData,
+  buildOrderCancelRedeemer,
   buildOrderData,
+  buildOrderExecuteRedeemer,
   decodeDestinationFromData,
   decodeOrderDatum,
 };

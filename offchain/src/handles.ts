@@ -1,10 +1,14 @@
+import { fetchApi } from "helpers/api.js";
+
 const getAllHandles = async (): Promise<string[]> => {
-  const response = await fetch("https://api.handle.me/handles", {
+  const response = await fetchApi(`handles`, {
     headers: {
       Accept: "text/plain",
     },
   });
-  return (await response.text()).split("\n");
+  if (!response.ok) throw new Error("Failed to fetch handles");
+  const allHandlesText = await response.text();
+  return allHandlesText.split("\n");
 };
 
 export { getAllHandles };

@@ -1,4 +1,5 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
+import { ByteArrayLike, IntLike } from "@helios-lang/codec-utils";
 import {
   makeAssetClass,
   makeAssets,
@@ -18,6 +19,7 @@ import fs from "fs/promises";
 import { REFERENCE_SCRIPT_UTXO_PATH } from "../configs/index.js";
 import {
   buildContractsConfig,
+  buildOrderExecuteRedeemer,
   buildProofsRedeemer,
   buildSettingsData,
   buildSettingsV1Data,
@@ -62,11 +64,7 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
     );
     const settingsProxyAssetUtxo = (
       await blockfrostApi.getUtxosWithAssetClass(
-        (
-          await blockfrostApi.getAddressesWithAssetClass(
-            settingsProxyConfig.settingsProxyAssetClass
-          )
-        )[0].address,
+        settingsProxyConfig.settingsProxyScriptAddress,
         settingsProxyConfig.settingsProxyAssetClass
       )
     )[0];
@@ -77,6 +75,7 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
 
     const handles = [];
     const proofs: Proof[] = [];
+    console.log(`${orderUtxos.length} Handles are ordered`);
     for (const orderUtxo of orderUtxos) {
       const decodedOrder = decodeOrderDatum(orderUtxo.datum);
       const handleName = Buffer.from(
@@ -173,14 +172,17 @@ const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
 
     // <-- spend order utxos and mint handle
     // and send minted handle to destination with datum
+    const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = handles.map(
+      (handle) => [handle.mintingHandleAssetClass.tokenName, 1n]
+    );
+    txBuilder.mintPolicyTokensUnsafe(
+      handlePolicyHash,
+      mintingHandlesTokensValue,
+      makeVoidData()
+    );
     for (const handle of handles) {
       txBuilder
-        .spendUnsafe(handle.utxo, makeVoidData())
-        .mintAssetClassUnsafe(
-          handle.mintingHandleAssetClass,
-          1n,
-          makeVoidData()
-        )
+        .spendUnsafe(handle.utxo, buildOrderExecuteRedeemer())
         .payUnsafe(
           handle.destinationAddress,
           handle.handleValue,

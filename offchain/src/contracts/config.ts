@@ -47,7 +47,7 @@ const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
     makeStakingValidatorHash(settingsV1StakeUplcProgram.hash())
   );
   const settingsV1RegistrationDCert = makeRegistrationDCert(
-    makeStakingValidatorHash(settingsV1StakeUplcProgram.hash())
+    settingsV1StakingAddress.stakingCredential
   );
 
   const orderSpendUplcProgram = getOrderSpendUplcProgram(
@@ -76,7 +76,7 @@ const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
     makeStakingValidatorHash(mintV1WithdrawUplcProgram.hash())
   );
   const mintV1RegistrationDCert = makeRegistrationDCert(
-    makeStakingValidatorHash(mintV1WithdrawUplcProgram.hash())
+    mintV1StakingAddress.stakingCredential
   );
 
   return {

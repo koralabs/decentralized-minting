@@ -1,3 +1,4 @@
+import { BlockFrostAPI } from "@blockfrost/blockfrost-js";
 import { NetworkParams } from "@helios-lang/ledger";
 import { NetworkName } from "@helios-lang/tx-utils";
 import { Result } from "ts-res";
@@ -18,4 +19,20 @@ const fetchNetworkParameters = async (
   ).complete();
 };
 
-export { fetchNetworkParameters };
+const checkAccountRegistrationStatus = async (
+  blockfrostApi: BlockFrostAPI,
+  bech32StakingAddress: string
+): Promise<"registered" | "deregistered" | "none"> => {
+  try {
+    const data = (
+      await blockfrostApi.accountsRegistrations(bech32StakingAddress, {
+        order: "desc",
+      })
+    )[0];
+    return data.action;
+  } catch {
+    return "none";
+  }
+};
+
+export { checkAccountRegistrationStatus, fetchNetworkParameters };

@@ -8,7 +8,7 @@ import { makeTxBuilder, SimpleWallet } from "@helios-lang/tx-utils";
 import {
   buildContractsConfig,
   buildOrderData,
-  makeVoidData,
+  makeSignatureMultiSigScriptData,
   OrderDatum,
 } from "../contracts/index.js";
 import { BuildTx, mayFailTransaction } from "../helpers/index.js";
@@ -18,6 +18,7 @@ const requestHandle = (
   handleName: string
 ): BuildTx => {
   return async (wallet: SimpleWallet) => {
+    // check handle is minted or not
     const address = wallet.address;
     const spareUtxos = await wallet.utxos;
     const contractsConfig = buildContractsConfig(initialTxOutputId);
@@ -27,7 +28,7 @@ const requestHandle = (
         address,
         datum: undefined,
       },
-      owner: makeVoidData(),
+      owner: makeSignatureMultiSigScriptData(address.spendingCredential),
       requested_handle: Buffer.from(handleName).toString("hex"),
     };
 

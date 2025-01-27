@@ -1,4 +1,5 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
+import { BlockFrostAPI } from "@blockfrost/blockfrost-js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import {
   makeAssets,
@@ -6,7 +7,11 @@ import {
   makeTxOutput,
   makeValue,
 } from "@helios-lang/ledger";
-import { makeTxBuilder, SimpleWallet } from "@helios-lang/tx-utils";
+import {
+  BlockfrostV0Client,
+  makeTxBuilder,
+  SimpleWallet,
+} from "@helios-lang/tx-utils";
 import { promises as fs } from "fs";
 
 import {
@@ -22,11 +27,16 @@ import {
   SettingsV1,
 } from "../contracts/index.js";
 import { BuildTx, mayFailTransaction } from "../helpers/index.js";
+import { checkAccountRegistrationStatus } from "../utils/index.js";
 
 export const publish =
   (db: Trie): BuildTx =>
   async (wallet: SimpleWallet) => {
-    const networkParams = await wallet.cardanoClient.parameters;
+    const blockfrostCardanoClient = wallet.cardanoClient as BlockfrostV0Client;
+    const blockfrostApi = new BlockFrostAPI({
+      projectId: blockfrostCardanoClient.projectId,
+    });
+    const networkParams = await blockfrostCardanoClient.parameters;
     const address = wallet.address;
     const spareUtxos = await wallet.utxos;
     const initialUtxo = spareUtxos.shift()!;
@@ -71,6 +81,18 @@ export const publish =
     // <-- spend initial utxo
     txBuilder.spendUnsafe(initialUtxo);
 
+    // <-- attach settings proxy mint validator
+    txBuilder.attachUplcProgram(
+      settingsProxyConfig.settingsProxyMintUplcProgram
+    );
+
+    // <-- mint settings asset
+    txBuilder.mintAssetClassUnsafe(
+      settingsProxyConfig.settingsProxyAssetClass,
+      1n,
+      makeVoidData()
+    );
+
     // <-- lock settings value
     txBuilder.payUnsafe(
       settingsProxyConfig.settingsProxyScriptAddress,
@@ -89,22 +111,24 @@ export const publish =
     txBuilder.addOutput(referenceOutput);
 
     // <-- register mint v1 staking address
-    txBuilder.addDCert(mintV1Config.mintV1RegistrationDCert);
+    // after check staking address is already registered or not
+    const mintV1StakingAddressRegistered =
+      (await checkAccountRegistrationStatus(
+        blockfrostApi,
+        mintV1Config.mintV1StakingAddress.toBech32()
+      )) == "registered";
+    if (!mintV1StakingAddressRegistered)
+      txBuilder.addDCert(mintV1Config.mintV1RegistrationDCert);
 
     // <-- register settings v1 staking address
-    txBuilder.addDCert(settingsV1Config.settingsV1RegistrationDCert);
-
-    // <-- attach settings proxy mint validator
-    txBuilder.attachUplcProgram(
-      settingsProxyConfig.settingsProxyMintUplcProgram
-    );
-
-    // <-- mint settings asset
-    txBuilder.mintAssetClassUnsafe(
-      settingsProxyConfig.settingsProxyAssetClass,
-      1n,
-      makeVoidData()
-    );
+    // after check staking address is already registered or not
+    const settingsV1StakingAddressRegistered =
+      (await checkAccountRegistrationStatus(
+        blockfrostApi,
+        settingsV1Config.settingsV1StakingAddress.toBech32()
+      )) == "registered";
+    if (!settingsV1StakingAddressRegistered)
+      txBuilder.addDCert(settingsV1Config.settingsV1RegistrationDCert);
 
     const txResult = await mayFailTransaction(
       txBuilder,
