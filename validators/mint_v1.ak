@@ -1,7 +1,7 @@
-use aiken/dict
-use aiken/hash.{Blake2b_224, Hash}
 use aiken/bytearray
 use aiken/cbor
+use aiken/dict.{Dict}
+use aiken/hash.{Blake2b_224, Hash}
 use aiken/list
 use aiken/merkle_patricia_forestry as mpf
 use aiken/transaction.{
@@ -30,8 +30,6 @@ validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
           transaction.mint
             |> value.from_minted_value()
             |> value.tokens(settings_datum.policy_id)
-            |> dict.keys()
-            |> list.reverse()
         let
           treasury_fee,
           minter_fee,
@@ -47,12 +45,13 @@ validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
             root,
             0,
             0,
-            [],
+            dict.new(),
           )
-        expect list.any(
-          settings_datum.allowed_minters,
-          fn(m) { list.has(transaction.extra_signatories, m) },
-        )
+        expect
+          list.any(
+            settings_datum.allowed_minters,
+            fn(m) { list.has(transaction.extra_signatories, m) },
+          )
         expect value.lovelace_of(treasury.value) >= treasury_fee
         expect value.lovelace_of(minter.value) >= minter_fee
         expect actual_minted_handles == expected_minted_handles
@@ -73,20 +72,14 @@ fn all_orders_satisfied(
   root: mpf.MerklePatriciaForestry,
   treasury_fee: Int,
   minter_fee: Int,
-  minted_handles: List<AssetName>,
-  continuation: fn(Int, Int, List<AssetName>) -> Bool,
+  minted_handles: Dict<AssetName, Int>,
+  continuation: fn(Int, Int, Dict<AssetName, Int>) -> Bool,
 ) -> Bool {
   when inputs is {
     [] -> continuation(treasury_fee, minter_fee, minted_handles)
     [i, ..rest] -> {
-      let Output {
-        address: Address {
-          payment_credential,
-          ..
-        },
-        datum,
-        ..
-      } = i.output
+      let Output { address: Address { payment_credential, .. }, datum, .. } =
+        i.output
       when payment_credential is {
         ScriptCredential(sc) if sc == order_script -> {
           expect InlineDatum(datum) = datum
@@ -95,7 +88,7 @@ fn all_orders_satisfied(
           expect [proof, ..rest_proofs] = proofs
           expect [output, ..rest_outputs] = outputs
           // This fails if the handle already exists
-          let new_root = mpf.insert(root, requested_handle, #"", proof)
+          let new_root = mpf.insert(root, requested_handle, "NEW", proof)
           expect output.address == destination.address
           expect output.datum == destination.datum
           let remainder =
@@ -119,11 +112,12 @@ fn all_orders_satisfied(
             new_root,
             treasury_fee + settings.treasury_fee,
             minter_fee + settings.minter_fee,
-            list.push(minted_handles, requested_handle),
+            dict.insert(minted_handles, requested_handle, 1),
+            // this also check only 1 requested_handle is minted
             continuation,
           )
         }
-        _ -> {
+        _ ->
           all_orders_satisfied(
             order_script,
             handle_policy,
@@ -137,7 +131,6 @@ fn all_orders_satisfied(
             minted_handles,
             continuation,
           )
-        }
       }
     }
   }
