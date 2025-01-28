@@ -1,7 +1,7 @@
+use aiken/bytearray
+use aiken/cbor
 use aiken/list
 use aiken/pairs
-use aiken/cbor
-use aiken/bytearray
 use aiken/transaction.{InlineDatum, Mint, OutputReference, ScriptContext, Spend}
 use aiken/transaction/credential.{Inline, ScriptCredential}
 use aiken/transaction/value
@@ -10,7 +10,9 @@ use handle/types.{Settings}
 validator(init_utxo: OutputReference) {
   pub fn spend(datum: Settings, _r: Data, ctx: ScriptContext) {
     expect Spend(_) = ctx.purpose
-    trace bytearray.to_hex(cbor.serialise(pairs.keys(ctx.transaction.withdrawals)))
+    trace bytearray.to_hex(
+      cbor.serialise(pairs.keys(ctx.transaction.withdrawals)),
+    )
     expect
       pairs.has_key(
         ctx.transaction.withdrawals,
@@ -20,7 +22,7 @@ validator(init_utxo: OutputReference) {
   }
 
   pub fn mint(_r: Data, ctx: ScriptContext) {
-    trace "Mint"
+    trace @"Mint"
     expect Mint(own_policy_id) = ctx.purpose
     let expected_mint =
       value.from_asset(own_policy_id, "ADA Handle Settings", 1)
