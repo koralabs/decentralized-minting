@@ -6,7 +6,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf lib/ && tsc",
     "start:preview": "cd scripts/ && NODE_ENV=preview tsx ./run.ts",
     "start:preprod": "cd scripts/ && NODE_ENV=preprod tsx ./run.ts"
   },
