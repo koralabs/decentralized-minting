@@ -5,9 +5,11 @@ import {
 
 import { getNetwork } from "./network.js";
 
-const getBlockfrostApi = (blockfrostApiKey: string): BlockfrostV0Client => {
+const getBlockfrostV0Client = (
+  blockfrostApiKey: string
+): BlockfrostV0Client => {
   const network = getNetwork(blockfrostApiKey);
   return makeBlockfrostV0Client(network, blockfrostApiKey);
 };
 
-export { getBlockfrostApi };
+export { getBlockfrostV0Client };

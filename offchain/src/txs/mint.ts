@@ -5,20 +5,18 @@ import {
   makeAssets,
   makeInlineTxOutputDatum,
   makePubKeyHash,
-  makeTxOutputId,
   makeValue,
-  TxOutputId,
 } from "@helios-lang/ledger";
 import {
-  BlockfrostV0Client,
+  makeBlockfrostV0Client,
   makeTxBuilder,
-  SimpleWallet,
+  NetworkName,
 } from "@helios-lang/tx-utils";
-import fs from "fs/promises";
+import { Err, Result } from "ts-res";
 
-import { REFERENCE_SCRIPT_UTXO_PATH } from "../configs/index.js";
+import { GET_CONFIGS } from "../configs/index.js";
 import {
-  buildContractsConfig,
+  buildContracts,
   buildOrderExecuteRedeemer,
   buildProofsRedeemer,
   buildSettingsData,
@@ -31,223 +29,263 @@ import {
   parseProofJSON,
   Proof,
 } from "../contracts/index.js";
-import { BuildTx, mayFailTransaction } from "../helpers/index.js";
+import {
+  BuildTxError,
+  mayFail,
+  mayFailAsync,
+  mayFailTransaction,
+  TxSuccessResult,
+} from "../helpers/index.js";
+import { WalletWithoutKey } from "./types.js";
 
-const mintHandle = (db: Trie, initialTxOutputId: TxOutputId): BuildTx => {
-  return async (wallet: SimpleWallet) => {
-    const address = wallet.address;
-    const spareUtxos = await wallet.utxos;
-    const blockfrostApi = wallet.cardanoClient as BlockfrostV0Client;
-    const references = JSON.parse(
-      (await fs.readFile(REFERENCE_SCRIPT_UTXO_PATH)).toString()
-    );
-    const contractsConfig = buildContractsConfig(initialTxOutputId);
-    const {
-      order: orderConfig,
-      settingsProxy: settingsProxyConfig,
-      settingsV1: settingsV1Config,
-      mintV1: mintV1Config,
-      mintProxy: mintProxyConfig,
-      handlePolicyHash,
-    } = contractsConfig;
+/**
+ * @interface
+ * @typedef {object} MintParams
+ * @property {NetworkName} network Network
+ * @property {WalletWithoutKey} walletWithoutKey Wallet without key, used to build transaction
+ * @property {Trie} db MPF Database for all handles
+ */
+interface MintParams {
+  network: NetworkName;
+  walletWithoutKey: WalletWithoutKey;
+  db: Trie;
+}
 
-    console.log({
-      handlePolicyHash: handlePolicyHash.toHex(),
-    });
-    console.log({
-      settingsProxyScriptAddress:
-        settingsProxyConfig.settingsProxyScriptAddress.toBech32(),
-      settingsProxyPolicyHash:
-        settingsProxyConfig.settingsProxyPolicyHash.toHex(),
-    });
+/**
+ * @description Mint Handles from Order
+ * @param {MintParams} params
+ * @param {string} blockfrostApiKey Blockfrost API Key
+ * @returns {Promise<Result<TxSuccessResult,  Error | BuildTxError>>} Transaction Result
+ */
+const mint = async (
+  params: MintParams,
+  blockfrostApiKey: string
+): Promise<Result<TxSuccessResult, Error | BuildTxError>> => {
+  const { network, walletWithoutKey, db } = params;
+  const configsResult = mayFail(() => GET_CONFIGS(network));
+  if (!configsResult.ok) return Err(new Error(configsResult.error));
+  const { ALLOWED_MINTERS, MINTER_FEE, TREASURY_FEE, MINT_V1_SCRIPT_UTXO_ID } =
+    configsResult.data;
+  const { address, utxos, collateralUtxo } = walletWithoutKey;
+  if (address.era == "Byron")
+    return Err(new Error("Byron Address not supported"));
+  const isMainnet = network == "mainnet";
 
-    console.log({
-      settingsV1StakingAddress:
-        settingsV1Config.settingsV1StakingAddress.toBech32(),
-      mintV1StakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
-    });
+  const blockfrostV0Client = makeBlockfrostV0Client(network, blockfrostApiKey);
 
-    const mintV1ScriptUtxo = await blockfrostApi.getUtxo(
-      makeTxOutputId(`${references[0][0]}#${references[0][1]}`)
-    );
+  const contractsConfig = buildContracts({
+    network,
+  });
+  const {
+    order: orderConfig,
+    settingsProxy: settingsProxyConfig,
+    settingsV1: settingsV1Config,
+    mintV1: mintV1Config,
+    mintProxy: mintProxyConfig,
+    handlePolicyHash,
+  } = contractsConfig;
 
-    const orderUtxos = await blockfrostApi.getUtxos(
-      orderConfig.orderScriptAddress
-    );
-
-    console.log(
-      "Settings Proxy Asset Class is:",
-      settingsProxyConfig.settingsProxyAssetClass.toString()
-    );
-    const settingsProxyAssetUtxo = (
-      await blockfrostApi.getUtxosWithAssetClass(
-        settingsProxyConfig.settingsProxyScriptAddress,
-        settingsProxyConfig.settingsProxyAssetClass
+  // fetch mint v1 ref script
+  const mintV1ScriptUtxoResult = await mayFailAsync(() =>
+    blockfrostV0Client.getUtxo(MINT_V1_SCRIPT_UTXO_ID)
+  ).complete();
+  if (!mintV1ScriptUtxoResult.ok)
+    return Err(
+      new Error(
+        `Failed to fetch Mint V1 Reference Script: ${mintV1ScriptUtxoResult.error}`
       )
-    )[0];
-    const decodedSettings = decodeSettingsDatum(
-      settingsProxyAssetUtxo.output.datum
     );
-    const decodedSettingsV1 = decodeSettingsV1Data(decodedSettings.data);
+  const mintV1ScriptUtxo = mintV1ScriptUtxoResult.data;
 
-    const handles = [];
-    const proofs: Proof[] = [];
-
-    // NOTE:
-    // sort orderUtxos before process
-    // because tx inputs is sorted lexicographically
-    // we have to insert handle in same order as tx inputs
-    orderUtxos.sort((a, b) => (a.id.toString() > b.id.toString() ? 1 : -1));
-
-    console.log(`${orderUtxos.length} Handles are ordered`);
-    for (const orderUtxo of orderUtxos) {
-      const decodedOrder = decodeOrderDatum(orderUtxo.datum);
-      const handleName = Buffer.from(
-        decodedOrder.requested_handle,
-        "hex"
-      ).toString();
-      const mintingHandleAssetClass = makeAssetClass(
-        handlePolicyHash,
-        decodedOrder.requested_handle
-      );
-      const lovelace = orderUtxo.value.lovelace;
-      const handleValue = makeValue(
-        lovelace - 2_000_000n,
-        makeAssets([[mintingHandleAssetClass, 1n]])
-      );
-      const destinationAddress = decodedOrder.destination.address;
-
-      try {
-        await db.insert(handleName, "NEW");
-        const mpfProof = await db.prove(handleName);
-        proofs.push(parseProofJSON(mpfProof.toJSON()));
-        handles.push({
-          utxo: orderUtxo,
-          destinationAddress,
-          handleValue,
-          mintingHandleAssetClass,
-          destinationDatum: decodedOrder.destination.datum,
-        });
-      } catch (e) {
-        console.warn("Handle already exists", decodedOrder.requested_handle, e);
-      }
-    }
-
-    console.log("Handles:");
-    handles.forEach((handle) =>
-      console.log({
-        utxo: handle.utxo.dump(),
-        destinationAddress: handle.destinationAddress.toBech32(),
-        mintingHandleAssetClass: handle.mintingHandleAssetClass.toString(),
-        destinationDatum: handle.destinationDatum?.dump() || "NoDatum",
-      })
+  // fetch order utxos
+  const orderUtxosResult = await mayFailAsync(() =>
+    blockfrostV0Client.getUtxos(orderConfig.orderScriptAddress)
+  ).complete();
+  if (!orderUtxosResult.ok)
+    return Err(
+      new Error(`Failed to fetch order UTxOs: ${orderUtxosResult.error}`)
     );
+  // remove invalid order utxos
+  const orderUtxos = orderUtxosResult.data.filter((utxo) => {
+    const decodedResult = mayFail(() => decodeOrderDatum(utxo.datum));
+    return decodedResult.ok;
+  });
 
-    // update all handles (mpf root hash)
-    decodedSettingsV1.all_handles = db.hash.toString("hex");
-    // set updated SettingsV1 to Settings
-    decodedSettings.data = buildSettingsV1Data(decodedSettingsV1);
-
-    const settingsValue = makeValue(
-      5_000_000n,
-      makeAssets([[settingsProxyConfig.settingsProxyAssetClass, 1n]])
-    );
-
-    const proofsRedeemer = buildProofsRedeemer(proofs);
-
-    // start building tx
-    const txBuilder = makeTxBuilder({
-      isMainnet: await wallet.isMainnet(),
-    });
-
-    // <-- add required signer
-    txBuilder.addSigners(makePubKeyHash(decodedSettingsV1.allowed_minters[0]));
-
-    // <-- attach settings proxy spend validator
-    txBuilder.attachUplcProgram(
-      settingsProxyConfig.settingsProxySpendUplcProgram
-    );
-
-    // <-- spend settings utxo
-    txBuilder.spendUnsafe(
-      settingsProxyAssetUtxo,
-      makeRedeemerWrapper(makeVoidData())
-    );
-
-    // <-- lock settings value with new settings
-    txBuilder.payUnsafe(
+  // fetch settings proxy asset
+  const settingsProxyAssetsUtxosResult = await mayFailAsync(() =>
+    blockfrostV0Client.getUtxosWithAssetClass(
       settingsProxyConfig.settingsProxyScriptAddress,
-      settingsValue,
-      makeInlineTxOutputDatum(buildSettingsData(decodedSettings))
+      settingsProxyConfig.settingsProxyAssetClass
+    )
+  ).complete();
+  if (!settingsProxyAssetsUtxosResult.ok)
+    return Err(
+      new Error(
+        `Failed to fetch settings proxy assets: ${settingsProxyAssetsUtxosResult.error}`
+      )
     );
+  if (!(settingsProxyAssetsUtxosResult.data.length > 0))
+    return Err(new Error(`Settings Proxy Asset not found`));
+  const settingsProxyAssetUtxo = settingsProxyAssetsUtxosResult.data[0];
 
-    // <-- attach settings v1 withdrawl validator
-    txBuilder.attachUplcProgram(settingsV1Config.settingsV1StakeUplcProgram);
+  // decode settings and settings v1
+  const decodedSettings = decodeSettingsDatum(
+    settingsProxyAssetUtxo.output.datum
+  );
+  const decodedSettingsV1 = decodeSettingsV1Data(decodedSettings.data);
 
-    // <-- withdraw from settings v1 validator
-    txBuilder.withdrawUnsafe(
-      settingsV1Config.settingsV1StakingAddress,
-      0n,
-      makeVoidData()
-    );
+  const handles = [];
+  const proofs: Proof[] = [];
 
-    // <-- add mint v1 script reference input
-    txBuilder.refer(mintV1ScriptUtxo);
+  // NOTE:
+  // sort orderUtxos before process
+  // because tx inputs is sorted lexicographically
+  // we have to insert handle in same order as tx inputs
+  orderUtxos.sort((a, b) => (a.id.toString() > b.id.toString() ? 1 : -1));
 
-    // <-- withdraw from mint v1 withdraw validator (script from reference input)
-    txBuilder.withdrawUnsafe(
-      mintV1Config.mintV1StakingAddress,
-      0n,
-      proofsRedeemer
-    );
-
-    // <-- pay treasury fee
-    txBuilder.payUnsafe(
-      decodedSettingsV1.treasury_address,
-      makeValue(decodedSettingsV1.treasury_fee * BigInt(handles.length)),
-      makeInlineTxOutputDatum(makeVoidData())
-    );
-
-    // <-- pay minter fee
-    txBuilder.payUnsafe(
-      address,
-      makeValue(decodedSettingsV1.minter_fee * BigInt(handles.length))
-    );
-
-    // <-- attach mint prxoy validator
-    txBuilder.attachUplcProgram(mintProxyConfig.mintProxyMintUplcProgram);
-
-    // <-- attach order script
-    txBuilder.attachUplcProgram(orderConfig.orderSpendUplcProgram);
-
-    // <-- spend order utxos and mint handle
-    // and send minted handle to destination with datum
-    const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = handles.map(
-      (handle) => [handle.mintingHandleAssetClass.tokenName, 1n]
-    );
-    txBuilder.mintPolicyTokensUnsafe(
+  console.log(`${orderUtxos.length} Handles are ordered`);
+  for (const orderUtxo of orderUtxos) {
+    const decodedOrder = decodeOrderDatum(orderUtxo.datum);
+    const handleName = Buffer.from(
+      decodedOrder.requested_handle,
+      "hex"
+    ).toString();
+    const mintingHandleAssetClass = makeAssetClass(
       handlePolicyHash,
-      mintingHandlesTokensValue,
-      makeVoidData()
+      decodedOrder.requested_handle
     );
-    for (const handle of handles) {
-      txBuilder
-        .spendUnsafe(handle.utxo, buildOrderExecuteRedeemer())
-        .payUnsafe(
-          handle.destinationAddress,
-          handle.handleValue,
-          handle.destinationDatum
-        );
+    const lovelace = orderUtxo.value.lovelace;
+    const handleValue = makeValue(
+      lovelace - (TREASURY_FEE + MINTER_FEE),
+      makeAssets([[mintingHandleAssetClass, 1n]])
+    );
+    const destinationAddress = decodedOrder.destination.address;
+
+    try {
+      await db.insert(handleName, "NEW");
+      const mpfProof = await db.prove(handleName);
+      proofs.push(parseProofJSON(mpfProof.toJSON()));
+      handles.push({
+        utxo: orderUtxo,
+        destinationAddress,
+        handleValue,
+        mintingHandleAssetClass,
+        destinationDatum: decodedOrder.destination.datum,
+      });
+    } catch (e) {
+      console.warn("Handle already exists", decodedOrder.requested_handle, e);
+      return Err(new Error(`Handle "${handleName}" already exists`));
     }
+  }
 
-    const txResult = await mayFailTransaction(
-      txBuilder,
-      address,
-      spareUtxos
-    ).complete();
+  // update all handles for new settings (mpf root hash)
+  decodedSettingsV1.all_handles = db.hash.toString("hex");
+  // set updated SettingsV1 to Settings
+  decodedSettings.data = buildSettingsV1Data(decodedSettingsV1);
 
-    return txResult;
-  };
+  const settingsValue = makeValue(
+    5_000_000n,
+    makeAssets([[settingsProxyConfig.settingsProxyAssetClass, 1n]])
+  );
+
+  // build proofs redeemer for mint v1 withdraw
+  const proofsRedeemer = buildProofsRedeemer(proofs);
+
+  // start building tx
+  const txBuilder = makeTxBuilder({
+    isMainnet,
+  });
+
+  // <-- add required signer
+  txBuilder.addSigners(makePubKeyHash(ALLOWED_MINTERS[0]));
+
+  // <-- attach settings proxy spend validator
+  txBuilder.attachUplcProgram(
+    settingsProxyConfig.settingsProxySpendUplcProgram
+  );
+
+  // <-- spend settings utxo
+  txBuilder.spendUnsafe(
+    settingsProxyAssetUtxo,
+    makeRedeemerWrapper(makeVoidData())
+  );
+
+  // <-- lock settings value with new settings
+  txBuilder.payUnsafe(
+    settingsProxyConfig.settingsProxyScriptAddress,
+    settingsValue,
+    makeInlineTxOutputDatum(buildSettingsData(decodedSettings))
+  );
+
+  // <-- attach settings v1 withdrawl validator
+  txBuilder.attachUplcProgram(settingsV1Config.settingsV1StakeUplcProgram);
+
+  // <-- withdraw from settings v1 validator
+  txBuilder.withdrawUnsafe(
+    settingsV1Config.settingsV1StakingAddress,
+    0n,
+    makeVoidData()
+  );
+
+  // <-- add mint v1 script reference input
+  txBuilder.refer(mintV1ScriptUtxo);
+
+  // <-- withdraw from mint v1 withdraw validator (script from reference input)
+  txBuilder.withdrawUnsafe(
+    mintV1Config.mintV1StakingAddress,
+    0n,
+    proofsRedeemer
+  );
+
+  // <-- pay treasury fee
+  txBuilder.payUnsafe(
+    decodedSettingsV1.treasury_address,
+    makeValue(decodedSettingsV1.treasury_fee * BigInt(handles.length)),
+    makeInlineTxOutputDatum(makeVoidData())
+  );
+
+  // <-- pay minter fee
+  txBuilder.payUnsafe(
+    address,
+    makeValue(decodedSettingsV1.minter_fee * BigInt(handles.length))
+  );
+
+  // <-- attach mint prxoy validator
+  txBuilder.attachUplcProgram(mintProxyConfig.mintProxyMintUplcProgram);
+
+  // <-- attach order script
+  txBuilder.attachUplcProgram(orderConfig.orderSpendUplcProgram);
+
+  // <-- spend order utxos and mint handle
+  // and send minted handle to destination with datum
+  const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = handles.map(
+    (handle) => [handle.mintingHandleAssetClass.tokenName, 1n]
+  );
+  txBuilder.mintPolicyTokensUnsafe(
+    handlePolicyHash,
+    mintingHandlesTokensValue,
+    makeVoidData()
+  );
+  for (const handle of handles) {
+    txBuilder
+      .spendUnsafe(handle.utxo, buildOrderExecuteRedeemer())
+      .payUnsafe(
+        handle.destinationAddress,
+        handle.handleValue,
+        handle.destinationDatum
+      );
+  }
+
+  // <-- add collateral
+  if (collateralUtxo) txBuilder.addCollateral(collateralUtxo);
+
+  const txResult = await mayFailTransaction(
+    txBuilder,
+    address,
+    utxos
+  ).complete();
+
+  return txResult;
 };
 
-export { mintHandle };
+export { mint };

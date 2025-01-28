@@ -1,22 +1,12 @@
-import { config as envConfig } from "dotenv";
-envConfig();
+import { NetworkName } from "@helios-lang/tx-utils";
 
-export const {
-  NETWORK = "preview",
-  BLOCKFROST_API_KEY = "",
-  MNEMONIC = "",
-  KORA_USER_AGENT = "",
-  HANDLE_ME_API_KEY = "",
-} = process.env;
-export const NETWORK_HOST =
-  process.env.NETWORK?.toLocaleLowerCase() == "mainnet"
-    ? ""
-    : `${process.env.NETWORK?.toLowerCase()}.`;
-export const HANDLE_API_ENDPOINT =
-  process.env.HANDLE_API_ENDPOINT || `https://${NETWORK_HOST}api.handle.me`;
+import * as PREPROD_CONFIGS from "./preprod.config.js";
+import * as PREVIEW_CONFIGS from "./preview.config.js";
 
-// constants for app
-export const SETTINGS_UTF8_ASSET_NAME = "ADA Handle Settings";
-export const REFERENCE_SCRIPT_UTXO_PATH = "references";
-export const INITIAL_UTXO_PATH = "seed-utxo"; // file
-export const MPF_STORE_PATH = "db"; // directory
+const GET_CONFIGS = (network: NetworkName) => {
+  if (network == "mainnet") throw new Error("Mainnet not configured yet");
+  if (network == "preprod") return PREPROD_CONFIGS;
+  return PREVIEW_CONFIGS;
+};
+
+export { GET_CONFIGS };

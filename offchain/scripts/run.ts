@@ -1,5 +1,4 @@
 import { Store, Trie } from "@aiken-lang/merkle-patricia-forestry";
-import { makeTxOutputId } from "@helios-lang/ledger";
 import {
   makeBlockfrostV0Client,
   makeSimpleWallet,
@@ -12,15 +11,13 @@ import { existsSync } from "fs";
 import fs from "fs/promises";
 import prompts from "prompts";
 
+import { getAllHandles, mint, publish, request } from "../src/index.js";
 import {
   BLOCKFROST_API_KEY,
-  INITIAL_UTXO_PATH,
   MNEMONIC,
   MPF_STORE_PATH,
   NETWORK,
-} from "./configs/index.js";
-import { getAllHandles } from "./handles.js";
-import { handleTx } from "./helpers/index.js";
+} from "./constants.js";
 import {
   addHandle,
   clear,
@@ -30,9 +27,15 @@ import {
   printProof,
   removeHandle,
 } from "./store/index.js";
-import { mintHandle, publish, requestHandle } from "./txs/index.js";
+import { handleTx } from "./tx.js";
+import { makeWalletWithoutKeyFromSimpleWallet } from "./utils.js";
 
 const main = async () => {
+  const storePath = MPF_STORE_PATH(NETWORK as NetworkName);
+  const savedSeedUtxoString = (
+    await fs.readFile(`${NETWORK.toLowerCase()}-seed-utxo`)
+  ).toString();
+  console.log({ savedSeedUtxoString });
   const blockfrostCardanoClient = makeBlockfrostV0Client(
     NETWORK as NetworkName,
     BLOCKFROST_API_KEY
@@ -42,14 +45,9 @@ const main = async () => {
     blockfrostCardanoClient
   );
 
-  let initialTxOutputIdString: string = "";
-  if (existsSync(INITIAL_UTXO_PATH)) {
-    initialTxOutputIdString = (await fs.readFile(INITIAL_UTXO_PATH)).toString();
-  }
-
   let db: Trie | null = null;
-  if (existsSync(MPF_STORE_PATH)) {
-    db = await Trie.load(new Store(MPF_STORE_PATH));
+  if (existsSync(storePath)) {
+    db = await Trie.load(new Store(storePath));
     console.log("Database exists, current state: ");
     console.log(db);
   }
@@ -102,26 +100,26 @@ const main = async () => {
         {
           title: "publish",
           value: "publish",
-          disabled: !db || !!initialTxOutputIdString,
+          disabled: !db || !!savedSeedUtxoString,
           description: "Publish the current root on chain",
         },
         {
           title: "request",
           value: "request",
-          disabled: !db || !initialTxOutputIdString,
+          disabled: !db,
           description:
             "Request a new ADA handle by placing an order transaction on chain",
         },
         {
           title: "mint",
           value: "mint",
-          disabled: !db || !initialTxOutputIdString,
+          disabled: !db,
           description: "Mint all new handles with a transaction on-chain",
         },
         {
           title: "upgrade",
           value: "upgrade",
-          disabled: !db || !initialTxOutputIdString,
+          disabled: !db,
           description:
             "Upgrade the protocol, modifying some settings as the settings governor",
         },
@@ -142,7 +140,7 @@ const main = async () => {
     try {
       switch (operation["operation"]) {
         case "init": {
-          db = await init(MPF_STORE_PATH);
+          db = await init(storePath);
           break;
         }
         case "inspect": {
@@ -223,10 +221,22 @@ const main = async () => {
           break;
         }
         case "publish": {
-          if (await handleTx(wallet, publish(db!))) {
+          if (
+            await handleTx(wallet, async () =>
+              publish(
+                {
+                  network: NETWORK as NetworkName,
+                  db: db!,
+                  walletWithoutKey: await makeWalletWithoutKeyFromSimpleWallet(
+                    wallet
+                  ),
+                },
+                BLOCKFROST_API_KEY
+              )
+            )
+          ) {
             return;
           }
-          initialTxOutputIdString = (await fs.readFile("seed-utxo")).toString();
           break;
         }
         case "request": {
@@ -235,17 +245,36 @@ const main = async () => {
             type: "text",
             message: "The handle you want to request",
           });
-          const initialTxOutputId = makeTxOutputId(initialTxOutputIdString);
           if (
-            await handleTx(wallet, requestHandle(initialTxOutputId, handle))
+            await handleTx(wallet, async () =>
+              request({
+                network: NETWORK as NetworkName,
+                handleName: handle,
+                walletWithoutKey: await makeWalletWithoutKeyFromSimpleWallet(
+                  wallet
+                ),
+              })
+            )
           ) {
             return;
           }
           break;
         }
         case "mint": {
-          const initialTxOutputId = makeTxOutputId(initialTxOutputIdString);
-          if (await handleTx(wallet, mintHandle(db!, initialTxOutputId))) {
+          if (
+            await handleTx(wallet, async () =>
+              mint(
+                {
+                  network: NETWORK as NetworkName,
+                  db: db!,
+                  walletWithoutKey: await makeWalletWithoutKeyFromSimpleWallet(
+                    wallet
+                  ),
+                },
+                BLOCKFROST_API_KEY
+              )
+            )
+          ) {
             return;
           }
           break;
@@ -257,7 +286,7 @@ const main = async () => {
             message: "Are you sure you want to clear the database?",
           });
           if (confirm) {
-            await clear(MPF_STORE_PATH);
+            await clear(storePath);
             db = null;
           }
           break;

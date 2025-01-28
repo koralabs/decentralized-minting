@@ -20,7 +20,7 @@ import {
   UplcData,
 } from "@helios-lang/uplc";
 
-import { NETWORK } from "../../configs/index.js";
+import { NETWORK } from "../../constants/index.js";
 
 const buildCredentialData = (credential: SpendingCredential): UplcData => {
   return makeConstrData(credential.kind == "PubKeyHash" ? 0 : 1, [

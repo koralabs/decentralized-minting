@@ -4,17 +4,15 @@ import { promises as fs } from "fs";
 import prompts from "prompts";
 import { Result } from "ts-res";
 
-import { BuildTxError, TxSuccessResult } from "./error/tx.js";
+import { BuildTxError, TxSuccessResult } from "../src/helpers/index.js";
 
-type BuildTx = (
-  wallet: SimpleWallet
-) => Promise<Result<TxSuccessResult, Error | BuildTxError>>;
+type BuildTx = () => Promise<Result<TxSuccessResult, Error | BuildTxError>>;
 
 const handleTx = async (
   wallet: SimpleWallet,
   buildTx: BuildTx
 ): Promise<boolean> => {
-  const txResult = await buildTx(wallet);
+  const txResult = await buildTx();
   if (!txResult.ok) {
     console.error(txResult.error.message);
     throw txResult.error;

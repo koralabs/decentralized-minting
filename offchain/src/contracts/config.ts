@@ -6,10 +6,10 @@ import {
   makeStakingAddress,
   makeStakingValidatorHash,
   makeValidatorHash,
-  TxOutputId,
 } from "@helios-lang/ledger";
+import { NetworkName } from "@helios-lang/tx-utils";
 
-import { NETWORK, SETTINGS_UTF8_ASSET_NAME } from "../configs/index.js";
+import { GET_CONFIGS } from "../configs/index.js";
 import {
   getMintProxyMintUplcProgram,
   getMintV1WithdrawUplcProgram,
@@ -19,13 +19,30 @@ import {
   getSettingsV1StakeUplcProgram,
 } from "./validators.js";
 
-const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
-  const isMainnet = NETWORK == "mainnet";
+/**
+ * @interface
+ * @typedef {object} BuildContractsParams
+ * @property {NetworkName} network Cardano Network
+ */
+interface BuildContractsParams {
+  network: NetworkName;
+}
+
+/**
+ * @description Build Contracts for De-Mi from config
+ * @param {BuildContractsParams} params
+ * @returns All Contracts
+ */
+const buildContracts = (params: BuildContractsParams) => {
+  const { network } = params;
+  const configs = GET_CONFIGS(network);
+  const { INITIAL_TX_OUTPUT_ID, SETTINGS_UTF8_ASSET_NAME } = configs;
+  const isMainnet = network == "mainnet";
 
   const settingsProxySpendUplcProgram =
-    getSettingsProxySpendUplcProgram(initialTxOutputId);
+    getSettingsProxySpendUplcProgram(INITIAL_TX_OUTPUT_ID);
   const settingsProxyMintUplcProgram =
-    getSettingsProxyMintUplcProgram(initialTxOutputId);
+    getSettingsProxyMintUplcProgram(INITIAL_TX_OUTPUT_ID);
   const settingsProxyPolicyHash = makeMintingPolicyHash(
     settingsProxyMintUplcProgram.hash()
   );
@@ -112,4 +129,5 @@ const buildContractsConfig = (initialTxOutputId: TxOutputId) => {
   };
 };
 
-export { buildContractsConfig };
+export type { BuildContractsParams };
+export { buildContracts };

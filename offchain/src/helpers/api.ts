@@ -5,7 +5,7 @@ import {
   HANDLE_ME_API_KEY,
   KORA_USER_AGENT,
   NETWORK,
-} from "../configs/index.js";
+} from "../constants/index.js";
 
 const fetchApi = async (
   endpoint: string,
