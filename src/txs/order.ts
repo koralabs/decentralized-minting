@@ -83,4 +83,5 @@ const request = async (
   return txResult;
 };
 
+export type { RequestParams };
 export { request };

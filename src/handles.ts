@@ -1,4 +1,4 @@
-import { fetchApi } from "helpers/api.js";
+import { fetchApi } from "./helpers/api.js";
 
 const getAllHandles = async (): Promise<string[]> => {
   const response = await fetchApi(`handles`, {

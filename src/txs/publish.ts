@@ -189,4 +189,5 @@ const publish = async (
   return txResult;
 };
 
+export type { PublishParams };
 export { publish };
