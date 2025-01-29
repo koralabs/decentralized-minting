@@ -11,7 +11,13 @@ import { existsSync } from "fs";
 import fs from "fs/promises";
 import prompts from "prompts";
 
-import { getAllHandles, mint, publish, request } from "../src/index.js";
+import {
+  getAllHandles,
+  mayFailTransaction,
+  mint,
+  publish,
+  request,
+} from "../src/index.js";
 import {
   BLOCKFROST_API_KEY,
   MNEMONIC,
@@ -245,37 +251,49 @@ const main = async () => {
             type: "text",
             message: "The handle you want to request",
           });
-          if (
-            await handleTx(wallet, async () =>
-              request({
-                network: NETWORK as NetworkName,
-                handleName: handle,
-                walletWithoutKey: await makeWalletWithoutKeyFromSimpleWallet(
-                  wallet
-                ),
-              })
+          const txBuilderResult = await request({
+            network: NETWORK as NetworkName,
+            handleName: handle,
+            address: wallet.address,
+          });
+          if (txBuilderResult.ok) {
+            if (
+              await handleTx(
+                wallet,
+                async () =>
+                  await mayFailTransaction(
+                    txBuilderResult.data,
+                    wallet.address,
+                    await wallet.utxos
+                  ).complete()
+              )
             )
-          ) {
-            return;
+              return;
           }
           break;
         }
         case "mint": {
-          if (
-            await handleTx(wallet, async () =>
-              mint(
-                {
-                  network: NETWORK as NetworkName,
-                  db: db!,
-                  walletWithoutKey: await makeWalletWithoutKeyFromSimpleWallet(
-                    wallet
-                  ),
-                },
-                BLOCKFROST_API_KEY
+          const txBuilderResult = await mint(
+            {
+              network: NETWORK as NetworkName,
+              db: db!,
+              address: wallet.address,
+            },
+            BLOCKFROST_API_KEY
+          );
+          if (txBuilderResult.ok) {
+            if (
+              await handleTx(
+                wallet,
+                async () =>
+                  await mayFailTransaction(
+                    txBuilderResult.data,
+                    wallet.address,
+                    await wallet.utxos
+                  ).complete()
               )
             )
-          ) {
-            return;
+              return;
           }
           break;
         }

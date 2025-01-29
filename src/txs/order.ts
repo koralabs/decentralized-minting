@@ -1,6 +1,10 @@
-import { makeInlineTxOutputDatum, makeValue } from "@helios-lang/ledger";
-import { makeTxBuilder, NetworkName } from "@helios-lang/tx-utils";
-import { Err, Result } from "ts-res";
+import {
+  Address,
+  makeInlineTxOutputDatum,
+  makeValue,
+} from "@helios-lang/ledger";
+import { makeTxBuilder, NetworkName, TxBuilder } from "@helios-lang/tx-utils";
+import { Err, Ok, Result } from "ts-res";
 
 import { GET_CONFIGS } from "../configs/index.js";
 import {
@@ -9,40 +13,33 @@ import {
   makeSignatureMultiSigScriptData,
   OrderDatum,
 } from "../contracts/index.js";
-import {
-  BuildTxError,
-  mayFail,
-  mayFailTransaction,
-  TxSuccessResult,
-} from "../helpers/index.js";
-import { WalletWithoutKey } from "./types.js";
+import { mayFail } from "../helpers/index.js";
 
 /**
  * @interface
  * @typedef {object} RequestParams
  * @property {NetworkName} network Network
- * @property {WalletWithoutKey} walletWithoutKey Wallet without key, used to build transaction
+ * @property {Address} address Wallet Address to perform mint
  * @property {string} handleName Handle Name to order (UTF8 format)
  */
 interface RequestParams {
   network: NetworkName;
-  walletWithoutKey: WalletWithoutKey;
+  address: Address;
   handleName: string;
 }
 
 /**
  * @description Request handle to be minted
  * @param {RequestParams} params
- * @returns {Promise<Result<TxSuccessResult,  Error | BuildTxError>>} Transaction Result
+ * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
 const request = async (
   params: RequestParams
-): Promise<Result<TxSuccessResult, Error | BuildTxError>> => {
-  const { network, walletWithoutKey, handleName } = params;
+): Promise<Result<TxBuilder, Error>> => {
+  const { network, address, handleName } = params;
   const configsResult = mayFail(() => GET_CONFIGS(network));
   if (!configsResult.ok) return Err(new Error(configsResult.error));
   const { MINTER_FEE, TREASURY_FEE } = configsResult.data;
-  const { address, utxos } = walletWithoutKey;
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
   if (address.spendingCredential.kind == "ValidatorHash")
@@ -75,12 +72,7 @@ const request = async (
     makeInlineTxOutputDatum(buildOrderData(order))
   );
 
-  const txResult = await mayFailTransaction(
-    txBuilder,
-    address,
-    utxos
-  ).complete();
-  return txResult;
+  return Ok(txBuilder);
 };
 
 export type { RequestParams };
