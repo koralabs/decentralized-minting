@@ -1,6 +1,7 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import { ByteArrayLike, IntLike } from "@helios-lang/codec-utils";
 import {
+  Address,
   makeAssetClass,
   makeAssets,
   makeInlineTxOutputDatum,
@@ -11,8 +12,9 @@ import {
   makeBlockfrostV0Client,
   makeTxBuilder,
   NetworkName,
+  TxBuilder,
 } from "@helios-lang/tx-utils";
-import { Err, Result } from "ts-res";
+import { Err, Ok, Result } from "ts-res";
 
 import { GET_CONFIGS } from "../configs/index.js";
 import {
@@ -29,25 +31,18 @@ import {
   parseProofJSON,
   Proof,
 } from "../contracts/index.js";
-import {
-  BuildTxError,
-  mayFail,
-  mayFailAsync,
-  mayFailTransaction,
-  TxSuccessResult,
-} from "../helpers/index.js";
-import { WalletWithoutKey } from "./types.js";
+import { mayFail, mayFailAsync } from "../helpers/index.js";
 
 /**
  * @interface
  * @typedef {object} MintParams
  * @property {NetworkName} network Network
- * @property {WalletWithoutKey} walletWithoutKey Wallet without key, used to build transaction
+ * @property {Address} address Wallet Address to perform mint
  * @property {Trie} db MPF Database for all handles
  */
 interface MintParams {
   network: NetworkName;
-  walletWithoutKey: WalletWithoutKey;
+  address: Address;
   db: Trie;
 }
 
@@ -55,18 +50,17 @@ interface MintParams {
  * @description Mint Handles from Order
  * @param {MintParams} params
  * @param {string} blockfrostApiKey Blockfrost API Key
- * @returns {Promise<Result<TxSuccessResult,  Error | BuildTxError>>} Transaction Result
+ * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
 const mint = async (
   params: MintParams,
   blockfrostApiKey: string
-): Promise<Result<TxSuccessResult, Error | BuildTxError>> => {
-  const { network, walletWithoutKey, db } = params;
+): Promise<Result<TxBuilder, Error>> => {
+  const { network, address, db } = params;
   const configsResult = mayFail(() => GET_CONFIGS(network));
   if (!configsResult.ok) return Err(new Error(configsResult.error));
   const { ALLOWED_MINTERS, MINTER_FEE, TREASURY_FEE, MINT_V1_SCRIPT_UTXO_ID } =
     configsResult.data;
-  const { address, utxos, collateralUtxo } = walletWithoutKey;
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
   const isMainnet = network == "mainnet";
@@ -276,16 +270,7 @@ const mint = async (
       );
   }
 
-  // <-- add collateral
-  if (collateralUtxo) txBuilder.addCollateral(collateralUtxo);
-
-  const txResult = await mayFailTransaction(
-    txBuilder,
-    address,
-    utxos
-  ).complete();
-
-  return txResult;
+  return Ok(txBuilder);
 };
 
 export type { MintParams };
