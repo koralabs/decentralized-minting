@@ -288,4 +288,5 @@ const mint = async (
   return txResult;
 };
 
+export type { MintParams };
 export { mint };
