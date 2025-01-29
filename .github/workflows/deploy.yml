@@ -11,6 +11,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v1
 
+      - name: Install Libssl
+        run: |
+          wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
+          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
+
+      - name: Install Aiken
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
+          ~/.aiken/bin/aikup install v1.0.29-alpha
+          sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
+
       - name: Publish ${{ github.workflow }}
         id: publish
         env:

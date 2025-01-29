@@ -1,5 +1,5 @@
 {
-  "name": "handle-mint",
+  "name": "@koralabs/handles-decentralized-minting",
   "version": "0.1.0",
   "license": "MIT",
   "main": "index.js",
