@@ -6,7 +6,7 @@
     "rootDir": "./src",
     "moduleResolution": "nodenext",
     "resolveJsonModule": true,
-    "declaration": false,
+    "declaration": true,
     "sourceMap": false,
     "outDir": "./lib",
     "allowSyntheticDefaultImports": true,
