@@ -6,8 +6,8 @@ import {
   makeConstrData,
   UplcData,
 } from "@helios-lang/uplc";
-import { invariant } from "helpers/index.js";
 
+import { invariant } from "../../helpers/index.js";
 import { Destination, OrderDatum } from "../types/index.js";
 import {
   buildAddressData,

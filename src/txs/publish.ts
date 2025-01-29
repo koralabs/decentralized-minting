@@ -12,9 +12,9 @@ import {
   makeTxBuilder,
   NetworkName,
 } from "@helios-lang/tx-utils";
-import { GET_CONFIGS } from "configs/index.js";
 import { Err, Result } from "ts-res";
 
+import { GET_CONFIGS } from "../configs/index.js";
 import {
   buildContracts,
   buildSettingsData,
