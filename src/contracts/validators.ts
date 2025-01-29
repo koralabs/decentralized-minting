@@ -2,7 +2,7 @@ import { TxOutputId } from "@helios-lang/ledger";
 import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
 
 import { invariant } from "../helpers/index.js";
-import blueprint from "./plutus.json" assert { type: "json" };
+import blueprint from "./blueprint.js";
 import {
   makeMintProxyMintUplcProgramParameter,
   makeMintV1WithdrawUplcProgramParamter,
