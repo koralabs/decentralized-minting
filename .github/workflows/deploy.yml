@@ -11,10 +11,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v1
 
-      - name: Enter offchain folder
-        run: |
-          cd offchain/
-
       - name: Publish ${{ github.workflow }}
         id: publish
         env:
