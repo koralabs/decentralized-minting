@@ -1,5 +1,6 @@
 import { NetworkName } from "@helios-lang/tx-utils";
 import { config as envConfig } from "dotenv";
+import path from "path";
 envConfig({ path: `.env.${process.env.NODE_ENV || "development"}.local` });
 
 export const {
@@ -8,6 +9,7 @@ export const {
   MNEMONIC = "",
   KORA_USER_AGENT = "",
   HANDLE_ME_API_KEY = "",
+  STORE_DIRECTORY = "",
 } = process.env;
 export const NETWORK_HOST =
   process.env.NETWORK?.toLocaleLowerCase() == "mainnet"
@@ -18,4 +20,4 @@ export const HANDLE_API_ENDPOINT =
 
 // constants for app
 export const MPF_STORE_PATH = (network: NetworkName): string =>
-  network.toLowerCase() + "-db"; // directory
+  path.join(STORE_DIRECTORY, network.toLowerCase() + "-db"); // directory
