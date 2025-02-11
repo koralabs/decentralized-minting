@@ -9,8 +9,8 @@ use aiken/transaction.{
 }
 use aiken/transaction/credential.{Address, Script, ScriptCredential}
 use aiken/transaction/value.{AssetName, PolicyId, ada_asset_name, ada_policy_id}
-use handle/types.{OrderDatum, Settings, SettingsV1}
-use utils.{find_settings_datum}
+use decentralized_minting/types.{OrderDatum, Settings, SettingsV1}
+use decentralized_minting/utils.{find_settings_datum}
 
 validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
   fn withdraw(proofs: List<mpf.Proof>, ctx: ScriptContext) -> Bool {

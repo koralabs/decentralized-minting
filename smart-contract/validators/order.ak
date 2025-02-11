@@ -2,9 +2,11 @@ use aiken/pairs
 use aiken/transaction.{ScriptContext}
 use aiken/transaction/credential.{Inline, ScriptCredential}
 use aiken/transaction/value.{PolicyId}
-use handle/types.{Cancel, Execute, OrderDatum, OrderRedeemer, Settings}
+use decentralized_minting/types.{
+  Cancel, Execute, OrderDatum, OrderRedeemer, Settings,
+}
+use decentralized_minting/utils.{find_settings_datum}
 use sundae/multisig
-use utils.{find_settings_datum}
 
 validator(settings_policy: PolicyId) {
   pub fn spend(
