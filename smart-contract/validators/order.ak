@@ -1,14 +1,13 @@
 use aiken/pairs
 use aiken/transaction.{ScriptContext}
 use aiken/transaction/credential.{Inline, ScriptCredential}
-use aiken/transaction/value.{PolicyId}
 use decentralized_minting/types.{
   Cancel, Execute, OrderDatum, OrderRedeemer, Settings,
 }
 use decentralized_minting/utils.{find_settings_datum}
 use sundae/multisig
 
-validator(settings_policy: PolicyId) {
+validator {
   pub fn spend(
     datum: OrderDatum,
     redeemer: OrderRedeemer,
@@ -28,7 +27,7 @@ validator(settings_policy: PolicyId) {
       Execute -> {
         // Find the settings input
         let (_, Settings { mint_governor, .. }) =
-          find_settings_datum(ctx.transaction.inputs, settings_policy)
+          find_settings_datum(ctx.transaction.inputs)
         pairs.foldl(
           ctx.transaction.withdrawals,
           False,

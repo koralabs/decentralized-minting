@@ -1,14 +1,13 @@
 use aiken/pairs
 use aiken/transaction.{ScriptContext}
 use aiken/transaction/credential.{Inline, ScriptCredential}
-use aiken/transaction/value.{PolicyId}
 use decentralized_minting/types.{Settings}
 use decentralized_minting/utils.{find_settings_datum}
 
-validator(settings_policy: PolicyId) {
+validator {
   pub fn mint(_r: Data, ctx: ScriptContext) {
     let (_, Settings { mint_governor, .. }) =
-      find_settings_datum(ctx.transaction.inputs, settings_policy)
+      find_settings_datum(ctx.transaction.inputs)
     pairs.foldl(
       ctx.transaction.withdrawals,
       False,

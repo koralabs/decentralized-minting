@@ -12,13 +12,13 @@ use aiken/transaction/value.{AssetName, PolicyId, ada_asset_name, ada_policy_id}
 use decentralized_minting/types.{OrderDatum, Settings, SettingsV1}
 use decentralized_minting/utils.{find_settings_datum}
 
-validator(settings_policy: PolicyId, order_script: Hash<Blake2b_224, Script>) {
+validator(order_script: Hash<Blake2b_224, Script>) {
   fn withdraw(proofs: List<mpf.Proof>, ctx: ScriptContext) -> Bool {
     let ScriptContext { purpose, transaction } = ctx
     when purpose is {
       WithdrawFrom(_) -> {
         let (settings_input, Settings { data, .. }) =
-          find_settings_datum(transaction.inputs, settings_policy)
+          find_settings_datum(transaction.inputs)
         expect settings_datum: SettingsV1 = data
         expect [settings, treasury, minter, ..outputs] = transaction.outputs
         expect settings.address == settings_input.address

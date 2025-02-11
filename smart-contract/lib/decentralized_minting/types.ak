@@ -3,8 +3,8 @@ use aiken/transaction.{Datum}
 use aiken/transaction/credential.{Address, VerificationKey}
 
 pub type Settings {
-  settings_governor: ByteArray,
   mint_governor: ByteArray,
+  // setting v1 data
   data: Data,
 }
 
