@@ -2,6 +2,7 @@ import { bytesToHex } from "@helios-lang/codec-utils";
 import { Address, Tx, TxInput } from "@helios-lang/ledger";
 import { TxBuilder } from "@helios-lang/tx-utils";
 import { makeBasicUplcLogger, UplcLogger } from "@helios-lang/uplc";
+import fs from "fs/promises";
 import { Err, Ok, Result } from "ts-res";
 
 import convertError from "./convert.js";
@@ -71,7 +72,7 @@ const mayFailTransaction = (
           ...makeBasicUplcLogger(),
           logPrint: (msg: string) => logs.push(msg),
         };
-        if (logger.reset) logger.reset("build");
+        if (logger.reset) logger.reset("validate");
         try {
           const tx = await txBuilder.buildUnsafe({
             changeAddress,
@@ -80,6 +81,7 @@ const mayFailTransaction = (
             throwBuildPhaseScriptErrors: false,
           });
           if (tx.hasValidationError) {
+            fs.writeFile("./error.json", JSON.stringify(tx.dump()));
             const txValidationError = BuildTxError.fromError(
               new Error(
                 convertError(tx.hasValidationError) +

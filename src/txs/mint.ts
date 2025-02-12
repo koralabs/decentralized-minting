@@ -154,6 +154,8 @@ const mint = async (
   // we have to insert handle in same order as tx inputs
   orderUtxos.sort((a, b) => (a.id.toString() > b.id.toString() ? 1 : -1));
 
+  if (orderUtxos.length == 0) return Err(new Error("No Order requested"));
+
   console.log(`${orderUtxos.length} Handles are ordered`);
   for (const orderUtxo of orderUtxos) {
     const decodedOrder = decodeOrderDatum(orderUtxo.datum);
