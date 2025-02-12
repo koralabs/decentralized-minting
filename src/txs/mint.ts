@@ -108,21 +108,22 @@ const mint = async (
   });
 
   // fetch settings asset
-  const settingsAssetAddressResult = await mayFailAsync(
-    async () =>
-      (
-        await blockfrostV0Client.getAddressesWithAssetClass(
-          SETTINGS_ASSET_CLASS
-        )
-      )[0].address
-  ).complete();
-  if (!settingsAssetAddressResult.ok)
-    return Err(
-      new Error(
-        `Failed to fetch Settings Asset Address: ${settingsAssetAddressResult.error}`
-      )
-    );
-  const settingsAssetAddress = settingsAssetAddressResult.data;
+  // const settingsAssetAddressResult = await mayFailAsync(
+  //   async () =>
+  //     (
+  //       await blockfrostV0Client.getAddressesWithAssetClass(
+  //         SETTINGS_ASSET_CLASS
+  //       )
+  //     )[0].address
+  // ).complete();
+  // if (!settingsAssetAddressResult.ok)
+  //   return Err(
+  //     new Error(
+  //       `Failed to fetch Settings Asset Address: ${settingsAssetAddressResult.error}`
+  //     )
+  //   );
+  // const settingsAssetAddress = settingsAssetAddressResult.data;
+  const settingsAssetAddress = address;
   const settingsAssetUtxoResult = await mayFailAsync(
     async () =>
       (

@@ -8,7 +8,6 @@ import {
 import colors from "ansi-colors";
 import cliProgress from "cli-progress";
 import { existsSync } from "fs";
-import fs from "fs/promises";
 import prompts from "prompts";
 
 import {
@@ -38,10 +37,6 @@ import { makeWalletWithoutKeyFromSimpleWallet } from "./utils.js";
 
 const main = async () => {
   const storePath = MPF_STORE_PATH(NETWORK as NetworkName);
-  const savedSeedUtxoString = (
-    await fs.readFile(`${NETWORK.toLowerCase()}-seed-utxo`)
-  ).toString();
-  console.log({ savedSeedUtxoString });
   const blockfrostCardanoClient = makeBlockfrostV0Client(
     NETWORK as NetworkName,
     BLOCKFROST_API_KEY
@@ -106,7 +101,7 @@ const main = async () => {
         {
           title: "publish",
           value: "publish",
-          disabled: !db || !!savedSeedUtxoString,
+          disabled: !db,
           description: "Publish the current root on chain",
         },
         {
