@@ -26,7 +26,6 @@ import {
   decodeOrderDatum,
   decodeSettingsDatum,
   decodeSettingsV1Data,
-  makeRedeemerWrapper,
   makeVoidData,
   parseProofJSON,
   Proof,
@@ -59,8 +58,13 @@ const mint = async (
   const { network, address, db } = params;
   const configsResult = mayFail(() => GET_CONFIGS(network));
   if (!configsResult.ok) return Err(new Error(configsResult.error));
-  const { ALLOWED_MINTERS, MINTER_FEE, TREASURY_FEE, MINT_V1_SCRIPT_UTXO_ID } =
-    configsResult.data;
+  const {
+    SETTINGS_ASSET_CLASS,
+    ALLOWED_MINTERS,
+    MINTER_FEE,
+    TREASURY_FEE,
+    MINT_V1_SCRIPT_UTXO_ID,
+  } = configsResult.data;
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
   const isMainnet = network == "mainnet";
@@ -72,8 +76,6 @@ const mint = async (
   });
   const {
     order: orderConfig,
-    settingsProxy: settingsProxyConfig,
-    settingsV1: settingsV1Config,
     mintV1: mintV1Config,
     mintProxy: mintProxyConfig,
     handlePolicyHash,
@@ -105,27 +107,41 @@ const mint = async (
     return decodedResult.ok;
   });
 
-  // fetch settings proxy asset
-  const settingsProxyAssetsUtxosResult = await mayFailAsync(() =>
-    blockfrostV0Client.getUtxosWithAssetClass(
-      settingsProxyConfig.settingsProxyScriptAddress,
-      settingsProxyConfig.settingsProxyAssetClass
-    )
+  // fetch settings asset
+  const settingsAssetAddressResult = await mayFailAsync(
+    async () =>
+      (
+        await blockfrostV0Client.getAddressesWithAssetClass(
+          SETTINGS_ASSET_CLASS
+        )
+      )[0].address
   ).complete();
-  if (!settingsProxyAssetsUtxosResult.ok)
+  if (!settingsAssetAddressResult.ok)
     return Err(
       new Error(
-        `Failed to fetch settings proxy assets: ${settingsProxyAssetsUtxosResult.error}`
+        `Failed to fetch Settings Asset Address: ${settingsAssetAddressResult.error}`
       )
     );
-  if (!(settingsProxyAssetsUtxosResult.data.length > 0))
-    return Err(new Error(`Settings Proxy Asset not found`));
-  const settingsProxyAssetUtxo = settingsProxyAssetsUtxosResult.data[0];
+  const settingsAssetAddress = settingsAssetAddressResult.data;
+  const settingsAssetUtxoResult = await mayFailAsync(
+    async () =>
+      (
+        await blockfrostV0Client.getUtxosWithAssetClass(
+          settingsAssetAddress,
+          SETTINGS_ASSET_CLASS
+        )
+      )[0]
+  ).complete();
+  if (!settingsAssetUtxoResult.ok)
+    return Err(
+      new Error(
+        `Failed to fetch Settings Asset: ${settingsAssetUtxoResult.error}`
+      )
+    );
+  const settingsAssetUtxo = settingsAssetUtxoResult.data;
 
   // decode settings and settings v1
-  const decodedSettings = decodeSettingsDatum(
-    settingsProxyAssetUtxo.output.datum
-  );
+  const decodedSettings = decodeSettingsDatum(settingsAssetUtxo.output.datum);
   const decodedSettingsV1 = decodeSettingsV1Data(decodedSettings.data);
 
   const handles = [];
@@ -179,7 +195,7 @@ const mint = async (
 
   const settingsValue = makeValue(
     5_000_000n,
-    makeAssets([[settingsProxyConfig.settingsProxyAssetClass, 1n]])
+    makeAssets([[SETTINGS_ASSET_CLASS, 1n]])
   );
 
   // build proofs redeemer for mint v1 withdraw
@@ -193,32 +209,14 @@ const mint = async (
   // <-- add required signer
   txBuilder.addSigners(makePubKeyHash(ALLOWED_MINTERS[0]));
 
-  // <-- attach settings proxy spend validator
-  txBuilder.attachUplcProgram(
-    settingsProxyConfig.settingsProxySpendUplcProgram
-  );
-
   // <-- spend settings utxo
-  txBuilder.spendUnsafe(
-    settingsProxyAssetUtxo,
-    makeRedeemerWrapper(makeVoidData())
-  );
+  txBuilder.spendUnsafe(settingsAssetUtxo);
 
   // <-- lock settings value with new settings
   txBuilder.payUnsafe(
-    settingsProxyConfig.settingsProxyScriptAddress,
+    settingsAssetAddress,
     settingsValue,
     makeInlineTxOutputDatum(buildSettingsData(decodedSettings))
-  );
-
-  // <-- attach settings v1 withdrawl validator
-  txBuilder.attachUplcProgram(settingsV1Config.settingsV1StakeUplcProgram);
-
-  // <-- withdraw from settings v1 validator
-  txBuilder.withdrawUnsafe(
-    settingsV1Config.settingsV1StakingAddress,
-    0n,
-    makeVoidData()
   );
 
   // <-- add mint v1 script reference input

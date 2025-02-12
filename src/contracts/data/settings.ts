@@ -11,13 +11,8 @@ import { invariant } from "../../helpers/index.js";
 import { Settings } from "../types/index.js";
 
 const buildSettingsData = (settings: Settings): UplcData => {
-  const { settings_governor, mint_governor, data } = settings;
-
-  return makeConstrData(0, [
-    makeByteArrayData(settings_governor),
-    makeByteArrayData(mint_governor),
-    data,
-  ]);
+  const { mint_governor, data } = settings;
+  return makeConstrData(0, [makeByteArrayData(mint_governor), data]);
 };
 
 const decodeSettingsDatum = (datum: TxOutputDatum | undefined): Settings => {
@@ -26,22 +21,16 @@ const decodeSettingsDatum = (datum: TxOutputDatum | undefined): Settings => {
     "Settings must be inline datum"
   );
   const datumData = datum.data;
-  const settingsConstrData = expectConstrData(datumData, 0, 3);
-
-  const settings_governor = expectByteArrayData(
-    settingsConstrData.fields[0],
-    "settings_governor must be ByteArray"
-  ).toHex();
+  const settingsConstrData = expectConstrData(datumData, 0, 2);
 
   const mint_governor = expectByteArrayData(
-    settingsConstrData.fields[1],
+    settingsConstrData.fields[0],
     "mint_governor must be ByteArray"
   ).toHex();
 
-  const data = settingsConstrData.fields[2];
+  const data = settingsConstrData.fields[1];
 
   return {
-    settings_governor,
     mint_governor,
     data,
   };

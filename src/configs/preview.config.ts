@@ -1,9 +1,12 @@
-import { makeAddress, makeTxOutputId } from "@helios-lang/ledger";
+import {
+  makeAddress,
+  makeAssetClass,
+  makeTxOutputId,
+} from "@helios-lang/ledger";
 
 // De-Mi contract configs
-export const SETTINGS_UTF8_ASSET_NAME = "ADA Handle Settings";
-export const INITIAL_TX_OUTPUT_ID = makeTxOutputId(
-  "53c91f90ebf75fc8843f5970f27878cce636ed4d02698628d8e186455153d211#1"
+export const SETTINGS_ASSET_CLASS = makeAssetClass(
+  "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a000de140676f6c646479646576"
 );
 
 export const TREASURY_FEE = 1_000_000n;

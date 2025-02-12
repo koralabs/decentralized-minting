@@ -1,5 +1,3 @@
-use aiken/bytearray
-use aiken/cbor
 use aiken/dict.{Dict}
 use aiken/hash.{Blake2b_224, Hash}
 use aiken/list
@@ -99,8 +97,6 @@ fn all_orders_satisfied(
                   ada_asset_name,
                   -(settings.treasury_fee + settings.minter_fee),
                 )
-          trace bytearray.to_hex(cbor.serialise(remainder))
-          trace bytearray.to_hex(cbor.serialise(output.value))
           expect output.value == remainder
           all_orders_satisfied(
             order_script,

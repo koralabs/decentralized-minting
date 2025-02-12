@@ -2,9 +2,11 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import { BlockFrostAPI } from "@blockfrost/blockfrost-js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import {
+  makeAddress,
   makeAssets,
   makeInlineTxOutputDatum,
   makeTxOutput,
+  makeValidatorHash,
   makeValue,
 } from "@helios-lang/ledger";
 import {
@@ -30,7 +32,10 @@ import {
   mayFailTransaction,
   TxSuccessResult,
 } from "../helpers/index.js";
-import { checkAccountRegistrationStatus } from "../utils/index.js";
+import {
+  checkAccountRegistrationStatus,
+  createAlwaysFailUplcProgram,
+} from "../utils/index.js";
 import { WalletWithoutKey } from "./types.js";
 
 /**
@@ -60,8 +65,8 @@ const publish = async (
   const configsResult = mayFail(() => GET_CONFIGS(network));
   if (!configsResult.ok) return Err(new Error(configsResult.error));
   const {
+    SETTINGS_ASSET_CLASS,
     ALLOWED_MINTERS,
-    INITIAL_TX_OUTPUT_ID,
     MINTER_FEE,
     TREASURY_ADDRESS,
     TREASURY_FEE,
@@ -75,28 +80,14 @@ const publish = async (
   const blockfrostV0Client = makeBlockfrostV0Client(network, blockfrostApiKey);
   const blockfrostApi = new BlockFrostAPI({ projectId: blockfrostApiKey });
   const networkParams = await blockfrostV0Client.parameters;
-  const initialUtxoResult = await mayFailAsync(() =>
-    blockfrostV0Client.getUtxo(INITIAL_TX_OUTPUT_ID)
-  ).complete();
-  if (!initialUtxoResult.ok) return Err(new Error("Initial UTxO not found"));
-  const initialUtxo = initialUtxoResult.data;
-
-  // check initialUtxo can be spent by addesss
-  if (initialUtxo.address.toString() != address.toString())
-    return Err(new Error(`Initial UTxO must be under Address ${address}`));
-  const spareUtxos = utxos.filter(
-    (utxo) => utxo.id.toString() != INITIAL_TX_OUTPUT_ID.toString()
-  );
 
   const contractsConfig = buildContracts({
     network,
   });
-  const {
-    settingsProxy: settingsProxyConfig,
-    settingsV1: settingsV1Config,
-    mintV1: mintV1Config,
-  } = contractsConfig;
+  const { mintV1: mintV1Config } = contractsConfig;
 
+  // we already made settings asset using legacy handle.
+  // so we don't need to mint Settings Asset.
   const settingsV1: SettingsV1 = {
     all_handles: db.hash.toString("hex"),
     allowed_minters: ALLOWED_MINTERS,
@@ -107,13 +98,55 @@ const publish = async (
   };
   const settings: Settings = {
     mint_governor: mintV1Config.mintV1ValiatorHash.toHex(),
-    settings_governor: settingsV1Config.settingsV1ValidatorHash.toHex(),
     data: buildSettingsV1Data(settingsV1),
   };
 
+  // fetch settings asset
+  const settingsAssetAddressResult = await mayFailAsync(
+    async () =>
+      (
+        await blockfrostV0Client.getAddressesWithAssetClass(
+          SETTINGS_ASSET_CLASS
+        )
+      )[0].address
+  ).complete();
+  if (!settingsAssetAddressResult.ok)
+    return Err(
+      new Error(
+        `Failed to fetch Settings Asset Address: ${settingsAssetAddressResult.error}`
+      )
+    );
+  const settingsAssetAddress = settingsAssetAddressResult.data;
+  const settingsAssetUtxoResult = await mayFailAsync(
+    async () =>
+      (
+        await blockfrostV0Client.getUtxosWithAssetClass(
+          settingsAssetAddress,
+          SETTINGS_ASSET_CLASS
+        )
+      )[0]
+  ).complete();
+  if (!settingsAssetUtxoResult.ok)
+    return Err(
+      new Error(
+        `Failed to fetch Settings Asset: ${settingsAssetUtxoResult.error}`
+      )
+    );
+  const settingsAssetUtxo = settingsAssetUtxoResult.data;
   const settingsValue = makeValue(
     5_000_000n,
-    makeAssets([[settingsProxyConfig.settingsProxyAssetClass, 1n]])
+    makeAssets([[SETTINGS_ASSET_CLASS, 1n]])
+  );
+
+  // remove settings asset utxo from utxos
+  const spareUtxos = utxos.filter(
+    (utxo) => utxo.id.toString() != settingsAssetUtxo.id.toString()
+  );
+
+  const alwaysFailUplcProgram = createAlwaysFailUplcProgram();
+  const alwaysFailUplcProgramAddress = makeAddress(
+    isMainnet,
+    makeValidatorHash(alwaysFailUplcProgram.hash())
   );
 
   // start building tx
@@ -121,29 +154,19 @@ const publish = async (
     isMainnet,
   });
 
-  // <-- spend initial utxo
-  txBuilder.spendUnsafe(initialUtxo);
+  // <-- spend settings asset utxo
+  txBuilder.spendUnsafe(settingsAssetUtxo);
 
-  // <-- attach settings proxy mint validator
-  txBuilder.attachUplcProgram(settingsProxyConfig.settingsProxyMintUplcProgram);
-
-  // <-- mint settings asset
-  txBuilder.mintAssetClassUnsafe(
-    settingsProxyConfig.settingsProxyAssetClass,
-    1n,
-    makeVoidData()
-  );
-
-  // <-- lock settings value
+  // <-- pay settings asset with init Settings Datum
   txBuilder.payUnsafe(
-    settingsProxyConfig.settingsProxyScriptAddress,
+    settingsAssetAddress,
     settingsValue,
     makeInlineTxOutputDatum(buildSettingsData(settings))
   );
 
-  // <-- lock reference script (mint v1)
+  // <-- lock reference script (mint v1) to always fail uplc program
   const referenceOutput = makeTxOutput(
-    settingsProxyConfig.settingsProxyScriptAddress,
+    alwaysFailUplcProgramAddress,
     makeValue(2_000_000n),
     makeInlineTxOutputDatum(makeVoidData()),
     mintV1Config.mintV1WithdrawUplcProgram
@@ -160,16 +183,6 @@ const publish = async (
     )) == "registered";
   if (!mintV1StakingAddressRegistered)
     txBuilder.addDCert(mintV1Config.mintV1RegistrationDCert);
-
-  // <-- register settings v1 staking address
-  // after check staking address is already registered or not
-  const settingsV1StakingAddressRegistered =
-    (await checkAccountRegistrationStatus(
-      blockfrostApi,
-      settingsV1Config.settingsV1StakingAddress.toBech32()
-    )) == "registered";
-  if (!settingsV1StakingAddressRegistered)
-    txBuilder.addDCert(settingsV1Config.settingsV1RegistrationDCert);
 
   // <-- use collateral
   if (collateralUtxo) txBuilder.addCollateral(collateralUtxo);

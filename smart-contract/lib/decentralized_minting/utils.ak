@@ -1,7 +1,9 @@
 use aiken/list
 use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/value
-use decentralized_minting/constants.{legacy_handle_policy_id, settings_nft_name}
+use decentralized_minting/constants.{
+  legacy_handle_policy_id, settings_asset_name,
+}
 use decentralized_minting/types.{Settings}
 
 pub fn find_settings_datum(inputs: List<Input>) -> (Output, Settings) {
@@ -12,7 +14,7 @@ pub fn find_settings_datum(inputs: List<Input>) -> (Output, Settings) {
         value.quantity_of(
           i.output.value,
           legacy_handle_policy_id,
-          settings_nft_name,
+          settings_asset_name,
         ) == 1
       },
     )
