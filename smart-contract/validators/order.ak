@@ -1,10 +1,8 @@
-use aiken/pairs
 use aiken/transaction.{ScriptContext}
-use aiken/transaction/credential.{Inline, ScriptCredential}
-use decentralized_minting/types.{
-  Cancel, Execute, OrderDatum, OrderRedeemer, Settings,
+use decentralized_minting/orders/types.{
+  Cancel, Execute, OrderDatum, OrderRedeemer,
 }
-use decentralized_minting/utils.{find_settings_datum}
+use decentralized_minting/settings/utils.{is_mint_governor_executed}
 use sundae/multisig
 
 validator {
@@ -24,21 +22,7 @@ validator {
           ctx.transaction.withdrawals,
         )
       }
-      Execute -> {
-        // Find the settings input
-        let (_, Settings { mint_governor, .. }) =
-          find_settings_datum(ctx.transaction.inputs)
-        pairs.foldl(
-          ctx.transaction.withdrawals,
-          False,
-          fn(withdrawal, _amt, acc) {
-            when withdrawal is {
-              Inline(ScriptCredential(script)) -> acc || script == mint_governor
-              _ -> acc
-            }
-          },
-        )
-      }
+      Execute -> is_mint_governor_executed(ctx.transaction)
     }
   }
 }
