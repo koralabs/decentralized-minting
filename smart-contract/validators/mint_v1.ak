@@ -7,12 +7,9 @@ use aiken/transaction.{
 }
 use aiken/transaction/credential.{Address, Script, ScriptCredential}
 use aiken/transaction/value.{AssetName, PolicyId, ada_asset_name, ada_policy_id}
-use decentralized_minting/minting/types.{AllHandles} as minting_types
-use decentralized_minting/minting/utils.{find_handles_root} as minting_utils
-use decentralized_minting/orders/types.{Destination, OrderDatum} as order_types
-use decentralized_minting/settings/types.{Settings,
-  SettingsV1} as settings_types
-use decentralized_minting/settings/utils.{find_settings} as settings_utils
+use decentralized_minting/minting.{MintingData, find_minting_data}
+use decentralized_minting/orders.{Destination, OrderDatum}
+use decentralized_minting/settings.{Settings, SettingsV1, find_settings_data}
 
 validator(order_script: Hash<Blake2b_224, Script>) {
   fn withdraw(proofs: List<mpt.Proof>, ctx: ScriptContext) -> Bool {
@@ -22,7 +19,7 @@ validator(order_script: Hash<Blake2b_224, Script>) {
     when purpose is {
       WithdrawFrom(_) -> {
         // find settings and parse
-        let (settings_input, Settings { data, .. }) = find_settings(inputs)
+        let (settings_input, Settings { data, .. }) = find_settings_data(inputs)
         expect settings_datum: SettingsV1 = data
         let SettingsV1 {
           allowed_minters,
@@ -33,8 +30,8 @@ validator(order_script: Hash<Blake2b_224, Script>) {
         } = settings_datum
 
         // find mpt root hash
-        let (handles_root_input, AllHandles { mpt_root_hash }) =
-          find_handles_root(inputs)
+        let (handles_root_input, MintingData { mpt_root_hash }) =
+          find_minting_data(inputs)
 
         // parse outputs
         expect [
@@ -92,7 +89,7 @@ validator(order_script: Hash<Blake2b_224, Script>) {
         // check handles root output's datum
         expect
           handles_root_output.datum == InlineDatum(
-            AllHandles { mpt_root_hash: new_root |> mpt.root() },
+            MintingData { mpt_root_hash: new_root |> mpt.root() },
           )
 
         // check treasury and minter fee

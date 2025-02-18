@@ -1,8 +1,6 @@
 use aiken/transaction.{ScriptContext}
-use decentralized_minting/orders/types.{
-  Cancel, Execute, OrderDatum, OrderRedeemer,
-}
-use decentralized_minting/settings/utils.{is_mint_governor_executed}
+use decentralized_minting/orders.{Cancel, Execute, OrderDatum, OrderRedeemer}
+use decentralized_minting/settings.{is_mint_governor_executed}
 use sundae/multisig
 
 validator {

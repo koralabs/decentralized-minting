@@ -1,14 +1,30 @@
+use aiken/hash.{Blake2b_224, Hash}
 use aiken/list
 use aiken/pairs
 use aiken/transaction.{InlineDatum, Input, Output, Transaction}
-use aiken/transaction/credential.{Inline, ScriptCredential}
+use aiken/transaction/credential.{
+  Address, Inline, ScriptCredential, VerificationKey,
+}
 use aiken/transaction/value
 use decentralized_minting/constants.{
   legacy_handle_policy_id, settings_asset_name,
 }
-use decentralized_minting/settings/types.{Settings}
 
-pub fn find_settings(inputs: List<Input>) -> (Output, Settings) {
+pub type Settings {
+  mint_governor: ByteArray,
+  // setting v1 data
+  data: Data,
+}
+
+pub type SettingsV1 {
+  policy_id: ByteArray,
+  allowed_minters: List<Hash<Blake2b_224, VerificationKey>>,
+  treasury_address: Address,
+  treasury_fee: Int,
+  minter_fee: Int,
+}
+
+pub fn find_settings_data(inputs: List<Input>) -> (Output, Settings) {
   expect Some(settings_input) =
     list.find(
       inputs,
@@ -27,7 +43,7 @@ pub fn find_settings(inputs: List<Input>) -> (Output, Settings) {
 
 pub fn is_mint_governor_executed(transaction: Transaction) -> Bool {
   let Transaction { withdrawals, inputs, .. } = transaction
-  let (_, Settings { mint_governor, .. }) = find_settings(inputs)
+  let (_, Settings { mint_governor, .. }) = find_settings_data(inputs)
 
   pairs.foldl(
     withdrawals,

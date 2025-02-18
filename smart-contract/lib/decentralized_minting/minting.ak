@@ -4,10 +4,14 @@ use aiken/transaction/value
 use decentralized_minting/constants.{
   handles_mpt_root_asset_name, legacy_handle_policy_id,
 }
-use decentralized_minting/minting/types.{AllHandles}
 
-pub fn find_handles_root(inputs: List<Input>) -> (Output, AllHandles) {
-  expect Some(handles_root_input) =
+pub type MintingData {
+  // mpt root hash
+  mpt_root_hash: ByteArray,
+}
+
+pub fn find_minting_data(inputs: List<Input>) -> (Output, MintingData) {
+  expect Some(minting_data_input) =
     list.find(
       inputs,
       fn(i) {
@@ -18,7 +22,7 @@ pub fn find_handles_root(inputs: List<Input>) -> (Output, AllHandles) {
         ) == 1
       },
     )
-  expect InlineDatum(handles_root_datum) = handles_root_input.output.datum
-  expect handles_root_datum: AllHandles = handles_root_datum
-  (handles_root_input.output, handles_root_datum)
+  expect InlineDatum(inline_minting_data) = minting_data_input.output.datum
+  expect minting_data: MintingData = inline_minting_data
+  (minting_data_input.output, minting_data)
 }
