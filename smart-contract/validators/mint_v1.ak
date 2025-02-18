@@ -125,8 +125,8 @@ fn all_orders_satisfied(
   total_minter_fee: Int,
   minted_handles: Dict<AssetName, Int>,
   continuation: fn(mpt.MerklePatriciaForestry, Int, Int, Dict<AssetName, Int>) ->
-    Bool,
-) -> Bool {
+    result,
+) -> result {
   when inputs is {
     [] ->
       continuation(root, total_treasury_fee, total_minter_fee, minted_handles)
