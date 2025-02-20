@@ -1,15 +1,13 @@
-use aiken/transaction.{Datum}
 use aiken/transaction/credential.{Address}
 
 pub type Destination {
   address: Address,
-  // handle's datum
-  datum: Datum,
 }
 
 pub type OrderDatum {
   // sundae swap multi sig script data
   owner: Data,
+  // without asset name
   requested_handle: ByteArray,
   destination: Destination,
 }

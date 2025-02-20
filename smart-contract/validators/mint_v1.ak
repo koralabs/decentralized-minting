@@ -1,190 +1,211 @@
+use aiken/bytearray
 use aiken/dict.{Dict}
-use aiken/hash.{Blake2b_224, Hash}
 use aiken/list
-use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{
   InlineDatum, Input, Output, ScriptContext, Transaction, WithdrawFrom,
 }
-use aiken/transaction/credential.{Address, Script, ScriptCredential}
+use aiken/transaction/credential.{Address, ScriptCredential}
 use aiken/transaction/value.{AssetName, PolicyId, ada_asset_name, ada_policy_id}
-use decentralized_minting/minting.{MintingData, find_minting_data}
+use common/cip68.{prefix_100, prefix_222}
+use common/hashes.{ScriptHash}
+use decentralized_minting/minting_data.{find_minting_data}
 use decentralized_minting/orders.{Destination, OrderDatum}
-use decentralized_minting/settings.{Settings, SettingsV1, find_settings_data}
+use decentralized_minting/settings.{Settings, find_settings}
+use decentralized_minting/settings_v1.{SettingsV1}
 
-validator(order_script: Hash<Blake2b_224, Script>) {
-  fn withdraw(proofs: List<mpt.Proof>, ctx: ScriptContext) -> Bool {
+type MintV1Redeemer {
+  MintHandles
+  BurnHandles
+}
+
+// NOTE:
+// Withdrawal validator which holds all minting logic
+// This is referred by `mint_governor` in Settings datum
+//
+// Can update minting logic here 
+// without changing policy id - which depends on mint_proxy validator
+//
+// ========================= Parameters =========================
+// - order_script_hash: Order Spending validator's hash. 
+// All minting orders (requested by user) are in Order script as UTxO form
+// - minting_data_script_hash: Minting Data Proxy Spending validator's hash
+// Minting Data asset (which include MPT root hash, price info, ..) is in this script
+// Whenever mint new handles, Minting Data asset must be spent
+
+validator(order_script_hash: ScriptHash, minting_data_script_hash: ScriptHash) {
+  fn withdraw(redeemer: MintV1Redeemer, ctx: ScriptContext) -> Bool {
     let ScriptContext { purpose, transaction } = ctx
-    let Transaction { inputs, outputs, extra_signatories, mint, .. } =
-      transaction
-    when purpose is {
-      WithdrawFrom(_) -> {
-        // find settings and parse
-        let (settings_input, Settings { data, .. }) = find_settings_data(inputs)
-        expect settings_datum: SettingsV1 = data
-        let SettingsV1 {
-          allowed_minters,
-          treasury_address,
-          treasury_fee,
-          minter_fee,
-          policy_id,
-        } = settings_datum
+    let Transaction {
+      inputs,
+      reference_inputs,
+      outputs,
+      extra_signatories,
+      mint,
+      ..
+    } = transaction
+    expect WithdrawFrom(_) = purpose
 
-        // find mpt root hash
-        let (handles_root_input, MintingData { mpt_root_hash }) =
-          find_minting_data(inputs)
+    // find settings and parse
+    let Settings { data, .. } = find_settings(reference_inputs)
+    expect settings_datum: SettingsV1 = data
+    let SettingsV1 {
+      policy_id,
+      allowed_minters,
+      treasury_address,
+      treasury_fee,
+      minter_fee,
+      ..
+    } = settings_datum
 
+    // check mpt root hash is correctly updated
+    // find minting_data and check that is spent from minting data proxy
+    let (minting_data_input, _) = find_minting_data(inputs)
+    expect
+      minting_data_input.address.payment_credential == ScriptCredential(
+        minting_data_script_hash,
+      )
+
+    when redeemer is {
+      MintHandles -> {
         // parse outputs
         expect [
-          settings_output,
-          handles_root_output,
+          _minting_data_output,
           treasury_output,
           minter_output,
           ..rest_outputs
         ] = outputs
 
-        // check settings output (no ref script attached)
-        expect settings_output.address == settings_input.address
-        expect settings_output.value == settings_input.value
-        expect settings_output.reference_script == None
-
-        // check handles root output (no ref script attached)
-        expect handles_root_output.address == handles_root_input.address
-        expect handles_root_output.value == handles_root_input.value
-        expect handles_root_output.reference_script == None
-
-        // check treasury output
-        expect treasury_output.address == treasury_address
-        expect treasury_output.datum == InlineDatum(Void)
-        expect treasury_output.reference_script == None
-
-        // check allowed_minters sign tx
+        // check if allowed_minters sign tx
         expect
           list.any(allowed_minters, fn(m) { list.has(extra_signatories, m) })
 
-        // build merkle tree from root
-        let root = mpt.from_root(mpt_root_hash)
-
-        // check merkle tree with proofs
-        // NOTE: proofs and orders are must be same order
+        // check all orders
+        // and calculate total fee and expected mint assets
         let
-          new_root,
           total_treasury_fee,
           total_minter_fee,
-          expected_minted_handles,
+          expected_mint_assets,
         <-
-          all_orders_satisfied(
-            order_script,
+          all_orders_are_satisfied(
+            order_script_hash,
             policy_id,
             treasury_fee,
             minter_fee,
-            proofs,
             inputs,
             rest_outputs,
-            root,
             0,
             0,
             dict.new(),
           )
 
-        // check handles root output's datum
-        expect
-          handles_root_output.datum == InlineDatum(
-            MintingData { mpt_root_hash: new_root |> mpt.root() },
-          )
-
-        // check treasury and minter fee
+        // check treasury output
+        expect treasury_output.address == treasury_address
+        expect treasury_output.datum == InlineDatum(Void)
+        expect treasury_output.reference_script == None
         expect value.lovelace_of(treasury_output.value) >= total_treasury_fee
+
+        // check minter output
         expect value.lovelace_of(minter_output.value) >= total_minter_fee
+        expect minter_output.datum == InlineDatum(Void)
+        expect minter_output.reference_script == None
 
         // check minted handles
-        let actual_minted_handles =
+        let actual_minted_assets =
           mint
             |> value.from_minted_value()
             |> value.tokens(policy_id)
-        expect actual_minted_handles == expected_minted_handles
+        expect actual_minted_assets == expected_mint_assets
+
         True
       }
-      _ -> False
+      BurnHandles ->
+        // TODO: 
+        // implement Burn logic
+        False
     }
   }
 }
 
-fn all_orders_satisfied(
-  order_script: Hash<Blake2b_224, Script>,
-  handle_policy: PolicyId,
+fn all_orders_are_satisfied(
+  order_script_hash: ScriptHash,
+  handle_policy_id: PolicyId,
   treasury_fee: Int,
   minter_fee: Int,
-  proofs: List<mpt.Proof>,
   inputs: List<Input>,
   outputs: List<Output>,
-  root: mpt.MerklePatriciaForestry,
   total_treasury_fee: Int,
   total_minter_fee: Int,
-  minted_handles: Dict<AssetName, Int>,
-  continuation: fn(mpt.MerklePatriciaForestry, Int, Int, Dict<AssetName, Int>) ->
-    result,
+  expected_mint_assets: Dict<AssetName, Int>,
+  continuation: fn(Int, Int, Dict<AssetName, Int>) -> result,
 ) -> result {
   when inputs is {
     [] ->
-      continuation(root, total_treasury_fee, total_minter_fee, minted_handles)
+      continuation(total_treasury_fee, total_minter_fee, expected_mint_assets)
     [input, ..rest_inputs] -> {
       let Output { address: Address { payment_credential, .. }, datum, .. } =
         input.output
       when payment_credential is {
-        ScriptCredential(sc) if sc == order_script -> {
+        // check input is order or not
+        ScriptCredential(sc) if sc == order_script_hash -> {
           // parse order datum
           expect InlineDatum(datum) = datum
           expect datum: OrderDatum = datum
           let OrderDatum { requested_handle, destination, .. } = datum
 
-          expect [proof, ..rest_proofs] = proofs
-          expect [output, ..rest_outputs] = outputs
+          // extract user & ref output
+          expect [user_output, ref_output, ..rest_outputs] = outputs
 
-          // This fails if the handle already exists
-          let new_root = mpt.insert(root, requested_handle, "NEW", proof)
+          // make user asset name and ref asset name from requested_handle
+          let ref_asset_name = bytearray.concat(prefix_100, requested_handle)
+          let user_asset_name = bytearray.concat(prefix_222, requested_handle)
 
-          // check output address and datum and value
-          expect output.address == destination.address
-          expect output.datum == destination.datum
-          let remainder =
+          // check user output
+          expect user_output.address == destination.address
+          // user output value = order value - treasury_fee - minter_fee + minted handle (user)
+          let expected_user_value =
             input.output.value
-              |> value.add(handle_policy, requested_handle, 1)
+              |> value.add(handle_policy_id, user_asset_name, 1)
               |> value.add(
                   ada_policy_id,
                   ada_asset_name,
                   -(treasury_fee + minter_fee),
                 )
-          expect output.value == remainder
+          expect user_output.value == expected_user_value
 
-          all_orders_satisfied(
-            order_script,
-            handle_policy,
+          // check ref output
+          // TODO: add ref_address to settings
+          // expect ref_output.address = settings.ref_address
+          let expected_ref_value =
+            value.zero() |> value.add(handle_policy_id, ref_asset_name, 1)
+          expect value.without_lovelace(ref_output.value) == expected_ref_value
+
+          all_orders_are_satisfied(
+            order_script_hash,
+            handle_policy_id,
             treasury_fee,
             minter_fee,
-            rest_proofs,
             rest_inputs,
             rest_outputs,
-            new_root,
             total_treasury_fee + treasury_fee,
             total_minter_fee + minter_fee,
-            dict.insert(minted_handles, requested_handle, 1),
-            // this also check only 1 requested_handle is minted
+            // this also check only 1 user and 1 ref assets are minted
+            expected_mint_assets
+              |> dict.insert(user_asset_name, 1)
+              |> dict.insert(ref_asset_name, 1),
             continuation,
           )
         }
         _ ->
-          all_orders_satisfied(
-            order_script,
-            handle_policy,
+          all_orders_are_satisfied(
+            order_script_hash,
+            handle_policy_id,
             treasury_fee,
             minter_fee,
-            proofs,
             rest_inputs,
             outputs,
-            root,
             treasury_fee,
             minter_fee,
-            minted_handles,
+            expected_mint_assets,
             continuation,
           )
       }
