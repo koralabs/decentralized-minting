@@ -20,19 +20,12 @@ type MintV1Redeemer {
 
 // NOTE:
 // Withdrawal validator which holds all minting logic
-// This is referred by `mint_governor` in Settings datum
+// This is referred to as `mint_governor` in Settings datum
 //
 // Can update minting logic here 
 // without changing policy id - which depends on mint_proxy validator
 //
-// ========================= Parameters =========================
-// - order_script_hash: Order Spending validator's hash. 
-// All minting orders (requested by user) are in Order script as UTxO form
-// - minting_data_script_hash: Minting Data Proxy Spending validator's hash
-// Minting Data asset (which include MPT root hash, price info, ..) is in this script
-// Whenever mint new handles, Minting Data asset must be spent
-
-validator(order_script_hash: ScriptHash, minting_data_script_hash: ScriptHash) {
+validator {
   fn withdraw(redeemer: MintV1Redeemer, ctx: ScriptContext) -> Bool {
     let ScriptContext { purpose, transaction } = ctx
     let Transaction {
@@ -54,7 +47,8 @@ validator(order_script_hash: ScriptHash, minting_data_script_hash: ScriptHash) {
       treasury_address,
       treasury_fee,
       minter_fee,
-      ..
+      order_script_hash,
+      minting_data_script_hash,
     } = settings_datum
 
     // check mpt root hash is correctly updated

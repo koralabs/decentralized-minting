@@ -33,6 +33,14 @@ type MintingDataV1Redeemer {
   GodMode
 }
 
+// NOTE:
+// This is withdrawal script
+// which is referred to as `minting_data_governor` in minting_data_proxy spending script
+// This validator contains logic to check
+// mpt_root_hash is correctly updated compared to actual minted assets (both legacy and new handles)
+// `god_verification_key_hash` has the authority to spend minting_data_asset
+// without actually minting assets
+//
 validator(god_verification_key_hash: VerificationKeyHash) {
   fn withdraw(redeemer: MintingDataV1Redeemer, ctx: ScriptContext) -> Bool {
     let ScriptContext(
@@ -63,6 +71,9 @@ validator(god_verification_key_hash: VerificationKeyHash) {
 
     when redeemer is {
       MintOrBurn(proofs) -> {
+        // expect proofs are not empty
+        expect list.length(proofs) > 0
+
         // build merkle patricia trie from root hash
         let root = mpt.from_root(mpt_root_hash)
 
