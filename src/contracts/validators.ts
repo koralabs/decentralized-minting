@@ -24,16 +24,16 @@ const getMintV1WithdrawUplcProgram = (
   );
 };
 
-const getOrderSpendUplcProgram = (): UplcProgramV2 => {
+const getOrdersSpendUplcProgram = (): UplcProgramV2 => {
   const foundValidator = blueprint.validators.find(
-    (validator) => validator.title == "order.spend"
+    (validator) => validator.title == "orders.spend"
   );
-  invariant(foundValidator, "Order Spend Validator not found");
+  invariant(foundValidator, "Orders Spend Validator not found");
   return decodeUplcProgramV2FromCbor(foundValidator.compiledCode);
 };
 
 export {
   getMintProxyMintUplcProgram,
   getMintV1WithdrawUplcProgram,
-  getOrderSpendUplcProgram,
+  getOrdersSpendUplcProgram,
 };

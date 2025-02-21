@@ -6,22 +6,29 @@ import {
 
 // De-Mi contract config
 export const SETTINGS_ASSET_CLASS = makeAssetClass(
+  // "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14064656d694068616e646c655f73657474696e6773"
   "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de140676f6c646479646576"
 );
+export const MINTING_DATA_ASSET_CLASS = makeAssetClass(
+  // "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14068616e646c65735f726f6f744068616e646c655f73657474696e6773"
+  "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de140666972696e67646576"
+);
 
-export const TREASURY_FEE = 1_000_000n;
-export const MINTER_FEE = 1_000_000n;
-// payment credentials who can mint
+// allowed minters' verification key hash
 export const ALLOWED_MINTERS = [
-  // "4da965a049dfd15ed1ee19fba6e2974a0b79fc416dd1796a1f97f5e1", // Kora labs admin
   "0e1bdf3e12a8d4e915f40c721e30bfab50675f0b44b38e7bb7f67785", // test admin
 ];
 export const TREASURY_ADDRESS = makeAddress(
-  "addr_test1qq8phhe7z25df6g47sx8y83sh744qe6lpdzt8rnmklm80pvhz7gfc46pmx59ynx7tmcrcnw5j8l8jhglmugl6e7k3f0q30rg89"
+  "addr_test1qq8phhe7z25df6g47sx8y83sh744qe6lpdzt8rnmklm80pvhz7gfc46pmx59ynx7tmcrcnw5j8l8jhglmugl6e7k3f0q30rg89" // test treasury
 );
+export const TREASURY_FEE = 2_000_000n;
+export const MINTER_FEE = 2_000_000n;
 
 // NOTE:
-// configs you get after publish
+// You can get these configs after publish
 export const MINT_V1_SCRIPT_UTXO_ID = makeTxOutputId(
+  "9a3501235bd18f164c42e1958b13c5d8c866771632b4badb53c0953ed80fa5c1#1"
+);
+export const MINTINT_DATA_V1_SCRIPT_UTXO_ID = makeTxOutputId(
   "9a3501235bd18f164c42e1958b13c5d8c866771632b4badb53c0953ed80fa5c1#1"
 );

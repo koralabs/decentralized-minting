@@ -6,13 +6,13 @@ import {
   UplcData,
 } from "@helios-lang/uplc";
 
-import { Neighbor, Proof, ProofStep } from "../types/index.js";
+import { MPTProof, MPTProofStep, Neighbor } from "../types/index.js";
 
-const buildProofData = (proof: Proof): UplcData => {
-  return makeListData(proof.map(buildProofStepData));
+const buildMPTProofData = (proof: MPTProof): UplcData => {
+  return makeListData(proof.map(buildMPTProofStepData));
 };
 
-const buildProofStepData = (proofStep: ProofStep): UplcData => {
+const buildMPTProofStepData = (proofStep: MPTProofStep): UplcData => {
   if (proofStep.type == "branch") {
     return makeConstrData(0, [
       makeIntData(proofStep.skip),
@@ -40,4 +40,4 @@ const buildNeighborData = (neighbor: Neighbor): UplcData => {
   ]);
 };
 
-export { buildNeighborData, buildProofData, buildProofStepData };
+export { buildMPTProofData, buildMPTProofStepData, buildNeighborData };

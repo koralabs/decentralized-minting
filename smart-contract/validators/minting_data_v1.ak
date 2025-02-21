@@ -12,6 +12,8 @@ use decentralized_minting/minting_data.{MintingData, find_minting_data}
 use decentralized_minting/settings.{Settings, find_settings}
 use decentralized_minting/settings_v1.{SettingsV1}
 
+const max_handle_length = 15
+
 type Handle {
   // with out asset name label
   Legacy(ByteArray)
@@ -40,6 +42,10 @@ type MintingDataV1Redeemer {
 // mpt_root_hash is correctly updated compared to actual minted assets (both legacy and new handles)
 // `god_verification_key_hash` has the authority to spend minting_data_asset
 // without actually minting assets
+//
+// TODO:
+// For now disable sub_handle minting
+// because sub handle logic is not implemented yet
 //
 validator(god_verification_key_hash: VerificationKeyHash) {
   fn withdraw(redeemer: MintingDataV1Redeemer, ctx: ScriptContext) -> Bool {
@@ -112,6 +118,7 @@ validator(god_verification_key_hash: VerificationKeyHash) {
   }
 }
 
+// This function also check handle_name is valid or not
 fn all_proofs_are_valid(
   proofs: List<Proof>,
   root: mpt.MerklePatriciaForestry,
@@ -124,6 +131,12 @@ fn all_proofs_are_valid(
     [proof, ..rest_proofs] -> {
       let Proof { mpt_proof, handle, amount } = proof
       let (handle_name, mpt_handle_value) = get_handle_name_and_value(handle)
+
+      // disable sub handle minting
+      expect is_sub_handle(handle_name) == False
+
+      // check handle name length
+      expect bytearray.length(handle_name) <= max_handle_length
 
       all_proofs_are_valid(
         rest_proofs,
@@ -193,4 +206,9 @@ fn get_handle_name_and_value(handle: Handle) -> (ByteArray, ByteArray) {
     Legacy(handle_name) -> (handle_name, mpt_legacy_handle_value)
     New(handle_name) -> (handle_name, mpt_new_handle_value)
   }
+}
+
+fn is_sub_handle(handle_name: ByteArray) -> Bool {
+  handle_name
+    |> bytearray.foldl(False, fn(char, result) { result || char == 0x40 })
 }

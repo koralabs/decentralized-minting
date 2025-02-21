@@ -19,9 +19,11 @@ import { Err, Result } from "ts-res";
 import { GET_CONFIGS } from "../configs/index.js";
 import {
   buildContracts,
+  buildMintingData,
   buildSettingsData,
   buildSettingsV1Data,
   makeVoidData,
+  MintingData,
   Settings,
   SettingsV1,
 } from "../contracts/index.js";
@@ -66,10 +68,11 @@ const publish = async (
   if (!configsResult.ok) return Err(new Error(configsResult.error));
   const {
     SETTINGS_ASSET_CLASS,
+    MINTING_DATA_ASSET_CLASS,
     ALLOWED_MINTERS,
-    MINTER_FEE,
     TREASURY_ADDRESS,
     TREASURY_FEE,
+    MINTER_FEE,
   } = configsResult.data;
 
   const { address, utxos, collateralUtxo } = walletWithoutKey;
@@ -77,7 +80,7 @@ const publish = async (
     return Err(new Error("Byron Address not supported"));
   const isMainnet = network == "mainnet";
 
-  const blockfrostV0Client = makeBlockfrostV0Client(network, blockfrostApiKey);
+  const blockfrostV0Client = makeBlockfrostV0Client(network, blockfrostApiKey);// 2
   const blockfrostApi = new BlockFrostAPI({ projectId: blockfrostApiKey });
   const networkParams = await blockfrostV0Client.parameters;
 
@@ -86,43 +89,30 @@ const publish = async (
   });
   const { mintV1: mintV1Config } = contractsConfig;
 
-  // we already made settings asset using legacy handle.
-  // so we don't need to mint Settings Asset.
+  // we already have settings asset using legacy handle.
   const settingsV1: SettingsV1 = {
-    all_handles: db.hash.toString("hex"),
-    allowed_minters: ALLOWED_MINTERS,
-    minter_fee: MINTER_FEE,
-    treasury_fee: TREASURY_FEE,
     policy_id: contractsConfig.handlePolicyHash.toHex(),
+    allowed_minters: ALLOWED_MINTERS,
     treasury_address: TREASURY_ADDRESS,
+    treasury_fee: TREASURY_FEE,
+    minter_fee: MINTER_FEE,
   };
   const settings: Settings = {
     mint_governor: mintV1Config.mintV1ValiatorHash.toHex(),
     data: buildSettingsV1Data(settingsV1),
   };
 
-  // fetch settings asset
-  // const settingsAssetAddressResult = await mayFailAsync(
-  //   async () =>
-  //     (
-  //       await blockfrostV0Client.getAddressesWithAssetClass(
-  //         SETTINGS_ASSET_CLASS
-  //       )
-  //     )[0].address
-  // ).complete();
-  // if (!settingsAssetAddressResult.ok)
-  //   return Err(
-  //     new Error(
-  //       `Failed to fetch Settings Asset Address: ${settingsAssetAddressResult.error}`
-  //     )
-  //   );
-  // const settingsAssetAddress = settingsAssetAddressResult.data;
-  const settingsAssetAddress = address;
+  // we already have minting data asset using legacy handle.
+  const mintingData: MintingData = {
+    mpt_root_hash: db.hash.toString("hex"),
+  };
+
+  // fetch settings asset UTxO
   const settingsAssetUtxoResult = await mayFailAsync(
     async () =>
       (
         await blockfrostV0Client.getUtxosWithAssetClass(
-          settingsAssetAddress,
+          address,
           SETTINGS_ASSET_CLASS
         )
       )[0]
@@ -134,14 +124,39 @@ const publish = async (
       )
     );
   const settingsAssetUtxo = settingsAssetUtxoResult.data;
+
+  // fetch minting data asset UTxO
+  const mintingDataAssetUtxoResult = await mayFailAsync(
+    async () =>
+      (
+        await blockfrostV0Client.getUtxosWithAssetClass(
+          address,
+          MINTING_DATA_ASSET_CLASS
+        )
+      )[0]
+  ).complete();
+  if (!mintingDataAssetUtxoResult.ok)
+    return Err(
+      new Error(
+        `Failed to fetch Minting Data Asset: ${mintingDataAssetUtxoResult.error}`
+      )
+    );
+  const mintingDataAssetUtxo = mintingDataAssetUtxoResult.data;
+
   const settingsValue = makeValue(
     5_000_000n,
     makeAssets([[SETTINGS_ASSET_CLASS, 1n]])
   );
+  const mintingDataValue = makeValue(
+    5_000_000n,
+    makeAssets([[MINTING_DATA_ASSET_CLASS, 1n]])
+  );
 
-  // remove settings asset utxo from utxos
+  // remove settings asset utxo and minting data asset utxo from utxos
   const spareUtxos = utxos.filter(
-    (utxo) => utxo.id.toString() != settingsAssetUtxo.id.toString()
+    (utxo) =>
+      utxo.id.toString() != settingsAssetUtxo.id.toString() &&
+      utxo.id.toString() != mintingDataAssetUtxo.id.toString()
   );
 
   const alwaysFailUplcProgram = createAlwaysFailUplcProgram();
@@ -160,9 +175,19 @@ const publish = async (
 
   // <-- pay settings asset with init Settings Datum
   txBuilder.payUnsafe(
-    settingsAssetAddress,
+    address,
     settingsValue,
     makeInlineTxOutputDatum(buildSettingsData(settings))
+  );
+
+  // <-- spend minting data asset utxo (if it is not same as settings asset utxo)
+  txBuilder.spendUnsafe(mintingDataAssetUtxo);
+
+  // <-- pay minting data asset with init Minting Data Datum
+  txBuilder.payUnsafe(
+    address,
+    mintingDataValue,
+    makeInlineTxOutputDatum(buildMintingData(mintingData))
   );
 
   // <-- lock reference script (mint v1) to always fail uplc program

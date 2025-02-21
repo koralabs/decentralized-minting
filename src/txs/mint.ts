@@ -118,7 +118,7 @@ const mint = async (
   // ).complete();
   // if (!settingsAssetAddressResult.ok)
   //   return Err(
-  //     new Error(
+  //     new Error(orderUtxos
   //       `Failed to fetch Settings Asset Address: ${settingsAssetAddressResult.error}`
   //     )
   //   );

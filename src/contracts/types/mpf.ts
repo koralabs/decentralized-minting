@@ -1,6 +1,6 @@
-type Proof = ProofStep[];
+type MPTProof = MPTProofStep[];
 
-type ProofStep = BranchProofStep | ForkProofStep | LeafProofStep;
+type MPTProofStep = BranchProofStep | ForkProofStep | LeafProofStep;
 
 interface BranchProofStep {
   type: "branch";
@@ -27,13 +27,15 @@ interface Neighbor {
   root: string;
 }
 
-const parseProofJSON = (jsonObject: object): Proof => {
+const parseMPTProofJSON = (jsonObject: object): MPTProof => {
   if (!Array.isArray(jsonObject))
     throw new Error("Proof JSON object is not an array");
-  return jsonObject.map((proofStepJson) => parseProofStepJSON(proofStepJson));
+  return jsonObject.map((proofStepJson) =>
+    parseMPTProofStepJSON(proofStepJson)
+  );
 };
 
-const parseProofStepJSON = (jsonObject: object): ProofStep => {
+const parseMPTProofStepJSON = (jsonObject: object): MPTProofStep => {
   if (!("skip" in jsonObject)) throw new Error("skip field is missing");
   if (!("type" in jsonObject)) throw new Error("type field is missing");
 
@@ -67,5 +69,5 @@ const parseProofStepJSON = (jsonObject: object): ProofStep => {
   }
 };
 
-export type { Neighbor, Proof, ProofStep };
-export { parseProofJSON, parseProofStepJSON };
+export type { MPTProof, MPTProofStep, Neighbor };
+export { parseMPTProofJSON, parseMPTProofStepJSON };

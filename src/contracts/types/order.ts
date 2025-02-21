@@ -1,4 +1,4 @@
-import { ShelleyAddress, TxOutputDatum } from "@helios-lang/ledger";
+import { ShelleyAddress } from "@helios-lang/ledger";
 import { UplcData } from "@helios-lang/uplc";
 
 interface OrderDatum {
@@ -9,7 +9,6 @@ interface OrderDatum {
 
 interface Destination {
   address: ShelleyAddress;
-  datum: TxOutputDatum | undefined;
 }
 
 export type { Destination, OrderDatum };

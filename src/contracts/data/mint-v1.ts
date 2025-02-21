@@ -1,10 +1,11 @@
-import { makeListData, UplcData } from "@helios-lang/uplc";
+import { makeConstrData, UplcData } from "@helios-lang/uplc";
 
-import { Proof } from "../types/index.js";
-import { buildProofData } from "./mpf.js";
-
-const buildProofsRedeemer = (proofs: Proof[]): UplcData => {
-  return makeListData(proofs.map(buildProofData));
+const buildMintV1MintHandlesRedeemer = (): UplcData => {
+  return makeConstrData(0, []);
 };
 
-export { buildProofsRedeemer };
+const buildMintV1BurnHandlesRedeemer = (): UplcData => {
+  return makeConstrData(1, []);
+};
+
+export { buildMintV1BurnHandlesRedeemer, buildMintV1MintHandlesRedeemer };

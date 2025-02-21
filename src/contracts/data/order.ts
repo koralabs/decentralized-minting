@@ -9,26 +9,19 @@ import {
 
 import { invariant } from "../../helpers/index.js";
 import { Destination, OrderDatum } from "../types/index.js";
-import {
-  buildAddressData,
-  buildDatumData,
-  decodeAddressFromData,
-  decodeDatumFromData,
-} from "./common.js";
+import { buildAddressData, decodeAddressFromData } from "./common.js";
 
 const decodeDestinationFromData = (data: UplcData): Destination => {
-  const constrData = expectConstrData(data, 0, 2);
+  const constrData = expectConstrData(data, 0, 1);
   const address = decodeAddressFromData(constrData.fields[0]);
-  const datum = decodeDatumFromData(constrData.fields[1]);
   return {
     address,
-    datum,
   };
 };
 
 const buildDestinationData = (destination: Destination): UplcData => {
-  const { address, datum } = destination;
-  return makeConstrData(0, [buildAddressData(address), buildDatumData(datum)]);
+  const { address } = destination;
+  return makeConstrData(0, [buildAddressData(address)]);
 };
 
 const decodeOrderDatum = (datum: TxOutputDatum | undefined): OrderDatum => {
