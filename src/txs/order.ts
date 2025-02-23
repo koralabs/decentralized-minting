@@ -45,7 +45,8 @@ const request = async (
   const { network, address, handleName } = params;
   const configsResult = mayFail(() => GET_CONFIGS(network));
   if (!configsResult.ok) return Err(new Error(configsResult.error));
-  const { MINT_VERSION, MINTER_FEE, TREASURY_FEE } = configsResult.data;
+  const { MINT_VERSION, GOD_VERIFICATION_KEY_HASH, MINTER_FEE, TREASURY_FEE } =
+    configsResult.data;
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
   if (address.spendingCredential.kind == "ValidatorHash")
@@ -55,6 +56,7 @@ const request = async (
   const contractsConfig = buildContracts({
     network,
     mint_version: MINT_VERSION,
+    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
   const { orders: ordersConfig } = contractsConfig;
 
@@ -105,11 +107,12 @@ const fetchOrdersUTxOs = async (
   const { network } = params;
   const configsResult = mayFail(() => GET_CONFIGS(network));
   if (!configsResult.ok) return Err(new Error(configsResult.error));
-  const { MINT_VERSION } = configsResult.data;
+  const { MINT_VERSION, GOD_VERIFICATION_KEY_HASH } = configsResult.data;
 
   const contractsConfig = buildContracts({
     network,
     mint_version: MINT_VERSION,
+    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
   const { orders: ordersConfig } = contractsConfig;
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);

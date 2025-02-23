@@ -35,6 +35,7 @@ const getSettingsCBOR = async (
   if (!configsResult.ok) return Err(new Error(configsResult.error));
   const {
     MINT_VERSION,
+    GOD_VERIFICATION_KEY_HASH,
     ALLOWED_MINTERS,
     TREASURY_ADDRESS,
     PZ_SCRIPT_ADDRESS,
@@ -45,6 +46,7 @@ const getSettingsCBOR = async (
   const contractsConfig = buildContracts({
     network,
     mint_version: MINT_VERSION,
+    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
   const {
     mintV1: mintV1Config,

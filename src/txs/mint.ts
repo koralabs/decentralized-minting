@@ -65,6 +65,7 @@ const mint = async (
   if (!configsResult.ok) return Err(new Error(configsResult.error));
   const {
     MINT_VERSION,
+    GOD_VERIFICATION_KEY_HASH,
     MINTING_DATA_ASSET_CLASS,
     ALLOWED_MINTERS,
     TREASURY_FEE,
@@ -83,6 +84,7 @@ const mint = async (
   const contractsConfig = buildContracts({
     network,
     mint_version: MINT_VERSION,
+    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
   const {
     mintV1: mintV1Config,
@@ -189,7 +191,7 @@ const mint = async (
       makeAssets([[refHandleAssetClass, 1n]])
     );
     const userHandleValue = makeValue(
-      lovelace - (TREASURY_FEE + MINTER_FEE + PZ_UTXO_MIN_LOVELACE),
+      lovelace - (TREASURY_FEE + MINTER_FEE),
       makeAssets([[userHandleAssetClass, 1n]])
     );
     const destinationAddress = decodedOrder.destination.address;
@@ -220,8 +222,8 @@ const mint = async (
   decodedMintingData.mpt_root_hash = db.hash.toString("hex");
 
   // minting data asset value
-  const mintingData = makeValue(
-    5_000_000n,
+  const mintingDataValue = makeValue(
+    2_000_000n,
     makeAssets([[MINTING_DATA_ASSET_CLASS, 1n]])
   );
 
@@ -243,13 +245,19 @@ const mint = async (
   // <-- attach settings asset as reference input
   txBuilder.refer(settingsAssetUtxo);
 
-  // <-- spend minting data utxo
-  txBuilder.spendUnsafe(mintingDataAssetUtxo);
+  // <-- attach minting data proxy spending validator
+  txBuilder.attachUplcProgram(
+    mintingDataConfig.mintingDataProxySpendUplcProgram
+  );
 
-  // <-- lock settings value with new settings
+  // <-- spend minting data utxo
+  txBuilder.spendUnsafe(mintingDataAssetUtxo, makeVoidData());
+
+  // <-- lock minting data value with new root hash
   txBuilder.payUnsafe(
     mintingDataAssetAddress,
-    mintingData,
+    // mintingDataValue,
+    mintingDataAssetUtxo.value,
     makeInlineTxOutputDatum(buildMintingData(decodedMintingData))
   );
 
@@ -283,7 +291,8 @@ const mint = async (
   // <-- pay minter fee
   txBuilder.payUnsafe(
     address,
-    makeValue(decodedSettingsV1.minter_fee * BigInt(handles.length))
+    makeValue(decodedSettingsV1.minter_fee * BigInt(handles.length)),
+    makeInlineTxOutputDatum(makeVoidData())
   );
 
   // <-- attach mint prxoy validator

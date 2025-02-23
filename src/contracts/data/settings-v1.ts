@@ -30,7 +30,7 @@ const buildSettingsV1Data = (settings: SettingsV1): UplcData => {
 };
 
 const decodeSettingsV1Data = (data: UplcData): SettingsV1 => {
-  const settingsV1ConstrData = expectConstrData(data, 0, 7);
+  const settingsV1ConstrData = expectConstrData(data, 0, 8);
 
   const policy_id = expectByteArrayData(
     settingsV1ConstrData.fields[0],

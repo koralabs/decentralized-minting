@@ -150,11 +150,18 @@ fn all_orders_are_satisfied(
           let OrderDatum { requested_handle, destination, .. } = datum
 
           // extract user & ref output
-          expect [user_output, ref_output, ..rest_outputs] = outputs
+          expect [ref_output, user_output, ..rest_outputs] = outputs
 
-          // make user asset name and ref asset name from requested_handle
+          // make ref asset name and user asset name from requested_handle
           let ref_asset_name = bytearray.concat(prefix_100, requested_handle)
           let user_asset_name = bytearray.concat(prefix_222, requested_handle)
+
+          // check ref output
+          expect ref_output.address == pz_script_address
+          let expected_ref_value =
+            value.zero() |> value.add(handle_policy_id, ref_asset_name, 1)
+          expect value.without_lovelace(ref_output.value) == expected_ref_value
+          expect ref_output.reference_script == None
 
           // check user output
           expect user_output.address == destination.address
@@ -168,12 +175,6 @@ fn all_orders_are_satisfied(
                   -(treasury_fee + minter_fee),
                 )
           expect user_output.value == expected_user_value
-
-          // check ref output
-          expect ref_output.address == pz_script_address
-          let expected_ref_value =
-            value.zero() |> value.add(handle_policy_id, ref_asset_name, 1)
-          expect value.without_lovelace(ref_output.value) == expected_ref_value
 
           all_orders_are_satisfied(
             order_script_hash,

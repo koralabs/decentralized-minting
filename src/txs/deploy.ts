@@ -52,7 +52,7 @@ const deploy = async (
   const { network, walletWithoutKey } = params;
   const configsResult = mayFail(() => GET_CONFIGS(network));
   if (!configsResult.ok) return Err(new Error(configsResult.error));
-  const { MINT_VERSION } = configsResult.data;
+  const { MINT_VERSION, GOD_VERIFICATION_KEY_HASH } = configsResult.data;
 
   const { address, utxos, collateralUtxo } = walletWithoutKey;
   if (address.era == "Byron")
@@ -66,9 +66,13 @@ const deploy = async (
   const contractsConfig = buildContracts({
     network,
     mint_version: MINT_VERSION,
+    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
-  const { mintV1: mintV1Config, mintingDataV1: mintingDataV1Config } =
-    contractsConfig;
+  const {
+    mintV1: mintV1Config,
+    mintingDataV1: mintingDataV1Config,
+    mintingData,
+  } = contractsConfig;
 
   const alwaysFailUplcProgram = createAlwaysFailUplcProgram();
   const alwaysFailUplcProgramAddress = makeAddress(
@@ -120,6 +124,12 @@ const deploy = async (
     )) == "registered";
   if (!mintingDataV1StakingAddressRegistered)
     txBuilder.addDCert(mintingDataV1Config.mintingDataV1RegistrationDCert);
+
+  console.log(
+    Buffer.from(mintingData.mintingDataProxySpendUplcProgram.toCbor()).toString(
+      "hex"
+    )
+  );
 
   // <-- use collateral
   if (collateralUtxo) txBuilder.addCollateral(collateralUtxo);

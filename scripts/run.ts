@@ -297,7 +297,6 @@ const makeOnChainActionsChoices = (commandImpl: CommandImpl): Choice[] => {
     {
       title: "settings",
       value: "settings",
-      disabled: !!commandImpl.mpt,
       description: "Build Settings Datum CBOR",
     },
     {
@@ -394,6 +393,7 @@ const doOnChainActions = async (commandImpl: CommandImpl): Promise<boolean> => {
         }
         case "minting-data": {
           const mintingDataCborResult = await getMintingDataCBOR({
+            network: NETWORK as NetworkName,
             db: commandImpl.mpt!,
           });
           if (!mintingDataCborResult.ok) {
@@ -402,9 +402,14 @@ const doOnChainActions = async (commandImpl: CommandImpl): Promise<boolean> => {
             );
             break;
           }
-          console.log("\n\n------- Copy This Minting Data CBOR -------\n");
-          console.log(mintingDataCborResult.data);
-          console.log("\n\n");
+          console.log(
+            "\n\n------- Lock This Minting Data CBOR with asset -------\n"
+          );
+          console.log(mintingDataCborResult.data.cbor);
+          console.log("\n");
+          console.log("\n------- To This address -------\n");
+          console.log(mintingDataCborResult.data.lockAddress.toString());
+          console.log("\n");
           break;
         }
         case "mint": {
@@ -428,19 +433,18 @@ const doOnChainActions = async (commandImpl: CommandImpl): Promise<boolean> => {
             BLOCKFROST_API_KEY
           );
           if (txBuilderResult.ok) {
-            if (
-              await handleTx(
-                commandImpl.wallet,
-                async () =>
-                  await mayFailTransaction(
-                    txBuilderResult.data,
-                    commandImpl.wallet.address,
-                    await commandImpl.wallet.utxos
-                  ).complete()
-              )
-            )
-              break;
+            await handleTx(
+              commandImpl.wallet,
+              async () =>
+                await mayFailTransaction(
+                  txBuilderResult.data,
+                  commandImpl.wallet.address,
+                  await commandImpl.wallet.utxos
+                ).complete()
+            );
+            break;
           }
+          console.error(`Failed to mint: ${txBuilderResult.error}`);
           break;
         }
         default:
@@ -456,6 +460,7 @@ const doOnChainActions = async (commandImpl: CommandImpl): Promise<boolean> => {
 
 const main = async () => {
   const commandImpl = new CommandImpl();
+  await commandImpl.loadMPT();
 
   while (commandImpl.running) {
     const mainAction = await prompts({

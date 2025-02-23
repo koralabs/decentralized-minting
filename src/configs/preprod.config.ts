@@ -6,6 +6,8 @@ import {
 
 // De-Mi contract config
 export const MINT_VERSION = 0n;
+export const GOD_VERIFICATION_KEY_HASH =
+  "633a0061fcdb8aca5b86ef3a177fdcb0c178ccca3066b0be7197f3a1";
 
 export const SETTINGS_ASSET_CLASS = makeAssetClass(
   // "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14064656d694068616e646c655f73657474696e6773"
@@ -35,13 +37,13 @@ export const PZ_UTXO_MIN_LOVELACE = 2_000_000n;
 
 // NOTE:
 // You can get these configs after publish
-export const SETTINGS_ASSET_UTXO_ID = makeTxOutputId(
-  "9a3501235bd18f164c42e1958b13c5d8c866771632b4badb53c0953ed80fa5c1#1"
-);
-
 export const MINT_V1_SCRIPT_UTXO_ID = makeTxOutputId(
-  "9a3501235bd18f164c42e1958b13c5d8c866771632b4badb53c0953ed80fa5c1#1"
+  "1c7c73c4628917e5120225a0865e2eb33c6ad289c63544f48932b9883fb7898f#0"
 );
 export const MINTINT_DATA_V1_SCRIPT_UTXO_ID = makeTxOutputId(
-  "9a3501235bd18f164c42e1958b13c5d8c866771632b4badb53c0953ed80fa5c1#1"
+  "1c7c73c4628917e5120225a0865e2eb33c6ad289c63544f48932b9883fb7898f#1"
+);
+
+export const SETTINGS_ASSET_UTXO_ID = makeTxOutputId(
+  "accfb94e834fc0e92fc429e3bacd98b95d221e706a880b7eda14c2f4ff28cc9b#0"
 );

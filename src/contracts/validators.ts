@@ -4,6 +4,7 @@ import { invariant } from "../helpers/index.js";
 import blueprint from "./blueprint.js";
 import {
   makeMintingDataProxyUplcProgramParameter,
+  makeMintingDataV1UplcProgramParameter,
   makeMintProxyUplcProgramParameter,
 } from "./utils.js";
 
@@ -38,12 +39,16 @@ const getMintingDataProxySpendUplcProgram = (
 };
 
 // this is `minting_data_governor`
-const getMintingDataV1WithdrawUplcProgram = (): UplcProgramV2 => {
+const getMintingDataV1WithdrawUplcProgram = (
+  god_verification_key_hash: string
+): UplcProgramV2 => {
   const foundValidator = blueprint.validators.find(
     (validator) => validator.title == "minting_data_v1.withdraw"
   );
   invariant(foundValidator, "Minting Data V1 Withdraw Validator not found");
-  return decodeUplcProgramV2FromCbor(foundValidator.compiledCode);
+  return decodeUplcProgramV2FromCbor(foundValidator.compiledCode).apply(
+    makeMintingDataV1UplcProgramParameter(god_verification_key_hash)
+  );
 };
 
 const getOrdersSpendUplcProgram = (): UplcProgramV2 => {

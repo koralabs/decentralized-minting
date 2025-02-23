@@ -20,10 +20,13 @@ import {
  * @interface
  * @typedef {object} BuildContractsParams
  * @property {NetworkName} network Cardano Network
+ * @property {bigint} mint_version De-Mi version
+ * @property {string} god_verification_key_hash God Verification Key Hash
  */
 interface BuildContractsParams {
   network: NetworkName;
   mint_version: bigint;
+  god_verification_key_hash: string;
 }
 
 /**
@@ -32,7 +35,7 @@ interface BuildContractsParams {
  * @returns All Contracts
  */
 const buildContracts = (params: BuildContractsParams) => {
-  const { network, mint_version } = params;
+  const { network, mint_version, god_verification_key_hash } = params;
   const isMainnet = network == "mainnet";
 
   const ordersSpendUplcProgram = getOrdersSpendUplcProgram();
@@ -57,8 +60,9 @@ const buildContracts = (params: BuildContractsParams) => {
     mintV1StakingAddress.stakingCredential
   );
 
-  const mintingDataV1WithdrawUplcProgram =
-    getMintingDataV1WithdrawUplcProgram();
+  const mintingDataV1WithdrawUplcProgram = getMintingDataV1WithdrawUplcProgram(
+    god_verification_key_hash
+  );
   const mintingDataV1ValidatorHash = makeValidatorHash(
     mintingDataV1WithdrawUplcProgram.hash()
   );
