@@ -9,6 +9,8 @@ pub type SettingsV1 {
   treasury_address: Address,
   treasury_fee: Int,
   minter_fee: Int,
+  // personalization script where ref asset is sent
+  pz_script_address: Address,
   // user makes an order (as UTxO) in order script
   order_script_hash: ScriptHash,
   // minting data script is used to check

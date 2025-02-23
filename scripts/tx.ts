@@ -60,11 +60,6 @@ const handleTx = async (
           description: "Go back to the previous menu",
           value: "back",
         },
-        {
-          title: "exit",
-          description: "Exit back to terminal",
-          value: "exit",
-        },
       ],
     });
 
@@ -147,8 +142,6 @@ const handleTx = async (
         submitted = true;
         break;
       }
-      case "exit":
-        return true;
       case "back":
       default: {
         return false;

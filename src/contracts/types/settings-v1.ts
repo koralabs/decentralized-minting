@@ -7,6 +7,8 @@ interface SettingsV1 {
   treasury_address: Address;
   treasury_fee: bigint;
   minter_fee: bigint;
+  // personalization script where ref asset is sent
+  pz_script_address: Address;
   // user makes an order (as UTxO) in order script
   order_script_hash: string;
   // minting data script is used to check

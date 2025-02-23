@@ -37,12 +37,13 @@ const checkAccountRegistrationStatus = async (
 };
 
 const createAlwaysFailUplcProgram = (): UplcProgramV2 => {
-  const header = "5839010000322253330033371e9101203";
-  const body = Array.from({ length: 63 }, () =>
-    Math.floor(Math.random() * 10)
+  const header = "58250100003222253330043330043371e91103";
+  const randomString = Array.from({ length: 16 }, () =>
+    Math.floor(Math.random() * 16).toString(16)
   ).join("");
-  const footer = "0048810014984d9595cd01";
-  const compiledCode = `${header}${body}${footer}`;
+  const middle = "00488103";
+  const footer = "004a0944526136565735";
+  const compiledCode = `${header}${randomString}${middle}${randomString}${footer}`;
   const program = decodeUplcProgramV2FromCbor(compiledCode);
 
   return program;

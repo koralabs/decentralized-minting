@@ -15,7 +15,7 @@ type Handle = LegacyHandle | NewHandle;
 type Proof = {
   mpt_proof: MPTProof;
   handle: Handle;
-  amount: number;
+  amount: bigint;
 };
 
 export type { Handle, LegacyHandle, NewHandle, Proof };

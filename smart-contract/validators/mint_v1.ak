@@ -47,6 +47,7 @@ validator {
       treasury_address,
       treasury_fee,
       minter_fee,
+      pz_script_address,
       order_script_hash,
       minting_data_script_hash,
     } = settings_datum
@@ -85,6 +86,7 @@ validator {
             policy_id,
             treasury_fee,
             minter_fee,
+            pz_script_address,
             inputs,
             rest_outputs,
             0,
@@ -125,6 +127,7 @@ fn all_orders_are_satisfied(
   handle_policy_id: PolicyId,
   treasury_fee: Int,
   minter_fee: Int,
+  pz_script_address: Address,
   inputs: List<Input>,
   outputs: List<Output>,
   total_treasury_fee: Int,
@@ -167,8 +170,7 @@ fn all_orders_are_satisfied(
           expect user_output.value == expected_user_value
 
           // check ref output
-          // TODO: add ref_address to settings
-          // expect ref_output.address = settings.ref_address
+          expect ref_output.address == pz_script_address
           let expected_ref_value =
             value.zero() |> value.add(handle_policy_id, ref_asset_name, 1)
           expect value.without_lovelace(ref_output.value) == expected_ref_value
@@ -178,6 +180,7 @@ fn all_orders_are_satisfied(
             handle_policy_id,
             treasury_fee,
             minter_fee,
+            pz_script_address,
             rest_inputs,
             rest_outputs,
             total_treasury_fee + treasury_fee,
@@ -195,6 +198,7 @@ fn all_orders_are_satisfied(
             handle_policy_id,
             treasury_fee,
             minter_fee,
+            pz_script_address,
             rest_inputs,
             outputs,
             treasury_fee,

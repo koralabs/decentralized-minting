@@ -1,20 +1,25 @@
 import { Store, Trie } from "@aiken-lang/merkle-patricia-forestry";
 import {
+  BlockfrostV0Client,
   makeBlockfrostV0Client,
   makeSimpleWallet,
   NetworkName,
   restoreRootPrivateKey,
+  SimpleWallet,
 } from "@helios-lang/tx-utils";
 import colors from "ansi-colors";
 import cliProgress from "cli-progress";
 import { existsSync } from "fs";
-import prompts from "prompts";
+import prompts, { Choice } from "prompts";
 
 import {
+  deploy,
+  fetchOrdersUTxOs,
   getAllHandles,
+  getMintingDataCBOR,
+  getSettingsCBOR,
   mayFailTransaction,
   mint,
-  publish,
   request,
 } from "../src/index.js";
 import {
@@ -35,117 +40,153 @@ import {
 import { handleTx } from "./tx.js";
 import { makeWalletWithoutKeyFromSimpleWallet } from "./utils.js";
 
-const main = async () => {
-  const storePath = MPF_STORE_PATH(NETWORK as NetworkName);
-  const blockfrostCardanoClient = makeBlockfrostV0Client(
-    NETWORK as NetworkName,
-    BLOCKFROST_API_KEY
-  );
-  const wallet = makeSimpleWallet(
-    restoreRootPrivateKey(MNEMONIC.split(" ")),
-    blockfrostCardanoClient
-  );
+type MainActionsType = "mpt" | "on-chain" | "exit";
+type MPTActionsType =
+  | "init"
+  | "inspect"
+  | "add"
+  | "remove"
+  | "prove"
+  | "fill"
+  | "upgrade"
+  | "clear"
+  | "back";
+type OnChainActionsType =
+  | "mint"
+  | "request"
+  | "deploy"
+  | "settings"
+  | "minting-data"
+  | "back";
 
-  let db: Trie | null = null;
-  if (existsSync(storePath)) {
-    db = await Trie.load(new Store(storePath));
-    console.log("Database exists, current state: ");
-    console.log(db);
+class CommandImpl {
+  storePath: string;
+  mpt: Trie | null;
+  blockfrostCardanoClient: BlockfrostV0Client;
+  wallet: SimpleWallet;
+  running = true;
+
+  constructor() {
+    this.storePath = MPF_STORE_PATH(NETWORK as NetworkName);
+    this.blockfrostCardanoClient = makeBlockfrostV0Client(
+      NETWORK as NetworkName,
+      BLOCKFROST_API_KEY
+    );
+    this.wallet = makeSimpleWallet(
+      restoreRootPrivateKey(MNEMONIC.split(" ")),
+      this.blockfrostCardanoClient
+    );
+    this.mpt = null;
   }
 
-  let exit = false;
-  while (!exit) {
-    const operation = await prompts({
-      name: "operation",
-      type: "select",
-      message: "Pick an action: ",
-      choices: [
-        {
-          title: "init",
-          value: "init",
-          disabled: !!db,
-          description: "Initialize a new handle database",
-        },
-        {
-          title: "inspect",
-          value: "inspect",
-          disabled: !db,
-          description: "Print out the current database state",
-        },
-        {
-          title: "add",
-          value: "add",
-          disabled: !db,
-          description: "Add an ADA Handle to the current root",
-        },
-        {
-          title: "remove",
-          value: "remove",
-          disabled: !db,
-          description: "Remove an ada handle from the current root",
-        },
-        {
-          title: "prove",
-          value: "prove",
-          disabled: !db,
-          description:
-            "Prove the existence (or non-existence) of an ADA handle",
-        },
-        {
-          title: "fill",
-          value: "fill",
-          disabled:
-            !db || (!!db.hash && Buffer.alloc(32).compare(db.hash) !== 0),
-          description: "Fill the database with all existing ADA handles",
-        },
-        {
-          title: "publish",
-          value: "publish",
-          disabled: !db,
-          description: "Publish the current root on chain",
-        },
-        {
-          title: "request",
-          value: "request",
-          disabled: !db,
-          description:
-            "Request a new ADA handle by placing an order transaction on chain",
-        },
-        {
-          title: "mint",
-          value: "mint",
-          disabled: !db,
-          description: "Mint all new handles with a transaction on-chain",
-        },
-        {
-          title: "upgrade",
-          value: "upgrade",
-          disabled: !db,
-          description:
-            "Upgrade the protocol, modifying some settings as the settings governor",
-        },
-        {
-          title: "clear",
-          value: "clear",
-          disabled: !db,
-          description: "Clear the local db",
-        },
-        {
-          title: "exit",
-          value: "exit",
-          description: "Exit back to terminal",
-        },
-      ],
-    });
+  async loadMPT() {
+    if (existsSync(this.storePath)) {
+      this.mpt = await Trie.load(new Store(this.storePath));
+      console.log("Database exists, current state: ");
+      console.log(this.mpt);
+    } else {
+      console.log("Database not exists");
+    }
+  }
+}
 
+const makeMainActionsChoices = (): Choice[] => {
+  return [
+    {
+      title: "mpt",
+      value: "mpt",
+      description: "MPT actions",
+    },
+    {
+      title: "on-chain",
+      value: "on-chain",
+      description: "On Chain actions",
+    },
+    {
+      title: "exit",
+      value: "exit",
+      description: "Exit",
+    },
+  ];
+};
+
+const makeMPTActionsChoices = (commandImpl: CommandImpl): Choice[] => {
+  const mpt = commandImpl.mpt;
+  return [
+    {
+      title: "init",
+      value: "init",
+      disabled: !!mpt,
+      description: "Initialize a new handle database",
+    },
+    {
+      title: "inspect",
+      value: "inspect",
+      disabled: !mpt,
+      description: "Print out the current database state",
+    },
+    {
+      title: "add",
+      value: "add",
+      disabled: !mpt,
+      description: "Add an ADA Handle to the current root",
+    },
+    {
+      title: "remove",
+      value: "remove",
+      disabled: !mpt,
+      description: "Remove an ada handle from the current root",
+    },
+    {
+      title: "prove",
+      value: "prove",
+      disabled: !mpt,
+      description: "Prove the existence (or non-existence) of an ADA handle",
+    },
+    {
+      title: "fill",
+      value: "fill",
+      disabled:
+        !mpt || (!!mpt.hash && Buffer.alloc(32).compare(mpt.hash) !== 0),
+      description: "Fill the database with all existing ADA handles",
+    },
+    {
+      title: "upgrade",
+      value: "upgrade",
+      disabled: !mpt,
+      description:
+        "Upgrade the protocol, modifying some settings as the settings governor",
+    },
+    {
+      title: "clear",
+      value: "clear",
+      disabled: !mpt,
+      description: "Clear the local db",
+    },
+    {
+      title: "back",
+      value: "back",
+      description: "Back to main actions",
+    },
+  ];
+};
+
+const doMPTActions = async (commandImpl: CommandImpl): Promise<boolean> => {
+  while (true) {
+    const mptAction = await prompts({
+      name: "action",
+      type: "select",
+      message: "Pick MPT action",
+      choices: makeMPTActionsChoices(commandImpl),
+    });
     try {
-      switch (operation["operation"]) {
+      switch (mptAction.action as MPTActionsType) {
         case "init": {
-          db = await init(storePath);
+          commandImpl.mpt = await init(commandImpl.storePath);
           break;
         }
         case "inspect": {
-          await inspect(db!);
+          await inspect(commandImpl.mpt!);
           break;
         }
         case "add": {
@@ -161,7 +202,7 @@ const main = async () => {
               message: "The value to store at this key",
             },
           ]);
-          await addHandle(db!, key, value);
+          await addHandle(commandImpl.mpt!, key, value);
           break;
         }
         case "remove": {
@@ -170,7 +211,7 @@ const main = async () => {
             type: "text",
             message: "The key to remove",
           });
-          await removeHandle(db!, key);
+          await removeHandle(commandImpl.mpt!, key);
           break;
         }
         case "prove": {
@@ -190,7 +231,7 @@ const main = async () => {
               ],
             },
           ]);
-          await printProof(db!, key, format);
+          await printProof(commandImpl.mpt!, key, format);
           break;
         }
         case "fill": {
@@ -215,29 +256,99 @@ const main = async () => {
               etaBuffer: 50,
             });
             progress.start(handles.length, 0);
-            await fillHandles(db!, handles, () => progress.increment());
+            await fillHandles(commandImpl.mpt!, handles, () =>
+              progress.increment()
+            );
             progress.stop();
-            console.log(db);
+            console.log(commandImpl.mpt);
           }
           break;
         }
-        case "publish": {
-          if (
-            await handleTx(wallet, async () =>
-              publish(
-                {
-                  network: NETWORK as NetworkName,
-                  db: db!,
-                  walletWithoutKey: await makeWalletWithoutKeyFromSimpleWallet(
-                    wallet
-                  ),
-                },
-                BLOCKFROST_API_KEY
-              )
-            )
-          ) {
-            return;
+        case "clear": {
+          const { confirm } = await prompts({
+            name: "confirm",
+            type: "confirm",
+            message: "Are you sure you want to clear the database?",
+          });
+          if (confirm) {
+            await clear(commandImpl.storePath);
+            commandImpl.mpt = null;
           }
+          break;
+        }
+        default:
+        case "back":
+          return false;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+};
+
+const makeOnChainActionsChoices = (commandImpl: CommandImpl): Choice[] => {
+  return [
+    {
+      title: "deploy",
+      value: "deploy",
+      description:
+        "Deploy De-Mi Contracts (Mint V1 and Minting Data V1 validators)",
+    },
+    {
+      title: "settings",
+      value: "settings",
+      disabled: !!commandImpl.mpt,
+      description: "Build Settings Datum CBOR",
+    },
+    {
+      title: "minting-data",
+      value: "minting-data",
+      disabled: !commandImpl.mpt,
+      description: "Build Minting Data Datum CBOR",
+    },
+    {
+      title: "request",
+      value: "request",
+      disabled: !commandImpl.mpt,
+      description:
+        "Request a new ADA handle by placing an order transaction on chain",
+    },
+    {
+      title: "mint",
+      value: "mint",
+      disabled: !commandImpl.mpt,
+      description: "Mint all new handles with a transaction on-chain",
+    },
+    {
+      title: "back",
+      value: "back",
+      description: "Back to main actions",
+    },
+  ];
+};
+
+const doOnChainActions = async (commandImpl: CommandImpl): Promise<boolean> => {
+  while (true) {
+    const onChainAction = await prompts({
+      name: "action",
+      type: "select",
+      message: "Pick On Chain action",
+      choices: makeOnChainActionsChoices(commandImpl),
+    });
+    try {
+      switch (onChainAction.action as OnChainActionsType) {
+        case "deploy": {
+          await handleTx(commandImpl.wallet, async () =>
+            deploy(
+              {
+                network: NETWORK as NetworkName,
+                walletWithoutKey: await makeWalletWithoutKeyFromSimpleWallet(
+                  commandImpl.wallet
+                ),
+              },
+              BLOCKFROST_API_KEY
+            )
+          );
           break;
         }
         case "request": {
@@ -249,70 +360,127 @@ const main = async () => {
           const txBuilderResult = await request({
             network: NETWORK as NetworkName,
             handleName: handle,
-            address: wallet.address,
+            address: commandImpl.wallet.address,
           });
           if (txBuilderResult.ok) {
-            if (
-              await handleTx(
-                wallet,
-                async () =>
-                  await mayFailTransaction(
-                    txBuilderResult.data,
-                    wallet.address,
-                    await wallet.utxos
-                  ).complete()
-              )
-            )
-              return;
+            await handleTx(
+              commandImpl.wallet,
+              async () =>
+                await mayFailTransaction(
+                  txBuilderResult.data,
+                  commandImpl.wallet.address,
+                  await commandImpl.wallet.utxos
+                ).complete()
+            );
+            break;
           }
+          console.error(`Error occured\n${txBuilderResult.error}`);
+          break;
+        }
+        case "settings": {
+          const settingsCborResult = await getSettingsCBOR({
+            network: NETWORK as NetworkName,
+          });
+          if (!settingsCborResult.ok) {
+            console.error(
+              `Failed to get Settings CBOR: ${settingsCborResult.error}`
+            );
+            break;
+          }
+          console.log("\n\n------- Copy This Settings CBOR -------\n");
+          console.log(settingsCborResult.data);
+          console.log("\n\n");
+          break;
+        }
+        case "minting-data": {
+          const mintingDataCborResult = await getMintingDataCBOR({
+            db: commandImpl.mpt!,
+          });
+          if (!mintingDataCborResult.ok) {
+            console.error(
+              `Failed to get Settings CBOR: ${mintingDataCborResult.error}`
+            );
+            break;
+          }
+          console.log("\n\n------- Copy This Minting Data CBOR -------\n");
+          console.log(mintingDataCborResult.data);
+          console.log("\n\n");
           break;
         }
         case "mint": {
+          const ordersUtxosResult = await fetchOrdersUTxOs(
+            { network: NETWORK as NetworkName },
+            BLOCKFROST_API_KEY
+          );
+          if (!ordersUtxosResult.ok) {
+            console.error(
+              `Failed to fetch orders UTxOs: ${ordersUtxosResult.error}`
+            );
+            break;
+          }
           const txBuilderResult = await mint(
             {
               network: NETWORK as NetworkName,
-              db: db!,
-              address: wallet.address,
+              db: commandImpl.mpt!,
+              address: commandImpl.wallet.address,
+              ordersUTxOs: ordersUtxosResult.data,
             },
             BLOCKFROST_API_KEY
           );
           if (txBuilderResult.ok) {
             if (
               await handleTx(
-                wallet,
+                commandImpl.wallet,
                 async () =>
                   await mayFailTransaction(
                     txBuilderResult.data,
-                    wallet.address,
-                    await wallet.utxos
+                    commandImpl.wallet.address,
+                    await commandImpl.wallet.utxos
                   ).complete()
               )
             )
-              return;
+              break;
           }
           break;
         }
-        case "clear": {
-          const { confirm } = await prompts({
-            name: "confirm",
-            type: "confirm",
-            message: "Are you sure you want to clear the database?",
-          });
-          if (confirm) {
-            await clear(storePath);
-            db = null;
-          }
+        default:
+        case "back": {
+          return false;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+};
+
+const main = async () => {
+  const commandImpl = new CommandImpl();
+
+  while (commandImpl.running) {
+    const mainAction = await prompts({
+      name: "action",
+      type: "select",
+      message: "Pick main action",
+      choices: makeMainActionsChoices(),
+    });
+
+    try {
+      switch (mainAction.action as MainActionsType) {
+        case "mpt": {
+          await doMPTActions(commandImpl);
+          break;
+        }
+        case "on-chain": {
+          await doOnChainActions(commandImpl);
           break;
         }
         case "exit":
-          exit = true;
+          commandImpl.running = false;
           break;
-        default:
-          console.log("Action aborted");
-          exit = true;
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
     }
   }
 };

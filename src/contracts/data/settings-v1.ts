@@ -23,6 +23,7 @@ const buildSettingsV1Data = (settings: SettingsV1): UplcData => {
     buildAddressData(settings.treasury_address as ShelleyAddress),
     makeIntData(settings.treasury_fee),
     makeIntData(settings.minter_fee),
+    buildAddressData(settings.pz_script_address as ShelleyAddress),
     makeByteArrayData(settings.order_script_hash),
     makeByteArrayData(settings.minting_data_script_hash),
   ]);
@@ -58,12 +59,16 @@ const decodeSettingsV1Data = (data: UplcData): SettingsV1 => {
     "minter_fee must be Int"
   ).value;
 
-  const order_script_hash = expectByteArrayData(
+  const pz_script_address = decodeAddressFromData(
     settingsV1ConstrData.fields[5]
+  );
+
+  const order_script_hash = expectByteArrayData(
+    settingsV1ConstrData.fields[6]
   ).toHex();
 
   const minting_data_script_hash = expectByteArrayData(
-    settingsV1ConstrData.fields[6]
+    settingsV1ConstrData.fields[7]
   ).toHex();
 
   return {
@@ -72,6 +77,7 @@ const decodeSettingsV1Data = (data: UplcData): SettingsV1 => {
     treasury_address,
     treasury_fee,
     minter_fee,
+    pz_script_address,
     order_script_hash,
     minting_data_script_hash,
   };
