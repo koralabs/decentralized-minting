@@ -97,12 +97,12 @@ validator {
         // check treasury output
         expect treasury_output.address == treasury_address
         expect treasury_output.datum == InlineDatum(Void)
-        expect treasury_output.reference_script == None
         expect value.lovelace_of(treasury_output.value) >= total_treasury_fee
+        expect treasury_output.reference_script == None
 
         // check minter output
-        expect value.lovelace_of(minter_output.value) >= total_minter_fee
         expect minter_output.datum == InlineDatum(Void)
+        expect value.lovelace_of(minter_output.value) >= total_minter_fee
         expect minter_output.reference_script == None
 
         // check minted handles

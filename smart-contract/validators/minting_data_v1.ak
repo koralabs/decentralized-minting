@@ -14,8 +14,8 @@ use decentralized_minting/settings_v1.{SettingsV1}
 
 const max_handle_length = 15
 
+// with out asset name label
 type Handle {
-  // with out asset name label
   Legacy(ByteArray)
   New(ByteArray)
 }
@@ -72,11 +72,11 @@ validator(god_verification_key_hash: VerificationKeyHash) {
     let (minting_data_input, MintingData { mpt_root_hash }) =
       find_minting_data(inputs)
 
-    // parse outputs
-    expect [minting_data_output, ..] = outputs
-
     when redeemer is {
       MintOrBurn(proofs) -> {
+        // parse outputs
+        expect [minting_data_output, ..] = outputs
+
         // expect proofs are not empty
         expect list.length(proofs) > 0
 
@@ -93,7 +93,11 @@ validator(god_verification_key_hash: VerificationKeyHash) {
 
         // check minting data output
         expect minting_data_output.address == minting_data_input.address
-        expect minting_data_output.value == minting_data_input.value
+        expect value.without_lovelace(minting_data_output.value) == value.zero()
+        expect
+          value.lovelace_of(minting_data_output.value) >= value.lovelace_of(
+            minting_data_input.value,
+          )
         expect
           minting_data_output.datum == InlineDatum(
             MintingData { mpt_root_hash: new_mpt_root_hash },
@@ -105,15 +109,9 @@ validator(god_verification_key_hash: VerificationKeyHash) {
 
         True
       }
-      GodMode -> {
-        // check minting data output
-        expect minting_data_output.address == minting_data_input.address
-        expect minting_data_output.value == minting_data_input.value
-        expect minting_data_output.reference_script == None
-
+      GodMode ->
         // must be signed by god
         list.has(extra_signatories, god_verification_key_hash)
-      }
     }
   }
 }

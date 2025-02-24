@@ -2,6 +2,18 @@ use aiken/transaction/credential.{Address}
 use aiken/transaction/value.{PolicyId}
 use common/hashes.{ScriptHash, VerificationKeyHash}
 
+// pub type Prices {
+//   common: Int,
+//   basic: Int,
+//   rare: Int,
+//   ultra_rare: Int,
+// }
+
+// pub type PriceSettingsV1 {
+//   previous_prices: Prices,
+//   current_prices: Prices,
+// }
+
 pub type SettingsV1 {
   policy_id: PolicyId,
   // anyone who buy minting credit will be listed here
@@ -23,3 +35,6 @@ pub type SettingsV1 {
 // When mint new handles
 // Collect orders from order script
 // minting data asset must be spent from minting data script
+//
+// TODO:
+// Add price data in settings V1
