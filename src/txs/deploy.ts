@@ -1,6 +1,9 @@
 import { bytesToHex } from "@helios-lang/codec-utils";
-import { NetworkName } from "@helios-lang/tx-utils";
-import { UplcProgramV2 } from "@helios-lang/uplc";
+import { makeTxOutputId, TxInput } from "@helios-lang/ledger";
+import { BlockfrostV0Client, NetworkName } from "@helios-lang/tx-utils";
+import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
+import { ScriptDetails } from "@koralabs/kora-labs-common";
+import { Err, Ok, Result } from "ts-res";
 
 import {
   buildContracts,
@@ -8,6 +11,8 @@ import {
   makeMintingDataV1UplcProgramParameterDatum,
   makeMintProxyUplcProgramParameterDatum,
 } from "../contracts/index.js";
+import { convertError, invariant } from "../helpers/index.js";
+import { fetchDeployedScript } from "../utils/contract.js";
 
 /**
  * @interface
@@ -113,5 +118,132 @@ const extractScriptCborsFromUplcProgram = (
   };
 };
 
-export type { DeployParams };
-export { deploy };
+interface DeployedScripts {
+  mintProxyScriptDetails: ScriptDetails;
+  mintProxyScriptTxInput: TxInput;
+  mintV1ScriptDetails: ScriptDetails;
+  mintV1ScriptTxInput: TxInput;
+  mintingDataProxyScriptDetails: ScriptDetails;
+  mintingDataProxyScriptTxInput: TxInput;
+  mintingDataV1ScriptDetails: ScriptDetails;
+  mintingDataV1ScriptTxInput: TxInput;
+  ordersScriptDetails: ScriptDetails;
+  ordersScriptTxInput: TxInput;
+}
+
+const fetchAllDeployedScripts = async (
+  network: NetworkName,
+  blockfrostV0Client: BlockfrostV0Client
+): Promise<Result<DeployedScripts, string>> => {
+  try {
+    const mintProxyScriptDetails = await fetchDeployedScript(
+      network,
+      "mint_proxy.mint"
+    );
+    invariant(
+      mintProxyScriptDetails.refScriptUtxo,
+      "Mint Proxy has no Ref script UTxO"
+    );
+    const mintProxyScriptTxInput = await blockfrostV0Client.getUtxo(
+      makeTxOutputId(mintProxyScriptDetails.refScriptUtxo)
+    );
+    if (mintProxyScriptDetails.unoptimizedCbor)
+      mintProxyScriptTxInput.output.refScript = (
+        mintProxyScriptTxInput.output.refScript as UplcProgramV2
+      )?.withAlt(
+        decodeUplcProgramV2FromCbor(mintProxyScriptDetails.unoptimizedCbor)
+      );
+
+    const mintV1ScriptDetails = await fetchDeployedScript(
+      network,
+      "mint_v1.withdraw"
+    );
+    invariant(
+      mintV1ScriptDetails.refScriptUtxo,
+      "Mint V1 has no Ref script UTxO"
+    );
+    const mintV1ScriptTxInput = await blockfrostV0Client.getUtxo(
+      makeTxOutputId(mintV1ScriptDetails.refScriptUtxo)
+    );
+    if (mintV1ScriptDetails.unoptimizedCbor)
+      mintV1ScriptTxInput.output.refScript = (
+        mintV1ScriptTxInput.output.refScript as UplcProgramV2
+      )?.withAlt(
+        decodeUplcProgramV2FromCbor(mintV1ScriptDetails.unoptimizedCbor)
+      );
+
+    const mintingDataProxyScriptDetails = await fetchDeployedScript(
+      network,
+      "minting_data_proxy.spend"
+    );
+    invariant(
+      mintingDataProxyScriptDetails.refScriptUtxo,
+      "Minting Data Proxy has no Ref script UTxO"
+    );
+    const mintingDataProxyScriptTxInput = await blockfrostV0Client.getUtxo(
+      makeTxOutputId(mintingDataProxyScriptDetails.refScriptUtxo)
+    );
+    if (mintingDataProxyScriptDetails.unoptimizedCbor)
+      mintingDataProxyScriptTxInput.output.refScript = (
+        mintingDataProxyScriptTxInput.output.refScript as UplcProgramV2
+      )?.withAlt(
+        decodeUplcProgramV2FromCbor(
+          mintingDataProxyScriptDetails.unoptimizedCbor
+        )
+      );
+
+    const mintingDataV1ScriptDetails = await fetchDeployedScript(
+      network,
+      "minting_data_v1.withdraw"
+    );
+    invariant(
+      mintingDataV1ScriptDetails.refScriptUtxo,
+      "Minting Data V1 has no Ref script UTxO"
+    );
+    const mintingDataV1ScriptTxInput = await blockfrostV0Client.getUtxo(
+      makeTxOutputId(mintingDataV1ScriptDetails.refScriptUtxo)
+    );
+    if (mintingDataV1ScriptDetails.unoptimizedCbor)
+      mintingDataV1ScriptTxInput.output.refScript = (
+        mintingDataV1ScriptTxInput.output.refScript as UplcProgramV2
+      )?.withAlt(
+        decodeUplcProgramV2FromCbor(mintingDataV1ScriptDetails.unoptimizedCbor)
+      );
+
+    const ordersScriptDetails = await fetchDeployedScript(
+      network,
+      "orders.spend"
+    );
+    invariant(
+      ordersScriptDetails.refScriptUtxo,
+      "Orders has no Ref script UTxO"
+    );
+    const ordersScriptTxInput = await blockfrostV0Client.getUtxo(
+      makeTxOutputId(ordersScriptDetails.refScriptUtxo)
+    );
+    if (ordersScriptDetails.unoptimizedCbor)
+      ordersScriptTxInput.output.refScript = (
+        ordersScriptTxInput.output.refScript as UplcProgramV2
+      )?.withAlt(
+        decodeUplcProgramV2FromCbor(ordersScriptDetails.unoptimizedCbor)
+      );
+
+    return Ok({
+      mintProxyScriptDetails,
+      mintProxyScriptTxInput,
+      mintV1ScriptDetails,
+      mintV1ScriptTxInput,
+      mintingDataProxyScriptDetails,
+      mintingDataProxyScriptTxInput,
+      mintingDataV1ScriptDetails,
+      mintingDataV1ScriptTxInput,
+      ordersScriptDetails,
+      ordersScriptTxInput,
+    });
+  } catch (err) {
+    return Err(convertError(err));
+  }
+};
+
+export type { DeployedScripts, DeployParams };
+export { deploy, fetchAllDeployedScripts };
