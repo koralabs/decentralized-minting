@@ -93,7 +93,10 @@ validator(god_verification_key_hash: VerificationKeyHash) {
 
         // check minting data output
         expect minting_data_output.address == minting_data_input.address
-        expect value.without_lovelace(minting_data_output.value) == value.zero()
+        expect
+          value.without_lovelace(minting_data_output.value) == value.without_lovelace(
+            minting_data_input.value,
+          )
         expect
           value.lovelace_of(minting_data_output.value) >= value.lovelace_of(
             minting_data_input.value,

@@ -8,7 +8,6 @@ import {
   makeStakingAddress,
   makeStakingValidatorHash,
   makeTxOutputId,
-  makeValidatorHash,
   makeValue,
   TxInput,
   TxOutputId,
@@ -204,13 +203,6 @@ const prepareNewMintTransaction = async (
     mintingDataProxyScriptTxInput,
     mintingDataV1ScriptTxInput,
     ordersScriptTxInput
-  );
-
-  console.log("Locked");
-  console.log(mintingDataTxInput.address);
-  console.log("Ref");
-  console.log(
-    makeValidatorHash(mintingDataProxyScriptTxInput.output.refScript!.hash())
   );
 
   // <-- spend minting data utxo
