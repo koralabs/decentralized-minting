@@ -1,4 +1,4 @@
-import { Store, Trie } from "@aiken-lang/merkle-patricia-forestry";
+import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import {
   Address,
   AssetClass,
@@ -8,6 +8,7 @@ import {
   makeStakingAddress,
   makeStakingValidatorHash,
   makeTxOutputId,
+  makeValidatorHash,
   makeValue,
   TxInput,
   TxOutputId,
@@ -38,7 +39,6 @@ import {
   getBlockfrostV0Client,
   getNetwork,
   invariant,
-  mayFailAsync,
 } from "../helpers/index.js";
 import { fetchDeployedScript } from "../utils/index.js";
 
@@ -47,7 +47,7 @@ import { fetchDeployedScript } from "../utils/index.js";
  * @typedef {object} PrepareNewMintParams
  * @property {Address} address Wallet Address to perform mint
  * @property {string[]} handles New Handles name to mint
- * @property {string} dbFolderPath Trie DB's Folder Path
+ * @property {Trie} db Trie DB
  * @property {AssetClass} settingsAssetClass De Mi Contract's Settings Asset Class
  * @property {TxOutputId} settingsAssetTxOutputId De Mi Contract's Settings Asset Tx Output ID
  * @property {AssetClass} mintingDataAssetClass De Mi Contract's Minting Data Asset Class
@@ -57,7 +57,7 @@ import { fetchDeployedScript } from "../utils/index.js";
 interface PrepareNewMintParams {
   address: Address;
   handles: string[];
-  dbFolderPath: string;
+  db: Trie;
   settingsAssetClass: AssetClass;
   settingsAssetTxOutputId: TxOutputId;
   mintingDataAssetClass: AssetClass;
@@ -86,7 +86,7 @@ const prepareNewMintTransaction = async (
   const {
     address,
     handles,
-    dbFolderPath,
+    db,
     settingsAssetClass,
     settingsAssetTxOutputId,
     mintingDataAssetClass,
@@ -98,14 +98,6 @@ const prepareNewMintTransaction = async (
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
-
-  // load trie db from path
-  const dbResult = await mayFailAsync(
-    async () => (await Trie.load(new Store(dbFolderPath))) as Trie
-  ).complete();
-  if (!dbResult.ok)
-    return Err(new Error(`Couldn't load DB Trie from ${dbFolderPath}`));
-  const db = dbResult.data;
 
   // fetch deployed scripts
   const fetchedResult = await fetchAllDeployedScripts(
@@ -149,7 +141,10 @@ const prepareNewMintTransaction = async (
   const { mintingData, mintingDataTxInput } = mintingDataResult.data;
 
   // check if current db trie hash is same as minting data root hash
-  if (!(mintingData.mpt_root_hash != db.hash.toString("hex"))) {
+  if (
+    mintingData.mpt_root_hash.toLowerCase() !=
+    db.hash.toString("hex").toLowerCase()
+  ) {
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
 
@@ -209,6 +204,13 @@ const prepareNewMintTransaction = async (
     mintingDataProxyScriptTxInput,
     mintingDataV1ScriptTxInput,
     ordersScriptTxInput
+  );
+
+  console.log("Locked");
+  console.log(mintingDataTxInput.address);
+  console.log("Ref");
+  console.log(
+    makeValidatorHash(mintingDataProxyScriptTxInput.output.refScript!.hash())
   );
 
   // <-- spend minting data utxo

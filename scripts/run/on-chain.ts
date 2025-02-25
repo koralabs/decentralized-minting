@@ -150,7 +150,7 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
             const txBuilderResult = await mint({
               address: makeAddress(address),
               ordersTxInputs: ordersTxInputsResult.data,
-              dbFolderPath: commandImpl.storePath,
+              db: commandImpl.mpt!,
               settingsAssetClass: SETTINGS_ASSET_CLASS,
               settingsAssetTxOutputId: SETTINGS_ASSET_TX_OUTPUT_ID,
               mintingDataAssetClass: MINTING_DATA_ASSET_CLASS,
@@ -176,6 +176,7 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
               console.error("\n");
             }
           },
+          disabled: !commandImpl.mpt,
         },
         {
           title: "back",

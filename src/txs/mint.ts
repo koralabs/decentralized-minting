@@ -1,3 +1,4 @@
+import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import { ByteArrayLike, IntLike } from "@helios-lang/codec-utils";
 import {
   Address,
@@ -30,7 +31,7 @@ import { prepareNewMintTransaction } from "./prepareNewMint.js";
  * @typedef {object} MintParams
  * @property {Address} address Wallet Address to perform mint
  * @property {TxInput[]} ordersTxInputs Orders UTxOs
- * @property {string} dbFolderPath Trie DB's Folder Path
+ * @property {Trie} db Trie DB
  * @property {AssetClass} settingsAssetClass De Mi Contract's Settings Asset Class
  * @property {TxOutputId} settingsAssetTxOutputId De Mi Contract's Settings Asset Tx Output ID
  * @property {AssetClass} mintingDataAssetClass De Mi Contract's Minting Data Asset Class
@@ -40,7 +41,7 @@ import { prepareNewMintTransaction } from "./prepareNewMint.js";
 interface MintParams {
   address: Address;
   ordersTxInputs: TxInput[];
-  dbFolderPath: string;
+  db: Trie;
   settingsAssetClass: AssetClass;
   settingsAssetTxOutputId: TxOutputId;
   mintingDataAssetClass: AssetClass;
@@ -51,7 +52,6 @@ interface MintParams {
 /**
  * @description Mint Handles from Order
  * @param {MintParams} params
- * @param {string} blockfrostApiKey Blockfrost API Key
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
 const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
