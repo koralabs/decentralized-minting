@@ -82,6 +82,17 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
           disabled: !commandImpl.mpt,
         },
         {
+          title: "staking-addresses",
+          description: "Staking Addresses to Register",
+          value: async () => {
+            const stakingAddresses = getStakingAddresses();
+            console.log("\n\n------- Staking Addresses To Register -------\n");
+            console.log(stakingAddresses);
+            console.log("\n");
+          },
+          disabled: !commandImpl.mpt,
+        },
+        {
           title: "request",
           description:
             "Request a new ADA handle by placing an order transaction on chain",
@@ -254,6 +265,25 @@ const buildMintingDataCbor = (db: Trie) => {
   return {
     cbor: bytesToHex(buildMintingData(mintingData).toCbor()),
     lockAddress: mintingDataProxyConfig.mintingDataProxyValidatorAddress,
+  };
+};
+
+const getStakingAddresses = () => {
+  const configs = GET_CONFIGS(NETWORK as NetworkName);
+  const { MINT_VERSION, GOD_VERIFICATION_KEY_HASH } = configs;
+
+  const contractsConfig = buildContracts({
+    network: NETWORK as NetworkName,
+    mint_version: MINT_VERSION,
+    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
+  });
+  const { mintV1: mintV1Config, mintingDataV1: mintingDataV1Config } =
+    contractsConfig;
+
+  return {
+    mintV1StakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
+    mintingDataV1StakingAddress:
+      mintingDataV1Config.mintingDataV1StakingAddress.toBech32(),
   };
 };
 
