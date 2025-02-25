@@ -21,9 +21,6 @@ export const MINTING_DATA_ASSET_CLASS = makeAssetClass(
   // "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14068616e646c65735f726f6f744068616e646c655f73657474696e6773"
   "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de140746573745f676f6c646479"
 );
-export const MINTING_DATA_ASSET_TX_OUTPUT_ID = makeTxOutputId(
-  "e0cbc1e6fc2071a548ed4c69f41d7f23025b5974c7785cb4ba5041a2e6344d51#0"
-);
 
 // allowed minters' verification key hash
 export const ALLOWED_MINTERS = [

@@ -35,7 +35,6 @@ import { prepareNewMintTransaction } from "./prepareNewMint.js";
  * @property {AssetClass} settingsAssetClass De Mi Contract's Settings Asset Class
  * @property {TxOutputId} settingsAssetTxOutputId De Mi Contract's Settings Asset Tx Output ID
  * @property {AssetClass} mintingDataAssetClass De Mi Contract's Minting Data Asset Class
- * @property {TxOutputId} mintingDataAssetTxOutputId De Mi Contract's Minting Data Asset Tx Output ID
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface MintParams {
@@ -45,7 +44,6 @@ interface MintParams {
   settingsAssetClass: AssetClass;
   settingsAssetTxOutputId: TxOutputId;
   mintingDataAssetClass: AssetClass;
-  mintingDataAssetTxOutputId: TxOutputId;
   blockfrostApiKey: string;
 }
 

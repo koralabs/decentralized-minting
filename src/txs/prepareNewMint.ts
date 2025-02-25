@@ -2,11 +2,13 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import {
   Address,
   AssetClass,
+  makeAddress,
   makeAssets,
   makeInlineTxOutputDatum,
   makePubKeyHash,
   makeStakingAddress,
   makeStakingValidatorHash,
+  makeValidatorHash,
   makeValue,
   TxOutputId,
 } from "@helios-lang/ledger";
@@ -36,7 +38,6 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
  * @property {AssetClass} settingsAssetClass De Mi Contract's Settings Asset Class
  * @property {TxOutputId} settingsAssetTxOutputId De Mi Contract's Settings Asset Tx Output ID
  * @property {AssetClass} mintingDataAssetClass De Mi Contract's Minting Data Asset Class
- * @property {TxOutputId} mintingDataAssetTxOutputId De Mi Contract's Minting Data Asset Tx Output ID
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareNewMintParams {
@@ -46,7 +47,6 @@ interface PrepareNewMintParams {
   settingsAssetClass: AssetClass;
   settingsAssetTxOutputId: TxOutputId;
   mintingDataAssetClass: AssetClass;
-  mintingDataAssetTxOutputId: TxOutputId;
   blockfrostApiKey: string;
 }
 
@@ -75,7 +75,6 @@ const prepareNewMintTransaction = async (
     settingsAssetClass,
     settingsAssetTxOutputId,
     mintingDataAssetClass,
-    mintingDataAssetTxOutputId,
     blockfrostApiKey,
   } = params;
   const network = getNetwork(blockfrostApiKey);
@@ -95,6 +94,7 @@ const prepareNewMintTransaction = async (
     mintProxyScriptTxInput,
     mintV1ScriptDetails,
     mintV1ScriptTxInput,
+    mintingDataProxyScriptDetails,
     mintingDataProxyScriptTxInput,
     mintingDataV1ScriptDetails,
     mintingDataV1ScriptTxInput,
@@ -114,9 +114,13 @@ const prepareNewMintTransaction = async (
     settingsV1;
 
   // fetch minting data
+  const mintingDataProxyAddress = makeAddress(
+    isMainnet,
+    makeValidatorHash(mintingDataProxyScriptDetails.validatorHash)
+  );
   const mintingDataResult = await fetchMintingData(
     mintingDataAssetClass,
-    mintingDataAssetTxOutputId,
+    mintingDataProxyAddress,
     blockfrostApiKey
   );
   if (!mintingDataResult.ok)

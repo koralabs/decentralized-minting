@@ -38,7 +38,6 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
     SETTINGS_ASSET_CLASS,
     SETTINGS_ASSET_TX_OUTPUT_ID,
     MINTING_DATA_ASSET_CLASS,
-    MINTING_DATA_ASSET_TX_OUTPUT_ID,
   } = configs;
 
   let finished: boolean = false;
@@ -165,7 +164,6 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
               settingsAssetClass: SETTINGS_ASSET_CLASS,
               settingsAssetTxOutputId: SETTINGS_ASSET_TX_OUTPUT_ID,
               mintingDataAssetClass: MINTING_DATA_ASSET_CLASS,
-              mintingDataAssetTxOutputId: MINTING_DATA_ASSET_TX_OUTPUT_ID,
               blockfrostApiKey: BLOCKFROST_API_KEY,
             });
             if (txBuilderResult.ok) {

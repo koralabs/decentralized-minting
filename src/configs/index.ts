@@ -1,4 +1,4 @@
-import { AssetClass, TxInput, TxOutputId } from "@helios-lang/ledger";
+import { Address, AssetClass, TxInput, TxOutputId } from "@helios-lang/ledger";
 import { Err, Ok, Result } from "ts-res";
 
 import {
@@ -70,14 +70,20 @@ const fetchSettings = async (
 
 const fetchMintingData = async (
   mintingDataAssetClass: AssetClass,
-  mintingDataAssetTxOutputId: TxOutputId,
+  mintingDataProxyAddress: Address,
   blockfrostApiKey: string
 ): Promise<
   Result<{ mintingData: MintingData; mintingDataTxInput: TxInput }, string>
 > => {
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
-  const mintingDataAssetUTxOResult = await mayFailAsync(() =>
-    blockfrostV0Client.getUtxo(mintingDataAssetTxOutputId)
+  const mintingDataAssetUTxOResult = await mayFailAsync(
+    async () =>
+      (
+        await blockfrostV0Client.getUtxosWithAssetClass(
+          mintingDataProxyAddress,
+          mintingDataAssetClass
+        )
+      )[0]!
   ).complete();
   if (!mintingDataAssetUTxOResult.ok)
     return Err(
