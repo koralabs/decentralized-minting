@@ -7,7 +7,7 @@ import {
 } from "@helios-lang/uplc";
 
 import { Handle, Proof } from "../types/index.js";
-import { buildMPTProofData } from "./mpf.js";
+import { buildMPTProofData } from "./mpt.js";
 
 const buildHandleData = (handle: Handle): UplcData => {
   if (handle.type == "legacy") {

@@ -53,3 +53,5 @@ export {
   createAlwaysFailUplcProgram,
   fetchNetworkParameters,
 };
+
+export * from "./contract.js";

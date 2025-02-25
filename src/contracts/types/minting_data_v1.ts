@@ -1,4 +1,4 @@
-import { MPTProof } from "./mpf.js";
+import { MPTProof } from "./mpt.js";
 
 type LegacyHandle = {
   type: "legacy";

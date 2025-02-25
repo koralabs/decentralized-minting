@@ -1,4 +1,5 @@
 import { ShelleyAddress } from "@helios-lang/ledger";
+import { NetworkName } from "@helios-lang/tx-utils";
 import {
   expectByteArrayData,
   expectConstrData,
@@ -29,7 +30,10 @@ const buildSettingsV1Data = (settings: SettingsV1): UplcData => {
   ]);
 };
 
-const decodeSettingsV1Data = (data: UplcData): SettingsV1 => {
+const decodeSettingsV1Data = (
+  data: UplcData,
+  network: NetworkName
+): SettingsV1 => {
   const settingsV1ConstrData = expectConstrData(data, 0, 8);
 
   const policy_id = expectByteArrayData(
@@ -46,7 +50,8 @@ const decodeSettingsV1Data = (data: UplcData): SettingsV1 => {
   );
 
   const treasury_address = decodeAddressFromData(
-    settingsV1ConstrData.fields[2]
+    settingsV1ConstrData.fields[2],
+    network
   );
 
   const treasury_fee = expectIntData(
@@ -60,7 +65,8 @@ const decodeSettingsV1Data = (data: UplcData): SettingsV1 => {
   ).value;
 
   const pz_script_address = decodeAddressFromData(
-    settingsV1ConstrData.fields[5]
+    settingsV1ConstrData.fields[5],
+    network
   );
 
   const order_script_hash = expectByteArrayData(

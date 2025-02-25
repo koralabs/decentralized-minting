@@ -1,7 +1,8 @@
 import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
 
 import { invariant } from "../helpers/index.js";
-import blueprint from "./blueprint.js";
+import optimizedBlueprint from "./optimized-blueprint.js";
+import unOptimizedBlueprint from "./unoptimized-blueprint.js";
 import {
   makeMintingDataProxyUplcProgramParameter,
   makeMintingDataV1UplcProgramParameter,
@@ -9,54 +10,104 @@ import {
 } from "./utils.js";
 
 const getMintProxyMintUplcProgram = (mint_version: bigint): UplcProgramV2 => {
-  const foundValidator = blueprint.validators.find(
+  const optimizedFoundValidator = optimizedBlueprint.validators.find(
     (validator) => validator.title == "mint_proxy.mint"
   );
-  invariant(foundValidator, "Mint Proxy Mint Validator not found");
-  return decodeUplcProgramV2FromCbor(foundValidator.compiledCode).apply(
-    makeMintProxyUplcProgramParameter(mint_version)
+  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
+    (validator) => validator.title == "mint_proxy.mint"
   );
+  invariant(
+    !!optimizedFoundValidator && !!unOptimizedFoundValidator,
+    "Mint Proxy Mint Validator not found"
+  );
+  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
+    .apply(makeMintProxyUplcProgramParameter(mint_version))
+    .withAlt(
+      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
+        makeMintProxyUplcProgramParameter(mint_version)
+      )
+    );
 };
 
 const getMintV1WithdrawUplcProgram = (): UplcProgramV2 => {
-  const foundValidator = blueprint.validators.find(
+  const optimizedFoundValidator = optimizedBlueprint.validators.find(
     (validator) => validator.title == "mint_v1.withdraw"
   );
-  invariant(foundValidator, "Mint V1 Withdraw Validator not found");
-  return decodeUplcProgramV2FromCbor(foundValidator.compiledCode);
+  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
+    (validator) => validator.title == "mint_v1.withdraw"
+  );
+  invariant(
+    !!optimizedFoundValidator && unOptimizedFoundValidator,
+    "Mint V1 Withdraw Validator not found"
+  );
+  return decodeUplcProgramV2FromCbor(
+    optimizedFoundValidator.compiledCode
+  ).withAlt(
+    decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode)
+  );
 };
 
 const getMintingDataProxySpendUplcProgram = (
   minting_data_governor: string
 ): UplcProgramV2 => {
-  const foundValidator = blueprint.validators.find(
+  const optimizedFoundValidator = optimizedBlueprint.validators.find(
     (validator) => validator.title == "minting_data_proxy.spend"
   );
-  invariant(foundValidator, "Minting Data Proxy Spend Validator not found");
-  return decodeUplcProgramV2FromCbor(foundValidator.compiledCode).apply(
-    makeMintingDataProxyUplcProgramParameter(minting_data_governor)
+  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
+    (validator) => validator.title == "minting_data_proxy.spend"
   );
+  invariant(
+    !!optimizedFoundValidator && !!unOptimizedFoundValidator,
+    "Minting Data Proxy Spend Validator not found"
+  );
+  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
+    .apply(makeMintingDataProxyUplcProgramParameter(minting_data_governor))
+    .withAlt(
+      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
+        makeMintingDataProxyUplcProgramParameter(minting_data_governor)
+      )
+    );
 };
 
 // this is `minting_data_governor`
 const getMintingDataV1WithdrawUplcProgram = (
   god_verification_key_hash: string
 ): UplcProgramV2 => {
-  const foundValidator = blueprint.validators.find(
+  const optimizedFoundValidator = optimizedBlueprint.validators.find(
     (validator) => validator.title == "minting_data_v1.withdraw"
   );
-  invariant(foundValidator, "Minting Data V1 Withdraw Validator not found");
-  return decodeUplcProgramV2FromCbor(foundValidator.compiledCode).apply(
-    makeMintingDataV1UplcProgramParameter(god_verification_key_hash)
+  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
+    (validator) => validator.title == "minting_data_v1.withdraw"
   );
+  invariant(
+    !!optimizedFoundValidator && !!unOptimizedFoundValidator,
+    "Minting Data V1 Withdraw Validator not found"
+  );
+  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
+    .apply(makeMintingDataV1UplcProgramParameter(god_verification_key_hash))
+    .withAlt(
+      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
+        makeMintingDataV1UplcProgramParameter(god_verification_key_hash)
+      )
+    );
 };
 
 const getOrdersSpendUplcProgram = (): UplcProgramV2 => {
-  const foundValidator = blueprint.validators.find(
+  const optimizedFoundValidator = optimizedBlueprint.validators.find(
     (validator) => validator.title == "orders.spend"
   );
-  invariant(foundValidator, "Orders Spend Validator not found");
-  return decodeUplcProgramV2FromCbor(foundValidator.compiledCode);
+  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
+    (validator) => validator.title == "orders.spend"
+  );
+  invariant(
+    !!optimizedFoundValidator && !!unOptimizedFoundValidator,
+    "Orders Spend Validator not found"
+  );
+  return decodeUplcProgramV2FromCbor(
+    optimizedFoundValidator.compiledCode
+  ).withAlt(
+    decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode)
+  );
 };
 
 export {

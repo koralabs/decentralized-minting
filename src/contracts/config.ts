@@ -101,7 +101,7 @@ const buildContracts = (params: BuildContractsParams) => {
       mintV1StakingAddress,
       mintV1RegistrationDCert,
     },
-    mintingData: {
+    mintingDataProxy: {
       mintingDataProxySpendUplcProgram,
       mintingDataProxyValidatorHash,
       mintingDataProxyValidatorAddress,
