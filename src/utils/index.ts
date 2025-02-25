@@ -1,6 +1,7 @@
 import { BlockFrostAPI } from "@blockfrost/blockfrost-js";
 import { NetworkParams } from "@helios-lang/ledger";
 import { NetworkName } from "@helios-lang/tx-utils";
+import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
 import { Result } from "ts-res";
 
 import { mayFailAsync } from "../helpers/index.js";
@@ -35,4 +36,22 @@ const checkAccountRegistrationStatus = async (
   }
 };
 
-export { checkAccountRegistrationStatus, fetchNetworkParameters };
+const createAlwaysFailUplcProgram = (): UplcProgramV2 => {
+  const header = "5839010000322253330033371e9101203";
+  const body = Array.from({ length: 63 }, () =>
+    Math.floor(Math.random() * 10)
+  ).join("");
+  const footer = "0048810014984d9595cd01";
+  const compiledCode = `${header}${body}${footer}`;
+  const program = decodeUplcProgramV2FromCbor(compiledCode);
+
+  return program;
+};
+
+export {
+  checkAccountRegistrationStatus,
+  createAlwaysFailUplcProgram,
+  fetchNetworkParameters,
+};
+
+export * from "./contract.js";

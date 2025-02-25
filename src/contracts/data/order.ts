@@ -1,4 +1,5 @@
 import { TxOutputDatum } from "@helios-lang/ledger";
+import { NetworkName } from "@helios-lang/tx-utils";
 import {
   expectByteArrayData,
   expectConstrData,
@@ -9,29 +10,28 @@ import {
 
 import { invariant } from "../../helpers/index.js";
 import { Destination, OrderDatum } from "../types/index.js";
-import {
-  buildAddressData,
-  buildDatumData,
-  decodeAddressFromData,
-  decodeDatumFromData,
-} from "./common.js";
+import { buildAddressData, decodeAddressFromData } from "./common.js";
 
-const decodeDestinationFromData = (data: UplcData): Destination => {
-  const constrData = expectConstrData(data, 0, 2);
-  const address = decodeAddressFromData(constrData.fields[0]);
-  const datum = decodeDatumFromData(constrData.fields[1]);
+const decodeDestinationFromData = (
+  data: UplcData,
+  network: NetworkName
+): Destination => {
+  const constrData = expectConstrData(data, 0, 1);
+  const address = decodeAddressFromData(constrData.fields[0], network);
   return {
     address,
-    datum,
   };
 };
 
 const buildDestinationData = (destination: Destination): UplcData => {
-  const { address, datum } = destination;
-  return makeConstrData(0, [buildAddressData(address), buildDatumData(datum)]);
+  const { address } = destination;
+  return makeConstrData(0, [buildAddressData(address)]);
 };
 
-const decodeOrderDatum = (datum: TxOutputDatum | undefined): OrderDatum => {
+const decodeOrderDatum = (
+  datum: TxOutputDatum | undefined,
+  network: NetworkName
+): OrderDatum => {
   invariant(
     datum?.kind == "InlineTxOutputDatum",
     "OrderDatum must be inline datum"
@@ -43,7 +43,10 @@ const decodeOrderDatum = (datum: TxOutputDatum | undefined): OrderDatum => {
   const requested_handle = expectByteArrayData(
     orderConstrData.fields[1]
   ).toHex();
-  const destination = decodeDestinationFromData(orderConstrData.fields[2]);
+  const destination = decodeDestinationFromData(
+    orderConstrData.fields[2],
+    network
+  );
 
   return {
     owner,

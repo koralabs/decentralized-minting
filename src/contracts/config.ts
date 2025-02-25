@@ -1,6 +1,5 @@
 import {
   makeAddress,
-  makeAssetClass,
   makeMintingPolicyHash,
   makeRegistrationDCert,
   makeStakingAddress,
@@ -9,23 +8,25 @@ import {
 } from "@helios-lang/ledger";
 import { NetworkName } from "@helios-lang/tx-utils";
 
-import { GET_CONFIGS } from "../configs/index.js";
 import {
+  getMintingDataProxySpendUplcProgram,
+  getMintingDataV1WithdrawUplcProgram,
   getMintProxyMintUplcProgram,
   getMintV1WithdrawUplcProgram,
-  getOrderSpendUplcProgram,
-  getSettingsProxyMintUplcProgram,
-  getSettingsProxySpendUplcProgram,
-  getSettingsV1StakeUplcProgram,
+  getOrdersSpendUplcProgram,
 } from "./validators.js";
 
 /**
  * @interface
  * @typedef {object} BuildContractsParams
  * @property {NetworkName} network Cardano Network
+ * @property {bigint} mint_version De-Mi version
+ * @property {string} god_verification_key_hash God Verification Key Hash
  */
 interface BuildContractsParams {
   network: NetworkName;
+  mint_version: bigint;
+  god_verification_key_hash: string;
 }
 
 /**
@@ -34,57 +35,20 @@ interface BuildContractsParams {
  * @returns All Contracts
  */
 const buildContracts = (params: BuildContractsParams) => {
-  const { network } = params;
-  const configs = GET_CONFIGS(network);
-  const { INITIAL_TX_OUTPUT_ID, SETTINGS_UTF8_ASSET_NAME } = configs;
+  const { network, mint_version, god_verification_key_hash } = params;
   const isMainnet = network == "mainnet";
 
-  const settingsProxySpendUplcProgram =
-    getSettingsProxySpendUplcProgram(INITIAL_TX_OUTPUT_ID);
-  const settingsProxyMintUplcProgram =
-    getSettingsProxyMintUplcProgram(INITIAL_TX_OUTPUT_ID);
-  const settingsProxyPolicyHash = makeMintingPolicyHash(
-    settingsProxyMintUplcProgram.hash()
-  );
-  const settingsProxyAssetClass = makeAssetClass(
-    settingsProxyPolicyHash,
-    Buffer.from(SETTINGS_UTF8_ASSET_NAME)
-  );
-  const settingsProxyScriptAddress = makeAddress(
-    isMainnet,
-    makeValidatorHash(settingsProxyMintUplcProgram.hash())
-  );
+  const ordersSpendUplcProgram = getOrdersSpendUplcProgram();
+  const ordersValidatorHash = makeValidatorHash(ordersSpendUplcProgram.hash());
+  const ordersValidatorAddress = makeAddress(isMainnet, ordersValidatorHash);
 
-  const settingsV1StakeUplcProgram = getSettingsV1StakeUplcProgram();
-  const settingsV1ValidatorHash = makeValidatorHash(
-    settingsV1StakeUplcProgram.hash()
-  );
-  const settingsV1StakingAddress = makeStakingAddress(
-    isMainnet,
-    makeStakingValidatorHash(settingsV1StakeUplcProgram.hash())
-  );
-  const settingsV1RegistrationDCert = makeRegistrationDCert(
-    settingsV1StakingAddress.stakingCredential
-  );
-
-  const orderSpendUplcProgram = getOrderSpendUplcProgram(
-    settingsProxyPolicyHash.toHex()
-  );
-  const orderScriptHash = makeValidatorHash(orderSpendUplcProgram.hash());
-  const orderScriptAddress = makeAddress(isMainnet, orderScriptHash);
-
-  const mintProxyMintUplcProgram = getMintProxyMintUplcProgram(
-    settingsProxyPolicyHash.toHex()
-  );
+  const mintProxyMintUplcProgram = getMintProxyMintUplcProgram(mint_version);
   const mintProxyPolicyHash = makeMintingPolicyHash(
     mintProxyMintUplcProgram.hash()
   );
   const handlePolicyHash = mintProxyPolicyHash;
 
-  const mintV1WithdrawUplcProgram = getMintV1WithdrawUplcProgram(
-    settingsProxyPolicyHash.toHex(),
-    orderScriptHash.toHex()
-  );
+  const mintV1WithdrawUplcProgram = getMintV1WithdrawUplcProgram();
   const mintV1ValiatorHash = makeValidatorHash(
     mintV1WithdrawUplcProgram.hash()
   );
@@ -96,24 +60,36 @@ const buildContracts = (params: BuildContractsParams) => {
     mintV1StakingAddress.stakingCredential
   );
 
+  const mintingDataV1WithdrawUplcProgram = getMintingDataV1WithdrawUplcProgram(
+    god_verification_key_hash
+  );
+  const mintingDataV1ValidatorHash = makeValidatorHash(
+    mintingDataV1WithdrawUplcProgram.hash()
+  );
+  const mintingDataV1StakingAddress = makeStakingAddress(
+    isMainnet,
+    makeStakingValidatorHash(mintingDataV1WithdrawUplcProgram.hash())
+  );
+  const mintingDataV1RegistrationDCert = makeRegistrationDCert(
+    mintingDataV1StakingAddress.stakingCredential
+  );
+
+  const mintingDataProxySpendUplcProgram = getMintingDataProxySpendUplcProgram(
+    mintingDataV1ValidatorHash.toHex()
+  );
+  const mintingDataProxyValidatorHash = makeValidatorHash(
+    mintingDataProxySpendUplcProgram.hash()
+  );
+  const mintingDataProxyValidatorAddress = makeAddress(
+    isMainnet,
+    mintingDataProxyValidatorHash
+  );
+
   return {
-    settingsProxy: {
-      settingsProxySpendUplcProgram,
-      settingsProxyMintUplcProgram,
-      settingsProxyPolicyHash,
-      settingsProxyAssetClass,
-      settingsProxyScriptAddress,
-    },
-    settingsV1: {
-      settingsV1StakeUplcProgram,
-      settingsV1ValidatorHash,
-      settingsV1StakingAddress,
-      settingsV1RegistrationDCert,
-    },
-    order: {
-      orderSpendUplcProgram,
-      orderScriptHash,
-      orderScriptAddress,
+    orders: {
+      ordersSpendUplcProgram,
+      ordersValidatorHash,
+      ordersValidatorAddress,
     },
     mintProxy: {
       mintProxyMintUplcProgram,
@@ -124,6 +100,17 @@ const buildContracts = (params: BuildContractsParams) => {
       mintV1ValiatorHash,
       mintV1StakingAddress,
       mintV1RegistrationDCert,
+    },
+    mintingDataProxy: {
+      mintingDataProxySpendUplcProgram,
+      mintingDataProxyValidatorHash,
+      mintingDataProxyValidatorAddress,
+    },
+    mintingDataV1: {
+      mintingDataV1WithdrawUplcProgram,
+      mintingDataV1ValidatorHash,
+      mintingDataV1StakingAddress,
+      mintingDataV1RegistrationDCert,
     },
     handlePolicyHash,
   };

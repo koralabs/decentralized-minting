@@ -1,64 +1,60 @@
-import { TxOutputId } from "@helios-lang/ledger";
+import {
+  InlineTxOutputDatum,
+  makeInlineTxOutputDatum,
+} from "@helios-lang/ledger";
 import {
   makeByteArrayData,
-  makeConstrData,
   makeIntData,
+  makeListData,
   makeUplcDataValue,
   UplcValue,
 } from "@helios-lang/uplc";
 
-const makeMintProxyMintUplcProgramParameter = (
-  settingsPolicyId: string
+const makeMintProxyUplcProgramParameter = (
+  mint_version: bigint
 ): UplcValue[] => {
-  return [makeUplcDataValue(makeByteArrayData(settingsPolicyId))];
+  return [makeUplcDataValue(makeIntData(mint_version))];
 };
 
-const makeMintV1WithdrawUplcProgramParamter = (
-  settingsPolicyId: string,
-  orderScriptHash: string
-): UplcValue[] => {
-  return [
-    makeUplcDataValue(makeByteArrayData(settingsPolicyId)),
-    makeUplcDataValue(makeByteArrayData(orderScriptHash)),
-  ];
+const makeMintProxyUplcProgramParameterDatum = (
+  mint_version: bigint
+): InlineTxOutputDatum => {
+  return makeInlineTxOutputDatum(makeListData([makeIntData(mint_version)]));
 };
 
-const makeOrderSpendUplcProgramParameter = (
-  settingsPolicyId: string
+const makeMintingDataProxyUplcProgramParameter = (
+  minting_data_governor: string
 ): UplcValue[] => {
-  return [makeUplcDataValue(makeByteArrayData(settingsPolicyId))];
+  return [makeUplcDataValue(makeByteArrayData(minting_data_governor))];
 };
 
-const makeSettingsProxySpendUplcProgramParamter = (
-  initialTxOutputId: TxOutputId
-): UplcValue[] => {
-  return [
-    makeUplcDataValue(
-      makeConstrData(0, [
-        makeConstrData(0, [makeByteArrayData(initialTxOutputId.txId.toHex())]),
-        makeIntData(initialTxOutputId.index),
-      ])
-    ),
-  ];
+const makeMintingDataProxyUplcProgramParameterDatum = (
+  minting_data_governor: string
+): InlineTxOutputDatum => {
+  return makeInlineTxOutputDatum(
+    makeListData([makeByteArrayData(minting_data_governor)])
+  );
 };
 
-const makeSettingsProxyMintUplcProgramParamter = (
-  initialTxOutputId: TxOutputId
+const makeMintingDataV1UplcProgramParameter = (
+  god_verification_key_hash: string
 ): UplcValue[] => {
-  return [
-    makeUplcDataValue(
-      makeConstrData(0, [
-        makeConstrData(0, [makeByteArrayData(initialTxOutputId.txId.toHex())]),
-        makeIntData(initialTxOutputId.index),
-      ])
-    ),
-  ];
+  return [makeUplcDataValue(makeByteArrayData(god_verification_key_hash))];
+};
+
+const makeMintingDataV1UplcProgramParameterDatum = (
+  god_verification_key_hash: string
+): InlineTxOutputDatum => {
+  return makeInlineTxOutputDatum(
+    makeListData([makeByteArrayData(god_verification_key_hash)])
+  );
 };
 
 export {
-  makeMintProxyMintUplcProgramParameter,
-  makeMintV1WithdrawUplcProgramParamter,
-  makeOrderSpendUplcProgramParameter,
-  makeSettingsProxyMintUplcProgramParamter,
-  makeSettingsProxySpendUplcProgramParamter,
+  makeMintingDataProxyUplcProgramParameter,
+  makeMintingDataProxyUplcProgramParameterDatum,
+  makeMintingDataV1UplcProgramParameter,
+  makeMintingDataV1UplcProgramParameterDatum,
+  makeMintProxyUplcProgramParameter,
+  makeMintProxyUplcProgramParameterDatum,
 };

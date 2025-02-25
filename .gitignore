@@ -55,10 +55,10 @@ node_modules/
 .pnp.*
 
 # merkle patricia tree db
-# *-db/
+*-db/
 
 # env files
 .env*.local
 
 # out dir
-lib/
+/lib/

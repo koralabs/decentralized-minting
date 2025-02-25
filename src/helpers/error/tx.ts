@@ -71,7 +71,7 @@ const mayFailTransaction = (
           ...makeBasicUplcLogger(),
           logPrint: (msg: string) => logs.push(msg),
         };
-        if (logger.reset) logger.reset("build");
+        if (logger.reset) logger.reset("validate");
         try {
           const tx = await txBuilder.buildUnsafe({
             changeAddress,
