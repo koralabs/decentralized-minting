@@ -6,7 +6,7 @@ use aiken/transaction/value.{PolicyId, Value}
 use common/cip68.{prefix_100, prefix_222}
 use common/hashes.{VerificationKeyHash}
 use decentralized_minting/constants.{
-  legacy_policy_id, mpt_legacy_handle_value, mpt_new_handle_value,
+  mpt_legacy_handle_value, mpt_new_handle_value,
 }
 use decentralized_minting/minting_data.{MintingData, find_minting_data}
 use decentralized_minting/settings.{Settings, find_settings}
@@ -40,14 +40,19 @@ type MintingDataV1Redeemer {
 // which is referred to as `minting_data_governor` in minting_data_proxy spending script
 // This validator contains logic to check
 // mpt_root_hash is correctly updated compared to actual minted assets (both legacy and new handles)
+// ======= Parameters =======
 // `god_verification_key_hash` has the authority to spend minting_data_asset
 // without actually minting assets
+// `legacy_policy_id`: Legacy Handle's Policy ID
 //
 // TODO:
 // For now disable sub_handle minting
 // because sub handle logic is not implemented yet
 //
-validator(god_verification_key_hash: VerificationKeyHash) {
+validator(
+  legacy_policy_id: PolicyId,
+  god_verification_key_hash: VerificationKeyHash,
+) {
   fn withdraw(redeemer: MintingDataV1Redeemer, ctx: ScriptContext) -> Bool {
     let ScriptContext(
       Transaction {
@@ -143,7 +148,13 @@ fn all_proofs_are_valid(
         rest_proofs,
         update_root(root, handle_name, mpt_handle_value, amount, mpt_proof),
         new_policy_id,
-        update_mint_value(expected_mint_value, new_policy_id, handle, amount),
+        update_mint_value(
+          expected_mint_value,
+          legacy_policy_id,
+          new_policy_id,
+          handle,
+          amount,
+        ),
         continuation,
       )
     }
@@ -170,6 +181,7 @@ fn update_root(
 
 fn update_mint_value(
   mint_value: Value,
+  legacy_policy_id: PolicyId,
   new_policy_id: PolicyId,
   handle: Handle,
   amount: Int,
