@@ -15,6 +15,9 @@ export const NETWORK_HOST =
 export const HANDLE_API_ENDPOINT =
   process.env.HANDLE_API_ENDPOINT || `https://${NETWORK_HOST}api.handle.me`;
 
+export const LEGACY_POLICY_ID =
+  "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a";
+
 /// (100) Reference Token Prefix
 export const PREFIX_100 = "000643b0";
 

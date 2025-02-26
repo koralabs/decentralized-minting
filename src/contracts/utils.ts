@@ -37,16 +37,24 @@ const makeMintingDataProxyUplcProgramParameterDatum = (
 };
 
 const makeMintingDataV1UplcProgramParameter = (
+  legacy_policy_id: string,
   god_verification_key_hash: string
 ): UplcValue[] => {
-  return [makeUplcDataValue(makeByteArrayData(god_verification_key_hash))];
+  return [
+    makeUplcDataValue(makeByteArrayData(legacy_policy_id)),
+    makeUplcDataValue(makeByteArrayData(god_verification_key_hash)),
+  ];
 };
 
 const makeMintingDataV1UplcProgramParameterDatum = (
+  legacy_policy_id: string,
   god_verification_key_hash: string
 ): InlineTxOutputDatum => {
   return makeInlineTxOutputDatum(
-    makeListData([makeByteArrayData(god_verification_key_hash)])
+    makeListData([
+      makeByteArrayData(legacy_policy_id),
+      makeByteArrayData(god_verification_key_hash),
+    ])
   );
 };
 

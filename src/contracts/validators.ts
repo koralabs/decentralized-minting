@@ -71,6 +71,7 @@ const getMintingDataProxySpendUplcProgram = (
 
 // this is `minting_data_governor`
 const getMintingDataV1WithdrawUplcProgram = (
+  legacy_policy_id: string,
   god_verification_key_hash: string
 ): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
@@ -84,10 +85,18 @@ const getMintingDataV1WithdrawUplcProgram = (
     "Minting Data V1 Withdraw Validator not found"
   );
   return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
-    .apply(makeMintingDataV1UplcProgramParameter(god_verification_key_hash))
+    .apply(
+      makeMintingDataV1UplcProgramParameter(
+        legacy_policy_id,
+        god_verification_key_hash
+      )
+    )
     .withAlt(
       decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
-        makeMintingDataV1UplcProgramParameter(god_verification_key_hash)
+        makeMintingDataV1UplcProgramParameter(
+          legacy_policy_id,
+          god_verification_key_hash
+        )
       )
     );
 };
