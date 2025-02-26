@@ -6,15 +6,14 @@ import {
 
 // De-Mi contract config
 export const MINT_VERSION = 0n;
+export const LEGACY_POLICY_ID =
+  "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a";
 export const GOD_VERIFICATION_KEY_HASH =
   "633a0061fcdb8aca5b86ef3a177fdcb0c178ccca3066b0be7197f3a1";
 
 export const SETTINGS_ASSET_CLASS = makeAssetClass(
   // "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14064656d694068616e646c655f73657474696e6773"
   "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de140676f6c646479646576"
-);
-export const SETTINGS_ASSET_TX_OUTPUT_ID = makeTxOutputId(
-  "71af22df6c91ccb67358056304de362335452740ffb5c05e4265ca1fe900d090#0"
 );
 
 export const MINTING_DATA_ASSET_CLASS = makeAssetClass(
@@ -37,3 +36,9 @@ export const PZ_SCRIPT_ADDRESS = makeAddress(
 
 export const TREASURY_FEE = 2_000_000n;
 export const MINTER_FEE = 2_000_000n;
+
+// After when settings asset is deploy
+// set tx output id
+export const SETTINGS_ASSET_TX_OUTPUT_ID = makeTxOutputId(
+  "71af22df6c91ccb67358056304de362335452740ffb5c05e4265ca1fe900d090#0"
+);

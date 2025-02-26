@@ -4,6 +4,9 @@ import { CONTRACT_NAMES } from "constants/index.js";
 
 import { allDeployedScripts } from "../deployed/index.js";
 
+// TODO:
+// we will fetch this from api.handle.me/scripts?type=contract-type
+
 const fetchDeployedScript = async (
   network: NetworkName,
   contractName: string

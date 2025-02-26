@@ -137,6 +137,7 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   for (const mintingHandle of mintingHandlesData) {
     txBuilder
       .spendUnsafe(mintingHandle.orderTxInput, buildOrderExecuteRedeemer())
+      // Add Personalization Datum
       .payUnsafe(settingsV1.pz_script_address, mintingHandle.refHandleValue)
       .payUnsafe(
         mintingHandle.destinationAddress,

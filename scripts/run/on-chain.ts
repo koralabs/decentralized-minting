@@ -204,6 +204,7 @@ const buildSettingsDataCbor = () => {
   const configs = GET_CONFIGS(NETWORK as NetworkName);
   const {
     MINT_VERSION,
+    LEGACY_POLICY_ID,
     GOD_VERIFICATION_KEY_HASH,
     ALLOWED_MINTERS,
     TREASURY_ADDRESS,
@@ -215,6 +216,7 @@ const buildSettingsDataCbor = () => {
   const contractsConfig = buildContracts({
     network: NETWORK as NetworkName,
     mint_version: MINT_VERSION,
+    legacy_policy_id: LEGACY_POLICY_ID,
     god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
   const {
@@ -246,11 +248,12 @@ const buildSettingsDataCbor = () => {
 
 const buildMintingDataCbor = (db: Trie) => {
   const configs = GET_CONFIGS(NETWORK as NetworkName);
-  const { MINT_VERSION, GOD_VERIFICATION_KEY_HASH } = configs;
+  const { MINT_VERSION, LEGACY_POLICY_ID, GOD_VERIFICATION_KEY_HASH } = configs;
 
   const contractsConfig = buildContracts({
     network: NETWORK as NetworkName,
     mint_version: MINT_VERSION,
+    legacy_policy_id: LEGACY_POLICY_ID,
     god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
   const { mintingDataProxy: mintingDataProxyConfig } = contractsConfig;
@@ -268,11 +271,12 @@ const buildMintingDataCbor = (db: Trie) => {
 
 const getStakingAddresses = () => {
   const configs = GET_CONFIGS(NETWORK as NetworkName);
-  const { MINT_VERSION, GOD_VERIFICATION_KEY_HASH } = configs;
+  const { MINT_VERSION, LEGACY_POLICY_ID, GOD_VERIFICATION_KEY_HASH } = configs;
 
   const contractsConfig = buildContracts({
     network: NETWORK as NetworkName,
     mint_version: MINT_VERSION,
+    legacy_policy_id: LEGACY_POLICY_ID,
     god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
   const { mintV1: mintV1Config, mintingDataV1: mintingDataV1Config } =
@@ -287,7 +291,7 @@ const getStakingAddresses = () => {
 
 const doDeployActions = async () => {
   const configs = GET_CONFIGS(NETWORK as NetworkName);
-  const { MINT_VERSION, GOD_VERIFICATION_KEY_HASH } = configs;
+  const { MINT_VERSION, LEGACY_POLICY_ID, GOD_VERIFICATION_KEY_HASH } = configs;
 
   let finished: boolean = false;
   while (!finished) {
@@ -304,6 +308,7 @@ const doDeployActions = async () => {
               network: NETWORK as NetworkName,
               contractName: contract,
               mintVersion: MINT_VERSION,
+              legacyPolicyId: LEGACY_POLICY_ID,
               godVerificationKeyHash: GOD_VERIFICATION_KEY_HASH,
             });
             const { filepath } = await prompts({

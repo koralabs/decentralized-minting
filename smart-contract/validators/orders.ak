@@ -21,6 +21,7 @@ validator {
       purpose,
     ) = ctx
     expect Spend(_) = purpose
+
     when redeemer is {
       Cancel -> {
         expect owner: multisig.MultisigScript = datum.owner

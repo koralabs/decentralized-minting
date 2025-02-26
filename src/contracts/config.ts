@@ -21,11 +21,13 @@ import {
  * @typedef {object} BuildContractsParams
  * @property {NetworkName} network Cardano Network
  * @property {bigint} mint_version De-Mi version
+ * @property {string} legacy_policy_id Legacy Handle's Policy ID
  * @property {string} god_verification_key_hash God Verification Key Hash
  */
 interface BuildContractsParams {
   network: NetworkName;
   mint_version: bigint;
+  legacy_policy_id: string;
   god_verification_key_hash: string;
 }
 
@@ -35,7 +37,8 @@ interface BuildContractsParams {
  * @returns All Contracts
  */
 const buildContracts = (params: BuildContractsParams) => {
-  const { network, mint_version, god_verification_key_hash } = params;
+  const { network, mint_version, legacy_policy_id, god_verification_key_hash } =
+    params;
   const isMainnet = network == "mainnet";
 
   const ordersSpendUplcProgram = getOrdersSpendUplcProgram();
@@ -61,6 +64,7 @@ const buildContracts = (params: BuildContractsParams) => {
   );
 
   const mintingDataV1WithdrawUplcProgram = getMintingDataV1WithdrawUplcProgram(
+    legacy_policy_id,
     god_verification_key_hash
   );
   const mintingDataV1ValidatorHash = makeValidatorHash(

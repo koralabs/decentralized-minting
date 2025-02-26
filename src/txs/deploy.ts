@@ -19,12 +19,14 @@ import { fetchDeployedScript } from "../utils/contract.js";
  * @typedef {object} DeployParams
  * @property {NetworkName} network Network
  * @property {bigint} mintVersion Mint Version - Parameter in Mint Proxy validator
+ * @property {string} legacyPolicyId Legacy Handle's Policy ID
  * @property {string} godVerificationKeyHash God Verification Key  Hash - Parameter in Minting Data V1 Validator
  * @property {string} contractName Contract Name to Deploy
  */
 interface DeployParams {
   network: NetworkName;
   mintVersion: bigint;
+  legacyPolicyId: string;
   godVerificationKeyHash: string;
   contractName: string;
 }
@@ -41,11 +43,18 @@ interface DeployData {
  * @returns {Promise<DeployData>} Deploy Data
  */
 const deploy = async (params: DeployParams): Promise<DeployData> => {
-  const { network, mintVersion, godVerificationKeyHash, contractName } = params;
+  const {
+    network,
+    mintVersion,
+    legacyPolicyId,
+    godVerificationKeyHash,
+    contractName,
+  } = params;
 
   const contractsConfig = buildContracts({
     network,
     mint_version: mintVersion,
+    legacy_policy_id: legacyPolicyId,
     god_verification_key_hash: godVerificationKeyHash,
   });
   const {
@@ -90,6 +99,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         ),
         datumCbor: bytesToHex(
           makeMintingDataV1UplcProgramParameterDatum(
+            legacyPolicyId,
             godVerificationKeyHash
           ).data.toCbor()
         ),

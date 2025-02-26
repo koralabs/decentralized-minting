@@ -12,7 +12,7 @@ const minting_data_asset_policy_id =
 // a new handle is minted
 // const minting_data_asset_name =
 //   #"000de14068616e646c65735f726f6f744068616e646c655f73657474696e6773"
-const minting_data_asset_name = #"000de140746573745f676f6c646479"
+const minting_data_asset_name = #"000de1406d705f636f6e74726163745f3034"
 
 pub type MintingData {
   // mpt root hash

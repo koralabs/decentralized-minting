@@ -7,7 +7,7 @@
   "scripts": {
     "build": "rm -rf lib/ && tsc",
     "lint": "concurrently \"cd smart-contract && aiken fmt --check\" \"npx eslint '**/{src,test}/**/*.{ts,mjs}' --max-warnings=0\"",
-    "test": "echo \"Test\"",
+    "test": "vitest run",
     "start:preview": "cd scripts/ && NODE_ENV=preview tsx ./run/index.ts",
     "start:preprod": "cd scripts/ && NODE_ENV=preprod tsx ./run/index.ts"
   },
@@ -40,6 +40,8 @@
     "globals": "^15.14.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.20.0",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.0.7"
   }
 }
