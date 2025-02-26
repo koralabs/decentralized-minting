@@ -93,7 +93,14 @@ validator(
         let
           new_root,
           expected_mint_value,
-        <- all_proofs_are_valid(proofs, root, new_policy_id, value.zero())
+        <-
+          all_proofs_are_valid(
+            proofs,
+            root,
+            legacy_policy_id,
+            new_policy_id,
+            value.zero(),
+          )
         let new_mpt_root_hash = new_root |> mpt.root
 
         // check minting data output
@@ -128,6 +135,7 @@ validator(
 fn all_proofs_are_valid(
   proofs: List<Proof>,
   root: mpt.MerklePatriciaForestry,
+  legacy_policy_id: PolicyId,
   new_policy_id: PolicyId,
   expected_mint_value: Value,
   continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
@@ -147,6 +155,7 @@ fn all_proofs_are_valid(
       all_proofs_are_valid(
         rest_proofs,
         update_root(root, handle_name, mpt_handle_value, amount, mpt_proof),
+        legacy_policy_id,
         new_policy_id,
         update_mint_value(
           expected_mint_value,
