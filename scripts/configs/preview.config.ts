@@ -21,7 +21,7 @@ export const SETTINGS_ASSET_TX_OUTPUT_ID = makeTxOutputId(
 
 export const MINTING_DATA_ASSET_CLASS = makeAssetClass(
   // "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14068616e646c65735f726f6f744068616e646c655f73657474696e6773"
-  "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de140746573745f676f6c646479"
+  "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406d705f636f6e74726163745f3034"
 );
 
 // allowed minters' verification key hash
