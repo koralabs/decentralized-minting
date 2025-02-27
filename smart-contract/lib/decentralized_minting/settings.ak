@@ -9,7 +9,6 @@ const settings_asset_policy_id =
 // demi@handle_settings
 // hold the settings for the decentralized minting contract
 const settings_asset_name = #"000de14064656d694068616e646c655f73657474696e6773"
-//const settings_asset_name = #"000de140676f6c646479646576"
 
 pub type Settings {
   mint_governor: ScriptHash,
