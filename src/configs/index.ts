@@ -37,11 +37,11 @@ const fetchSettings = async (
     string
   >
 > => {
-  const settingsHandle = await fetchApi(
-    `/handles/${SETTINGS_HANDLE_NAME}`
-  ).then((res) => res.json());
+  const settingsHandle = await fetchApi(`handles/${SETTINGS_HANDLE_NAME}`).then(
+    (res) => res.json()
+  );
   const settingsHandleDatum: string = await fetchApi(
-    `/handles/${SETTINGS_HANDLE_NAME}/datum`,
+    `handles/${SETTINGS_HANDLE_NAME}/datum`,
     { "Content-Type": "text/plain" }
   ).then((res) => res.text());
 
@@ -84,7 +84,7 @@ const fetchMintingData = async (): Promise<
     (res) => res.json()
   );
   const mintingDataHandleDatum: string = await fetchApi(
-    `/handles/${MINTING_DATA_HANDLE_NAME}/datum`,
+    `handles/${MINTING_DATA_HANDLE_NAME}/datum`,
     { "Content-Type": "text/plain" }
   ).then((res) => res.text());
 
