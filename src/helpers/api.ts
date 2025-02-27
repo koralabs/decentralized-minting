@@ -4,7 +4,6 @@ import {
   HANDLE_API_ENDPOINT,
   HANDLE_ME_API_KEY,
   KORA_USER_AGENT,
-  NETWORK,
 } from "../constants/index.js";
 
 const fetchApi = async (
@@ -15,7 +14,7 @@ const fetchApi = async (
   const { headers, ...rest } = params;
   const baseUrl = HANDLE_API_ENDPOINT;
   const url = `${baseUrl}/${endpoint}`;
-  const apiKey = NETWORK == "mainnet" ? HANDLE_ME_API_KEY : "";
+  const apiKey = HANDLE_ME_API_KEY;
 
   const fetchHeaders = {
     ...headers,
