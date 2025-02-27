@@ -1,5 +1,6 @@
 import {
   makeAddress,
+  makeAssetClass,
   makeAssets,
   makeInlineTxOutputDatum,
   makeTxInput,
@@ -56,7 +57,9 @@ const fetchSettings = async (
       makeAddress(settingsHandle.resolved_addresses.ada),
       makeValue(
         BigInt(1),
-        makeAssets([[`${LEGACY_POLICY_ID}${settingsHandle.hex}`, 1n]])
+        makeAssets([
+          [makeAssetClass(`${LEGACY_POLICY_ID}.${settingsHandle.hex}`), 1n],
+        ])
       ),
       makeInlineTxOutputDatum(decodeUplcData(settingsHandleDatum))
     )
@@ -102,7 +105,9 @@ const fetchMintingData = async (): Promise<
       makeAddress(mintingDataHandle.resolved_addresses.ada),
       makeValue(
         BigInt(1),
-        makeAssets([[`${LEGACY_POLICY_ID}${mintingDataHandle.hex}`, 1n]])
+        makeAssets([
+          [makeAssetClass(`${LEGACY_POLICY_ID}.${mintingDataHandle.hex}`), 1n],
+        ])
       ),
       makeInlineTxOutputDatum(decodeUplcData(mintingDataHandleDatum))
     )
