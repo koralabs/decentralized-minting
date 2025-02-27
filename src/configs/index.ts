@@ -87,9 +87,9 @@ const fetchSettings = async (
 const fetchMintingData = async (): Promise<
   Result<{ mintingData: MintingData; mintingDataTxInput: TxInput }, string>
 > => {
-  const mintingDataHandle = await fetchApi(MINTING_DATA_HANDLE_NAME).then(
-    (res) => res.json()
-  );
+  const mintingDataHandle = await fetchApi(
+    `handles/${MINTING_DATA_HANDLE_NAME}`
+  ).then((res) => res.json());
   const mintingDataHandleDatum: string = await fetchApi(
     `handles/${MINTING_DATA_HANDLE_NAME}/datum`,
     { "Content-Type": "text/plain" }
