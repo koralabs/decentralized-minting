@@ -2,7 +2,7 @@ import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeTxOutputId, TxInput } from "@helios-lang/ledger";
 import { BlockfrostV0Client, NetworkName } from "@helios-lang/tx-utils";
 import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
-import { ScriptDetails } from "@koralabs/kora-labs-common";
+import { ScriptDetails, ScriptType } from "@koralabs/kora-labs-common";
 import { Err, Ok, Result } from "ts-res";
 
 import {
@@ -35,6 +35,7 @@ interface DeployData {
   optimizedCbor: string;
   unOptimizedCbor?: string;
   datumCbor?: string;
+  validatorHash: string;
 }
 
 /**
@@ -74,12 +75,14 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         datumCbor: bytesToHex(
           makeMintProxyUplcProgramParameterDatum(mintVersion).data.toCbor()
         ),
+        validatorHash: mintProxyConfig.mintProxyPolicyHash.toHex(),
       };
     case "mint_v1.withdraw":
       return {
         ...extractScriptCborsFromUplcProgram(
           mintV1Config.mintV1WithdrawUplcProgram
         ),
+        validatorHash: mintV1Config.mintV1ValiatorHash.toHex(),
       };
     case "minting_data_proxy.spend":
       return {
@@ -91,6 +94,8 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
             mintingDataV1Config.mintingDataV1ValidatorHash.toHex()
           ).data.toCbor()
         ),
+        validatorHash:
+          mintingDataProxyConfig.mintingDataProxyValidatorHash.toHex(),
       };
     case "minting_data_v1.withdraw":
       return {
@@ -103,12 +108,14 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
             godVerificationKeyHash
           ).data.toCbor()
         ),
+        validatorHash: mintingDataV1Config.mintingDataV1ValidatorHash.toHex(),
       };
     case "orders.spend":
       return {
         ...extractScriptCborsFromUplcProgram(
           ordersConfig.ordersSpendUplcProgram
         ),
+        validatorHash: ordersConfig.ordersValidatorHash.toHex(),
       };
     default:
       throw new Error(
@@ -142,13 +149,11 @@ interface DeployedScripts {
 }
 
 const fetchAllDeployedScripts = async (
-  network: NetworkName,
   blockfrostV0Client: BlockfrostV0Client
 ): Promise<Result<DeployedScripts, string>> => {
   try {
     const mintProxyScriptDetails = await fetchDeployedScript(
-      network,
-      "mint_proxy.mint"
+      ScriptType.DEMI_MINT_PROXY
     );
     invariant(
       mintProxyScriptDetails.refScriptUtxo,
@@ -164,10 +169,7 @@ const fetchAllDeployedScripts = async (
         decodeUplcProgramV2FromCbor(mintProxyScriptDetails.unoptimizedCbor)
       );
 
-    const mintV1ScriptDetails = await fetchDeployedScript(
-      network,
-      "mint_v1.withdraw"
-    );
+    const mintV1ScriptDetails = await fetchDeployedScript(ScriptType.DEMI_MINT);
     invariant(
       mintV1ScriptDetails.refScriptUtxo,
       "Mint V1 has no Ref script UTxO"
@@ -183,8 +185,7 @@ const fetchAllDeployedScripts = async (
       );
 
     const mintingDataProxyScriptDetails = await fetchDeployedScript(
-      network,
-      "minting_data_proxy.spend"
+      ScriptType.DEMI_MINTING_DATA_PROXY
     );
     invariant(
       mintingDataProxyScriptDetails.refScriptUtxo,
@@ -203,8 +204,7 @@ const fetchAllDeployedScripts = async (
       );
 
     const mintingDataV1ScriptDetails = await fetchDeployedScript(
-      network,
-      "minting_data_v1.withdraw"
+      ScriptType.DEMI_MINTING_DATA
     );
     invariant(
       mintingDataV1ScriptDetails.refScriptUtxo,
@@ -221,8 +221,7 @@ const fetchAllDeployedScripts = async (
       );
 
     const ordersScriptDetails = await fetchDeployedScript(
-      network,
-      "orders.spend"
+      ScriptType.DEMI_ORDERS
     );
     invariant(
       ordersScriptDetails.refScriptUtxo,

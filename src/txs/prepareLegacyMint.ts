@@ -1,21 +1,22 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import {
   Address,
-  AssetClass,
-  makeAddress,
+  makeAssetClass,
   makeAssets,
   makeInlineTxOutputDatum,
   makePubKeyHash,
   makeStakingAddress,
   makeStakingValidatorHash,
-  makeValidatorHash,
   makeValue,
-  TxOutputId,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
 import { Err, Ok, Result } from "ts-res";
 
 import { fetchMintingData, fetchSettings } from "../configs/index.js";
+import {
+  LEGACY_POLICY_ID,
+  MINTING_DATA_HANDLE_NAME,
+} from "../constants/index.js";
 import {
   buildMintingData,
   buildMintingDataV1MintOrBurnRedeemer,
@@ -34,18 +35,12 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
  * @property {Address} address Wallet Address to perform mint
  * @property {string[]} handles New Handles name to mint
  * @property {Trie} db Trie DB
- * @property {AssetClass} settingsAssetClass De Mi Contract's Settings Asset Class
- * @property {TxOutputId} settingsAssetTxOutputId De Mi Contract's Settings Asset Tx Output ID
- * @property {AssetClass} mintingDataAssetClass De Mi Contract's Minting Data Asset Class
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareLegacyMintParams {
   address: Address;
   handles: string[];
   db: Trie;
-  settingsAssetClass: AssetClass;
-  settingsAssetTxOutputId: TxOutputId;
-  mintingDataAssetClass: AssetClass;
   blockfrostApiKey: string;
 }
 
@@ -67,15 +62,7 @@ const prepareLegacyMintTransaction = async (
     Error
   >
 > => {
-  const {
-    address,
-    handles,
-    db,
-    settingsAssetClass,
-    settingsAssetTxOutputId,
-    mintingDataAssetClass,
-    blockfrostApiKey,
-  } = params;
+  const { address, handles, db, blockfrostApiKey } = params;
   const network = getNetwork(blockfrostApiKey);
   const isMainnet = network == "mainnet";
   if (address.era == "Byron")
@@ -83,40 +70,29 @@ const prepareLegacyMintTransaction = async (
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
 
   // fetch deployed scripts
-  const fetchedResult = await fetchAllDeployedScripts(
-    network,
-    blockfrostV0Client
-  );
+  const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
   if (!fetchedResult.ok)
     return Err(new Error(`Faied to fetch scripts: ${fetchedResult.error}`));
   const {
-    mintingDataProxyScriptDetails,
     mintingDataProxyScriptTxInput,
     mintingDataV1ScriptDetails,
     mintingDataV1ScriptTxInput,
   } = fetchedResult.data;
 
   // fetch settings
-  const settingsResult = await fetchSettings(
-    settingsAssetClass,
-    settingsAssetTxOutputId,
-    blockfrostApiKey
-  );
+  const settingsResult = await fetchSettings(network);
   if (!settingsResult.ok)
     return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
   const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
   const { allowed_minters } = settingsV1;
 
   // fetch minting data
-  const mintingDataProxyAddress = makeAddress(
-    isMainnet,
-    makeValidatorHash(mintingDataProxyScriptDetails.validatorHash)
-  );
-  const mintingDataResult = await fetchMintingData(
-    mintingDataAssetClass,
-    mintingDataProxyAddress,
-    blockfrostApiKey
-  );
+  // THIS IS WHERE THE MINTING DATA HANDLE NEEDS TO LIVE
+  // const mintingDataProxyAddress = makeAddress(
+  //   isMainnet,
+  //   makeValidatorHash(mintingDataProxyScriptDetails.validatorHash)
+  // );
+  const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
     return Err(
       new Error(`Failed to fetch minting data: ${mintingDataResult.error}`)
@@ -159,7 +135,16 @@ const prepareLegacyMintTransaction = async (
   // minting data asset value
   const mintingDataValue = makeValue(
     mintingDataTxInput.value.lovelace,
-    makeAssets([[mintingDataAssetClass, 1n]])
+    makeAssets([
+      [
+        makeAssetClass(
+          `${LEGACY_POLICY_ID}.${Buffer.from(MINTING_DATA_HANDLE_NAME).toString(
+            "hex"
+          )}`
+        ),
+        1n,
+      ],
+    ])
   );
 
   // build proofs redeemer for minting data v1

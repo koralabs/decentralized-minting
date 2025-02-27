@@ -1,15 +1,13 @@
 import {
   Address,
-  AssetClass,
   makeAddress,
   makeInlineTxOutputDatum,
   makeValidatorHash,
   makeValue,
   TxInput,
-  TxOutputId,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, NetworkName, TxBuilder } from "@helios-lang/tx-utils";
-import { ScriptDetails } from "@koralabs/kora-labs-common";
+import { ScriptDetails, ScriptType } from "@koralabs/kora-labs-common";
 import { Err, Ok, Result } from "ts-res";
 
 import { fetchSettings } from "../configs/index.js";
@@ -39,8 +37,6 @@ interface RequestParams {
   network: NetworkName;
   address: Address;
   handle: string;
-  settingsAssetClass: AssetClass;
-  settingsAssetTxOutputId: TxOutputId;
   blockfrostApiKey: string;
 }
 
@@ -52,21 +48,10 @@ interface RequestParams {
 const request = async (
   params: RequestParams
 ): Promise<Result<TxBuilder, Error>> => {
-  const {
-    network,
-    address,
-    handle,
-    settingsAssetClass,
-    settingsAssetTxOutputId,
-    blockfrostApiKey,
-  } = params;
+  const { network, address, handle } = params;
 
   // fetch settings
-  const settingsResult = await fetchSettings(
-    settingsAssetClass,
-    settingsAssetTxOutputId,
-    blockfrostApiKey
-  );
+  const settingsResult = await fetchSettings(network);
   if (!settingsResult.ok) return Err(new Error(settingsResult.error));
   const { settingsV1 } = settingsResult.data;
   const { minter_fee, treasury_fee } = settingsV1;
@@ -78,7 +63,7 @@ const request = async (
 
   // fetch orders script
   const ordersScriptDetailsResult = await mayFailAsync(() =>
-    fetchDeployedScript(network, "orders.spend")
+    fetchDeployedScript(ScriptType.DEMI_ORDERS)
   ).complete();
   if (!ordersScriptDetailsResult.ok)
     return Err(
