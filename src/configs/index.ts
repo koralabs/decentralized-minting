@@ -1,6 +1,20 @@
-import { Address, AssetClass, TxInput, TxOutputId } from "@helios-lang/ledger";
+import {
+  makeAddress,
+  makeAssets,
+  makeInlineTxOutputDatum,
+  makeTxInput,
+  makeTxOutput,
+  makeValue,
+  TxInput,
+} from "@helios-lang/ledger";
+import { NetworkName } from "@helios-lang/tx-utils";
+import { decodeUplcData } from "@helios-lang/uplc";
 import { Err, Ok, Result } from "ts-res";
 
+import {
+  MINTING_DATA_HANDLE_NAME,
+  SETTINGS_HANDLE_NAME,
+} from "../constants/index.js";
 import {
   decodeMintingDataDatum,
   decodeSettingsDatum,
@@ -9,17 +23,10 @@ import {
   Settings,
   SettingsV1,
 } from "../contracts/index.js";
-import {
-  getBlockfrostV0Client,
-  getNetwork,
-  mayFail,
-  mayFailAsync,
-} from "../helpers/index.js";
+import { fetchApi, mayFail } from "../helpers/index.js";
 
 const fetchSettings = async (
-  settingsAssetClass: AssetClass,
-  settingsAssetTxOutputId: TxOutputId,
-  blockfrostApiKey: string
+  network: NetworkName
 ): Promise<
   Result<
     {
@@ -30,28 +37,30 @@ const fetchSettings = async (
     string
   >
 > => {
-  const network = getNetwork(blockfrostApiKey);
-  const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
-  const settingsAssetUTxOResult = await mayFailAsync(() =>
-    blockfrostV0Client.getUtxo(settingsAssetTxOutputId)
-  ).complete();
-  if (!settingsAssetUTxOResult.ok)
-    return Err(
-      `Failed to fetch settings asset UTxO: ${settingsAssetUTxOResult.error}`
-    );
-  const settingsAssetUTxO = settingsAssetUTxOResult.data;
+  const settingsHandle = await fetchApi(
+    `/handles/${SETTINGS_HANDLE_NAME}`
+  ).then((res) => res.json());
+  const settingsHandleDatum: string = await fetchApi(
+    `/handles/${SETTINGS_HANDLE_NAME}/datum`,
+    { "Content-Type": "text/plain" }
+  ).then((res) => res.text());
 
-  // check if settings asset UTxO has settings asset
-  if (
-    !settingsAssetUTxO.value.assets.assetClasses.some(
-      (item) => item.toString() == settingsAssetClass.toString()
-    )
-  ) {
-    return Err("Settings Asset Not Found in UTxO");
+  if (!settingsHandleDatum) {
+    throw new Error("Settings Datum Not Found");
   }
 
-  const datum = settingsAssetUTxO.datum;
-  const decodedSettingsResult = mayFail(() => decodeSettingsDatum(datum));
+  const settingsAssetTxInput = makeTxInput(
+    settingsHandle.utxo,
+    makeTxOutput(
+      makeAddress(settingsHandle.resolved_addresses.ada),
+      makeValue(BigInt(1), makeAssets([[settingsHandle.hex, 1n]])),
+      makeInlineTxOutputDatum(decodeUplcData(settingsHandleDatum))
+    )
+  );
+
+  const decodedSettingsResult = mayFail(() =>
+    decodeSettingsDatum(settingsAssetTxInput.datum)
+  );
   if (!decodedSettingsResult.ok) {
     return Err(decodedSettingsResult.error);
   }
@@ -64,51 +73,44 @@ const fetchSettings = async (
   return Ok({
     settings: decodedSettingsResult.data,
     settingsV1: decodedSettingsV1Result.data,
-    settingsAssetTxInput: settingsAssetUTxO,
+    settingsAssetTxInput,
   });
 };
 
-const fetchMintingData = async (
-  mintingDataAssetClass: AssetClass,
-  mintingDataProxyAddress: Address,
-  blockfrostApiKey: string
-): Promise<
+const fetchMintingData = async (): Promise<
   Result<{ mintingData: MintingData; mintingDataTxInput: TxInput }, string>
 > => {
-  const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
-  const mintingDataAssetUTxOResult = await mayFailAsync(
-    async () =>
-      (
-        await blockfrostV0Client.getUtxosWithAssetClass(
-          mintingDataProxyAddress,
-          mintingDataAssetClass
-        )
-      )[0]!
-  ).complete();
-  if (!mintingDataAssetUTxOResult.ok)
-    return Err(
-      `Failed to fetch mintingData asset UTxO: ${mintingDataAssetUTxOResult.error}`
-    );
-  const mintingDataAssetUTxO = mintingDataAssetUTxOResult.data;
+  const mintingDataHandle = await fetchApi(MINTING_DATA_HANDLE_NAME).then(
+    (res) => res.json()
+  );
+  const mintingDataHandleDatum: string = await fetchApi(
+    `/handles/${MINTING_DATA_HANDLE_NAME}/datum`,
+    { "Content-Type": "text/plain" }
+  ).then((res) => res.text());
 
-  // check if mintingData asset UTxO has mintingData asset
-  if (
-    !mintingDataAssetUTxO.value.assets.assetClasses.some(
-      (item) => item.toString() == mintingDataAssetClass.toString()
-    )
-  ) {
-    return Err("Settings Asset Not Found in UTxO");
+  if (!mintingDataHandleDatum) {
+    throw new Error("Settings Datum Not Found");
   }
 
-  const datum = mintingDataAssetUTxO.datum;
-  const decodedSettingsResult = mayFail(() => decodeMintingDataDatum(datum));
+  const mintingDataTxInput = makeTxInput(
+    mintingDataHandle.utxo,
+    makeTxOutput(
+      makeAddress(mintingDataHandle.resolved_addresses.ada),
+      makeValue(BigInt(1), makeAssets([[mintingDataHandle.hex, 1n]])),
+      makeInlineTxOutputDatum(decodeUplcData(mintingDataHandleDatum))
+    )
+  );
+
+  const decodedSettingsResult = mayFail(() =>
+    decodeMintingDataDatum(mintingDataTxInput.datum)
+  );
   if (!decodedSettingsResult.ok) {
     return Err(decodedSettingsResult.error);
   }
 
   return Ok({
     mintingData: decodedSettingsResult.data,
-    mintingDataTxInput: mintingDataAssetUTxO,
+    mintingDataTxInput,
   });
 };
 
