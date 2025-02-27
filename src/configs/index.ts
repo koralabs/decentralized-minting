@@ -12,6 +12,7 @@ import { decodeUplcData } from "@helios-lang/uplc";
 import { Err, Ok, Result } from "ts-res";
 
 import {
+  LEGACY_POLICY_ID,
   MINTING_DATA_HANDLE_NAME,
   SETTINGS_HANDLE_NAME,
 } from "../constants/index.js";
@@ -53,7 +54,10 @@ const fetchSettings = async (
     settingsHandle.utxo,
     makeTxOutput(
       makeAddress(settingsHandle.resolved_addresses.ada),
-      makeValue(BigInt(1), makeAssets([[settingsHandle.hex, 1n]])),
+      makeValue(
+        BigInt(1),
+        makeAssets([[`${LEGACY_POLICY_ID}${settingsHandle.hex}`, 1n]])
+      ),
       makeInlineTxOutputDatum(decodeUplcData(settingsHandleDatum))
     )
   );
@@ -96,7 +100,10 @@ const fetchMintingData = async (): Promise<
     mintingDataHandle.utxo,
     makeTxOutput(
       makeAddress(mintingDataHandle.resolved_addresses.ada),
-      makeValue(BigInt(1), makeAssets([[mintingDataHandle.hex, 1n]])),
+      makeValue(
+        BigInt(1),
+        makeAssets([[`${LEGACY_POLICY_ID}${mintingDataHandle.hex}`, 1n]])
+      ),
       makeInlineTxOutputDatum(decodeUplcData(mintingDataHandleDatum))
     )
   );
