@@ -1,5 +1,6 @@
 import {
   makeAddress,
+  makeAssetClass,
   makeAssets,
   makeInlineTxOutputDatum,
   makeTxInput,
@@ -12,6 +13,7 @@ import { decodeUplcData } from "@helios-lang/uplc";
 import { Err, Ok, Result } from "ts-res";
 
 import {
+  LEGACY_POLICY_ID,
   MINTING_DATA_HANDLE_NAME,
   SETTINGS_HANDLE_NAME,
 } from "../constants/index.js";
@@ -37,11 +39,11 @@ const fetchSettings = async (
     string
   >
 > => {
-  const settingsHandle = await fetchApi(
-    `/handles/${SETTINGS_HANDLE_NAME}`
-  ).then((res) => res.json());
+  const settingsHandle = await fetchApi(`handles/${SETTINGS_HANDLE_NAME}`).then(
+    (res) => res.json()
+  );
   const settingsHandleDatum: string = await fetchApi(
-    `/handles/${SETTINGS_HANDLE_NAME}/datum`,
+    `handles/${SETTINGS_HANDLE_NAME}/datum`,
     { "Content-Type": "text/plain" }
   ).then((res) => res.text());
 
@@ -53,7 +55,12 @@ const fetchSettings = async (
     settingsHandle.utxo,
     makeTxOutput(
       makeAddress(settingsHandle.resolved_addresses.ada),
-      makeValue(BigInt(1), makeAssets([[settingsHandle.hex, 1n]])),
+      makeValue(
+        BigInt(1),
+        makeAssets([
+          [makeAssetClass(`${LEGACY_POLICY_ID}.${settingsHandle.hex}`), 1n],
+        ])
+      ),
       makeInlineTxOutputDatum(decodeUplcData(settingsHandleDatum))
     )
   );
@@ -80,11 +87,11 @@ const fetchSettings = async (
 const fetchMintingData = async (): Promise<
   Result<{ mintingData: MintingData; mintingDataTxInput: TxInput }, string>
 > => {
-  const mintingDataHandle = await fetchApi(MINTING_DATA_HANDLE_NAME).then(
-    (res) => res.json()
-  );
+  const mintingDataHandle = await fetchApi(
+    `handles/${MINTING_DATA_HANDLE_NAME}`
+  ).then((res) => res.json());
   const mintingDataHandleDatum: string = await fetchApi(
-    `/handles/${MINTING_DATA_HANDLE_NAME}/datum`,
+    `handles/${MINTING_DATA_HANDLE_NAME}/datum`,
     { "Content-Type": "text/plain" }
   ).then((res) => res.text());
 
@@ -96,7 +103,12 @@ const fetchMintingData = async (): Promise<
     mintingDataHandle.utxo,
     makeTxOutput(
       makeAddress(mintingDataHandle.resolved_addresses.ada),
-      makeValue(BigInt(1), makeAssets([[mintingDataHandle.hex, 1n]])),
+      makeValue(
+        BigInt(1),
+        makeAssets([
+          [makeAssetClass(`${LEGACY_POLICY_ID}.${mintingDataHandle.hex}`), 1n],
+        ])
+      ),
       makeInlineTxOutputDatum(decodeUplcData(mintingDataHandleDatum))
     )
   );
