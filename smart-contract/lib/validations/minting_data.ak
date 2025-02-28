@@ -1,14 +1,16 @@
 use aiken/bytearray
 use aiken/list
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction.{InlineDatum, Transaction}
+use aiken/transaction.{
+  InlineDatum, Input, OutputReference, Transaction, find_input,
+}
 use aiken/transaction/value.{PolicyId, Value}
 use common/cip68.{prefix_100, prefix_222}
 use common/hashes.{VerificationKeyHash}
 use decentralized_minting/constants.{
   mpt_legacy_handle_value, mpt_new_handle_value,
 }
-use decentralized_minting/minting_data.{MintingData, find_minting_data}
+use decentralized_minting/minting_data.{MintingData, resolve_minting_data}
 use decentralized_minting/settings.{Settings, find_settings}
 use decentralized_minting/settings_v1.{SettingsV1}
 
@@ -36,6 +38,7 @@ pub type Proof {
 //
 pub fn can_mint_or_burn(
   transaction: Transaction,
+  spending_output_reference: OutputReference,
   proofs: List<Proof>,
   legacy_policy_id: PolicyId,
 ) -> Bool {
@@ -47,9 +50,10 @@ pub fn can_mint_or_burn(
   expect settings_datum: SettingsV1 = settings_data
   let SettingsV1 { policy_id: new_policy_id, .. } = settings_datum
 
-  // find minting data input
-  let (minting_data_input, MintingData { mpt_root_hash }) =
-    find_minting_data(inputs)
+  // find minting data input which is own input
+  expect Some(spending_input) = find_input(inputs, spending_output_reference)
+  let Input { output: minting_data_input, .. } = spending_input
+  let MintingData { mpt_root_hash } = resolve_minting_data(minting_data_input)
 
   // parse outputs
   expect [minting_data_output, ..] = outputs

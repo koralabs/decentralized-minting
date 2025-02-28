@@ -22,21 +22,7 @@ const makeMintProxyUplcProgramParameterDatum = (
   return makeInlineTxOutputDatum(makeListData([makeIntData(mint_version)]));
 };
 
-const makeMintingDataProxyUplcProgramParameter = (
-  minting_data_governor: string
-): UplcValue[] => {
-  return [makeUplcDataValue(makeByteArrayData(minting_data_governor))];
-};
-
-const makeMintingDataProxyUplcProgramParameterDatum = (
-  minting_data_governor: string
-): InlineTxOutputDatum => {
-  return makeInlineTxOutputDatum(
-    makeListData([makeByteArrayData(minting_data_governor)])
-  );
-};
-
-const makeMintingDataV1UplcProgramParameter = (
+const makeMintingDataUplcProgramParameter = (
   legacy_policy_id: string,
   god_verification_key_hash: string
 ): UplcValue[] => {
@@ -46,7 +32,7 @@ const makeMintingDataV1UplcProgramParameter = (
   ];
 };
 
-const makeMintingDataV1UplcProgramParameterDatum = (
+const makeMintingDataUplcProgramParameterDatum = (
   legacy_policy_id: string,
   god_verification_key_hash: string
 ): InlineTxOutputDatum => {
@@ -59,10 +45,8 @@ const makeMintingDataV1UplcProgramParameterDatum = (
 };
 
 export {
-  makeMintingDataProxyUplcProgramParameter,
-  makeMintingDataProxyUplcProgramParameterDatum,
-  makeMintingDataV1UplcProgramParameter,
-  makeMintingDataV1UplcProgramParameterDatum,
+  makeMintingDataUplcProgramParameter,
+  makeMintingDataUplcProgramParameterDatum,
   makeMintProxyUplcProgramParameter,
   makeMintProxyUplcProgramParameterDatum,
 };

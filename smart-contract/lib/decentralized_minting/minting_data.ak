@@ -34,3 +34,21 @@ pub fn find_minting_data(inputs: List<Input>) -> (Output, MintingData) {
   expect minting_data: MintingData = inline_minting_data
   (minting_data_input.output, minting_data)
 }
+
+// this function also makes sure that
+// spending UTxO has minting data asset
+pub fn resolve_minting_data(spending_output: Output) -> MintingData {
+  // check input has minting data asset
+  expect
+    value.quantity_of(
+      spending_output.value,
+      minting_data_asset_policy_id,
+      minting_data_asset_name,
+    ) == 1
+
+  // resolve minting data datum
+  expect InlineDatum(inline_minting_data) = spending_output.datum
+  expect minting_data: MintingData = inline_minting_data
+
+  minting_data
+}

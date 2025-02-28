@@ -220,7 +220,7 @@ const buildSettingsDataCbor = () => {
   const {
     mintV1: mintV1Config,
     orders: ordersConfig,
-    mintingDataProxy: mintingDataConfig,
+    mintingData: mintingDataConfig,
   } = contractsConfig;
 
   // we already have settings asset using legacy handle.
@@ -233,7 +233,7 @@ const buildSettingsDataCbor = () => {
     pz_script_address: PZ_SCRIPT_ADDRESS,
     order_script_hash: ordersConfig.ordersValidatorHash.toHex(),
     minting_data_script_hash:
-      mintingDataConfig.mintingDataProxyValidatorHash.toHex(),
+      mintingDataConfig.mintingDataValidatorHash.toHex(),
   };
   const settings: Settings = {
     mint_governor: mintV1Config.mintV1ValiatorHash.toHex(),
@@ -254,7 +254,7 @@ const buildMintingDataCbor = (db: Trie) => {
     legacy_policy_id: LEGACY_POLICY_ID,
     god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
-  const { mintingDataProxy: mintingDataProxyConfig } = contractsConfig;
+  const { mintingData: mintingDataConfig } = contractsConfig;
 
   // we already have settings asset using legacy handle.
   const mintingData: MintingData = {
@@ -263,7 +263,7 @@ const buildMintingDataCbor = (db: Trie) => {
 
   return {
     cbor: bytesToHex(buildMintingData(mintingData).toCbor()),
-    lockAddress: mintingDataProxyConfig.mintingDataProxyValidatorAddress,
+    lockAddress: mintingDataConfig.mintingDataValidatorAddress,
   };
 };
 
@@ -277,13 +277,10 @@ const getStakingAddresses = () => {
     legacy_policy_id: LEGACY_POLICY_ID,
     god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
   });
-  const { mintV1: mintV1Config, mintingDataV1: mintingDataV1Config } =
-    contractsConfig;
+  const { mintV1: mintV1Config } = contractsConfig;
 
   return {
     mintV1StakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
-    mintingDataV1StakingAddress:
-      mintingDataV1Config.mintingDataV1StakingAddress.toBech32(),
   };
 };
 

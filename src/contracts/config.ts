@@ -9,8 +9,7 @@ import {
 import { NetworkName } from "@helios-lang/tx-utils";
 
 import {
-  getMintingDataProxySpendUplcProgram,
-  getMintingDataV1WithdrawUplcProgram,
+  getMintingDataSpendUplcProgram,
   getMintProxyMintUplcProgram,
   getMintV1WithdrawUplcProgram,
   getOrdersSpendUplcProgram,
@@ -63,30 +62,16 @@ const buildContracts = (params: BuildContractsParams) => {
     mintV1StakingAddress.stakingCredential
   );
 
-  const mintingDataV1WithdrawUplcProgram = getMintingDataV1WithdrawUplcProgram(
+  const mintingDataSpendUplcProgram = getMintingDataSpendUplcProgram(
     legacy_policy_id,
     god_verification_key_hash
   );
-  const mintingDataV1ValidatorHash = makeValidatorHash(
-    mintingDataV1WithdrawUplcProgram.hash()
+  const mintingDataValidatorHash = makeValidatorHash(
+    mintingDataSpendUplcProgram.hash()
   );
-  const mintingDataV1StakingAddress = makeStakingAddress(
+  const mintingDataValidatorAddress = makeAddress(
     isMainnet,
-    makeStakingValidatorHash(mintingDataV1WithdrawUplcProgram.hash())
-  );
-  const mintingDataV1RegistrationDCert = makeRegistrationDCert(
-    mintingDataV1StakingAddress.stakingCredential
-  );
-
-  const mintingDataProxySpendUplcProgram = getMintingDataProxySpendUplcProgram(
-    mintingDataV1ValidatorHash.toHex()
-  );
-  const mintingDataProxyValidatorHash = makeValidatorHash(
-    mintingDataProxySpendUplcProgram.hash()
-  );
-  const mintingDataProxyValidatorAddress = makeAddress(
-    isMainnet,
-    mintingDataProxyValidatorHash
+    mintingDataValidatorHash
   );
 
   return {
@@ -105,16 +90,10 @@ const buildContracts = (params: BuildContractsParams) => {
       mintV1StakingAddress,
       mintV1RegistrationDCert,
     },
-    mintingDataProxy: {
-      mintingDataProxySpendUplcProgram,
-      mintingDataProxyValidatorHash,
-      mintingDataProxyValidatorAddress,
-    },
-    mintingDataV1: {
-      mintingDataV1WithdrawUplcProgram,
-      mintingDataV1ValidatorHash,
-      mintingDataV1StakingAddress,
-      mintingDataV1RegistrationDCert,
+    mintingData: {
+      mintingDataSpendUplcProgram,
+      mintingDataValidatorHash,
+      mintingDataValidatorAddress,
     },
     handlePolicyHash,
   };

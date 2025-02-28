@@ -5,8 +5,6 @@ import {
   makeAssets,
   makeInlineTxOutputDatum,
   makePubKeyHash,
-  makeStakingAddress,
-  makeStakingValidatorHash,
   makeValue,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
@@ -19,8 +17,7 @@ import {
 } from "../constants/index.js";
 import {
   buildMintingData,
-  buildMintingDataV1MintOrBurnRedeemer,
-  makeVoidData,
+  buildMintingDataMintOrBurnRedeemer,
   parseMPTProofJSON,
   Proof,
   Settings,
@@ -73,11 +70,7 @@ const prepareLegacyMintTransaction = async (
   const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
   if (!fetchedResult.ok)
     return Err(new Error(`Faied to fetch scripts: ${fetchedResult.error}`));
-  const {
-    mintingDataProxyScriptTxInput,
-    mintingDataV1ScriptDetails,
-    mintingDataV1ScriptTxInput,
-  } = fetchedResult.data;
+  const { mintingDataScriptTxInput } = fetchedResult.data;
 
   // fetch settings
   const settingsResult = await fetchSettings(network);
@@ -88,9 +81,9 @@ const prepareLegacyMintTransaction = async (
 
   // fetch minting data
   // THIS IS WHERE THE MINTING DATA HANDLE NEEDS TO LIVE
-  // const mintingDataProxyAddress = makeAddress(
+  // const mintingDataAddress = makeAddress(
   //   isMainnet,
-  //   makeValidatorHash(mintingDataProxyScriptDetails.validatorHash)
+  //   makeValidatorHash(mintingDataScriptDetails.validatorHash)
   // );
   const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
@@ -148,8 +141,8 @@ const prepareLegacyMintTransaction = async (
   );
 
   // build proofs redeemer for minting data v1
-  const mintingDataV1MintOrBurnRedeemer =
-    buildMintingDataV1MintOrBurnRedeemer(proofs);
+  const mintingDataMintOrBurnRedeemer =
+    buildMintingDataMintOrBurnRedeemer(proofs);
 
   // start building tx
   const txBuilder = makeTxBuilder({
@@ -162,27 +155,17 @@ const prepareLegacyMintTransaction = async (
   // <-- attach settings asset as reference input
   txBuilder.refer(settingsAssetTxInput);
 
-  // <-- attach deploy scripts
-  txBuilder.refer(mintingDataProxyScriptTxInput, mintingDataV1ScriptTxInput);
+  // <-- attach minting data spending script
+  txBuilder.refer(mintingDataScriptTxInput);
 
   // <-- spend minting data utxo
-  txBuilder.spendUnsafe(mintingDataTxInput, makeVoidData());
+  txBuilder.spendUnsafe(mintingDataTxInput, mintingDataMintOrBurnRedeemer);
 
   // <-- lock minting data value with new root hash
   txBuilder.payUnsafe(
     mintingDataTxInput.address,
     mintingDataValue,
     makeInlineTxOutputDatum(buildMintingData(mintingData))
-  );
-
-  // <-- withdraw from minting data v1 withdraw validator (script from reference input)
-  txBuilder.withdrawUnsafe(
-    makeStakingAddress(
-      isMainnet,
-      makeStakingValidatorHash(mintingDataV1ScriptDetails.validatorHash)
-    ),
-    0n,
-    mintingDataV1MintOrBurnRedeemer
   );
 
   // NOTE:

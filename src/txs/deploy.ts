@@ -7,8 +7,7 @@ import { Err, Ok, Result } from "ts-res";
 
 import {
   buildContracts,
-  makeMintingDataProxyUplcProgramParameterDatum,
-  makeMintingDataV1UplcProgramParameterDatum,
+  makeMintingDataUplcProgramParameterDatum,
   makeMintProxyUplcProgramParameterDatum,
 } from "../contracts/index.js";
 import { convertError, invariant } from "../helpers/index.js";
@@ -61,8 +60,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
   const {
     mintProxy: mintProxyConfig,
     mintV1: mintV1Config,
-    mintingDataProxy: mintingDataProxyConfig,
-    mintingDataV1: mintingDataV1Config,
+    mintingData: mintingDataConfig,
     orders: ordersConfig,
   } = contractsConfig;
 
@@ -84,31 +82,18 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         ),
         validatorHash: mintV1Config.mintV1ValiatorHash.toHex(),
       };
-    case "minting_data_proxy.spend":
+    case "minting_data.spend":
       return {
         ...extractScriptCborsFromUplcProgram(
-          mintingDataProxyConfig.mintingDataProxySpendUplcProgram
+          mintingDataConfig.mintingDataSpendUplcProgram
         ),
         datumCbor: bytesToHex(
-          makeMintingDataProxyUplcProgramParameterDatum(
-            mintingDataV1Config.mintingDataV1ValidatorHash.toHex()
-          ).data.toCbor()
-        ),
-        validatorHash:
-          mintingDataProxyConfig.mintingDataProxyValidatorHash.toHex(),
-      };
-    case "minting_data_v1.withdraw":
-      return {
-        ...extractScriptCborsFromUplcProgram(
-          mintingDataV1Config.mintingDataV1WithdrawUplcProgram
-        ),
-        datumCbor: bytesToHex(
-          makeMintingDataV1UplcProgramParameterDatum(
+          makeMintingDataUplcProgramParameterDatum(
             legacyPolicyId,
             godVerificationKeyHash
           ).data.toCbor()
         ),
-        validatorHash: mintingDataV1Config.mintingDataV1ValidatorHash.toHex(),
+        validatorHash: mintingDataConfig.mintingDataValidatorHash.toHex(),
       };
     case "orders.spend":
       return {
@@ -140,10 +125,8 @@ interface DeployedScripts {
   mintProxyScriptTxInput: TxInput;
   mintV1ScriptDetails: ScriptDetails;
   mintV1ScriptTxInput: TxInput;
-  mintingDataProxyScriptDetails: ScriptDetails;
-  mintingDataProxyScriptTxInput: TxInput;
-  mintingDataV1ScriptDetails: ScriptDetails;
-  mintingDataV1ScriptTxInput: TxInput;
+  mintingDataScriptDetails: ScriptDetails;
+  mintingDataScriptTxInput: TxInput;
   ordersScriptDetails: ScriptDetails;
   ordersScriptTxInput: TxInput;
 }
@@ -184,40 +167,21 @@ const fetchAllDeployedScripts = async (
         decodeUplcProgramV2FromCbor(mintV1ScriptDetails.unoptimizedCbor)
       );
 
-    const mintingDataProxyScriptDetails = await fetchDeployedScript(
-      ScriptType.DEMI_MINTING_DATA_PROXY
-    );
-    invariant(
-      mintingDataProxyScriptDetails.refScriptUtxo,
-      "Minting Data Proxy has no Ref script UTxO"
-    );
-    const mintingDataProxyScriptTxInput = await blockfrostV0Client.getUtxo(
-      makeTxOutputId(mintingDataProxyScriptDetails.refScriptUtxo)
-    );
-    if (mintingDataProxyScriptDetails.unoptimizedCbor)
-      mintingDataProxyScriptTxInput.output.refScript = (
-        mintingDataProxyScriptTxInput.output.refScript as UplcProgramV2
-      )?.withAlt(
-        decodeUplcProgramV2FromCbor(
-          mintingDataProxyScriptDetails.unoptimizedCbor
-        )
-      );
-
-    const mintingDataV1ScriptDetails = await fetchDeployedScript(
+    const mintingDataScriptDetails = await fetchDeployedScript(
       ScriptType.DEMI_MINTING_DATA
     );
     invariant(
-      mintingDataV1ScriptDetails.refScriptUtxo,
-      "Minting Data V1 has no Ref script UTxO"
+      mintingDataScriptDetails.refScriptUtxo,
+      "Minting Data has no Ref script UTxO"
     );
-    const mintingDataV1ScriptTxInput = await blockfrostV0Client.getUtxo(
-      makeTxOutputId(mintingDataV1ScriptDetails.refScriptUtxo)
+    const mintingDataScriptTxInput = await blockfrostV0Client.getUtxo(
+      makeTxOutputId(mintingDataScriptDetails.refScriptUtxo)
     );
-    if (mintingDataV1ScriptDetails.unoptimizedCbor)
-      mintingDataV1ScriptTxInput.output.refScript = (
-        mintingDataV1ScriptTxInput.output.refScript as UplcProgramV2
+    if (mintingDataScriptDetails.unoptimizedCbor)
+      mintingDataScriptTxInput.output.refScript = (
+        mintingDataScriptTxInput.output.refScript as UplcProgramV2
       )?.withAlt(
-        decodeUplcProgramV2FromCbor(mintingDataV1ScriptDetails.unoptimizedCbor)
+        decodeUplcProgramV2FromCbor(mintingDataScriptDetails.unoptimizedCbor)
       );
 
     const ordersScriptDetails = await fetchDeployedScript(
@@ -242,10 +206,8 @@ const fetchAllDeployedScripts = async (
       mintProxyScriptTxInput,
       mintV1ScriptDetails,
       mintV1ScriptTxInput,
-      mintingDataProxyScriptDetails,
-      mintingDataProxyScriptTxInput,
-      mintingDataV1ScriptDetails,
-      mintingDataV1ScriptTxInput,
+      mintingDataScriptDetails,
+      mintingDataScriptTxInput,
       ordersScriptDetails,
       ordersScriptTxInput,
     });
