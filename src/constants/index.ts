@@ -33,8 +33,7 @@ export const PZ_UTXO_MIN_LOVELACE = 2_000_000n;
 export const CONTRACT_NAMES = [
   "mint_proxy.mint",
   "mint_v1.withdraw",
-  "minting_data_proxy.spend",
-  "minting_data_v1.withdraw",
+  "minting_data.spend",
   "orders.spend",
 ];
 

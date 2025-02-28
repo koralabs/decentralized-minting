@@ -19,7 +19,7 @@ import {
 } from "../constants/index.js";
 import {
   buildMintingData,
-  buildMintingDataV1MintOrBurnRedeemer,
+  buildMintingDataMintOrBurnRedeemer,
   buildMintV1MintHandlesRedeemer,
   makeVoidData,
   parseMPTProofJSON,
@@ -78,9 +78,7 @@ const prepareNewMintTransaction = async (
     mintProxyScriptTxInput,
     mintV1ScriptDetails,
     mintV1ScriptTxInput,
-    mintingDataProxyScriptTxInput,
-    mintingDataV1ScriptDetails,
-    mintingDataV1ScriptTxInput,
+    mintingDataScriptTxInput,
     ordersScriptTxInput,
   } = fetchedResult.data;
 
@@ -93,9 +91,9 @@ const prepareNewMintTransaction = async (
     settingsV1;
 
   // fetch minting data
-  // const mintingDataProxyAddress = makeAddress(
+  // const mintingDataAddress = makeAddress(
   //   isMainnet,
-  //   makeValidatorHash(mintingDataProxyScriptDetails.validatorHash)
+  //   makeValidatorHash(mintingDataScriptDetails.validatorHash)
   // );
   const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
@@ -156,8 +154,8 @@ const prepareNewMintTransaction = async (
   const mintV1MintHandlesRedeemer = buildMintV1MintHandlesRedeemer();
 
   // build proofs redeemer for minting data v1
-  const mintingDataV1MintOrBurnRedeemer =
-    buildMintingDataV1MintOrBurnRedeemer(proofs);
+  const mintingDataMintOrBurnRedeemer =
+    buildMintingDataMintOrBurnRedeemer(proofs);
 
   // start building tx
   const txBuilder = makeTxBuilder({
@@ -174,13 +172,12 @@ const prepareNewMintTransaction = async (
   txBuilder.refer(
     mintProxyScriptTxInput,
     mintV1ScriptTxInput,
-    mintingDataProxyScriptTxInput,
-    mintingDataV1ScriptTxInput,
+    mintingDataScriptTxInput,
     ordersScriptTxInput
   );
 
   // <-- spend minting data utxo
-  txBuilder.spendUnsafe(mintingDataTxInput, makeVoidData());
+  txBuilder.spendUnsafe(mintingDataTxInput, mintingDataMintOrBurnRedeemer);
 
   // <-- lock minting data value with new root hash
   txBuilder.payUnsafe(
@@ -197,16 +194,6 @@ const prepareNewMintTransaction = async (
     ),
     0n,
     mintV1MintHandlesRedeemer
-  );
-
-  // <-- withdraw from minting data v1 withdraw validator (script from reference input)
-  txBuilder.withdrawUnsafe(
-    makeStakingAddress(
-      isMainnet,
-      makeStakingValidatorHash(mintingDataV1ScriptDetails.validatorHash)
-    ),
-    0n,
-    mintingDataV1MintOrBurnRedeemer
   );
 
   // <-- pay treasury fee

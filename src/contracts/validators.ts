@@ -4,8 +4,7 @@ import { invariant } from "../helpers/index.js";
 import optimizedBlueprint from "./optimized-blueprint.js";
 import unOptimizedBlueprint from "./unoptimized-blueprint.js";
 import {
-  makeMintingDataProxyUplcProgramParameter,
-  makeMintingDataV1UplcProgramParameter,
+  makeMintingDataUplcProgramParameter,
   makeMintProxyUplcProgramParameter,
 } from "./utils.js";
 
@@ -47,53 +46,31 @@ const getMintV1WithdrawUplcProgram = (): UplcProgramV2 => {
   );
 };
 
-const getMintingDataProxySpendUplcProgram = (
-  minting_data_governor: string
-): UplcProgramV2 => {
-  const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "minting_data_proxy.spend"
-  );
-  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "minting_data_proxy.spend"
-  );
-  invariant(
-    !!optimizedFoundValidator && !!unOptimizedFoundValidator,
-    "Minting Data Proxy Spend Validator not found"
-  );
-  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
-    .apply(makeMintingDataProxyUplcProgramParameter(minting_data_governor))
-    .withAlt(
-      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
-        makeMintingDataProxyUplcProgramParameter(minting_data_governor)
-      )
-    );
-};
-
-// this is `minting_data_governor`
-const getMintingDataV1WithdrawUplcProgram = (
+// this is `minting_data_script_hash`
+const getMintingDataSpendUplcProgram = (
   legacy_policy_id: string,
   god_verification_key_hash: string
 ): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "minting_data_v1.withdraw"
+    (validator) => validator.title == "minting_data.spend"
   );
   const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "minting_data_v1.withdraw"
+    (validator) => validator.title == "minting_data.spend"
   );
   invariant(
     !!optimizedFoundValidator && !!unOptimizedFoundValidator,
-    "Minting Data V1 Withdraw Validator not found"
+    "Minting Data Spend Validator not found"
   );
   return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
     .apply(
-      makeMintingDataV1UplcProgramParameter(
+      makeMintingDataUplcProgramParameter(
         legacy_policy_id,
         god_verification_key_hash
       )
     )
     .withAlt(
       decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
-        makeMintingDataV1UplcProgramParameter(
+        makeMintingDataUplcProgramParameter(
           legacy_policy_id,
           god_verification_key_hash
         )
@@ -120,8 +97,7 @@ const getOrdersSpendUplcProgram = (): UplcProgramV2 => {
 };
 
 export {
-  getMintingDataProxySpendUplcProgram,
-  getMintingDataV1WithdrawUplcProgram,
+  getMintingDataSpendUplcProgram,
   getMintProxyMintUplcProgram,
   getMintV1WithdrawUplcProgram,
   getOrdersSpendUplcProgram,
