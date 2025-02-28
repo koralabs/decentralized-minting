@@ -2,6 +2,7 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeAddress } from "@helios-lang/ledger";
 import { NetworkName } from "@helios-lang/tx-utils";
+import { ScriptType } from "@koralabs/kora-labs-common";
 import fs from "fs/promises";
 import prompts from "prompts";
 
@@ -114,8 +115,6 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
               handle,
               address: makeAddress(address),
               blockfrostApiKey: BLOCKFROST_API_KEY,
-              settingsAssetClass: SETTINGS_ASSET_CLASS,
-              settingsAssetTxOutputId: SETTINGS_ASSET_TX_OUTPUT_ID,
             });
             if (txBuilderResult.ok) {
               const txResult = await mayFailTransaction(
@@ -143,8 +142,7 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
           description: "Mint all new handles with a transaction on-chain",
           value: async () => {
             const ordersScriptDetail = await fetchDeployedScript(
-              NETWORK as NetworkName,
-              "orders.spend"
+              ScriptType.DEMI_ORDERS
             );
             const ordersTxInputsResult = await fetchOrdersTxInputs({
               network: NETWORK as NetworkName,
