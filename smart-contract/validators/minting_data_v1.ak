@@ -40,14 +40,11 @@ type MintingDataV1Redeemer {
 // which is referred to as `minting_data_governor` in minting_data_proxy spending script
 // This validator contains logic to check
 // mpt_root_hash is correctly updated compared to actual minted assets (both legacy and new handles)
+//
 // ======= Parameters =======
 // `god_verification_key_hash` has the authority to spend minting_data_asset
 // without actually minting assets
 // `legacy_policy_id`: Legacy Handle's Policy ID
-//
-// TODO:
-// For now disable sub_handle minting
-// because sub handle logic is not implemented yet
 //
 validator(
   legacy_policy_id: PolicyId,
