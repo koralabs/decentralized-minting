@@ -26,6 +26,14 @@ pub type Proof {
   amount: Int,
 }
 
+// Validation:
+// Minting Data logic to check mpt_root_hash is correctly updated
+//
+// Checks
+// - according to proofs (from redeemer), check mpt_root_hash is correctly updated
+// Proof is for both legacy and new handles
+// - check real minted assets are same as proofs' (legacy and new handle are in proofs)
+//
 pub fn can_mint_or_burn(
   transaction: Transaction,
   proofs: List<Proof>,
