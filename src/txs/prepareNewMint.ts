@@ -1,8 +1,6 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import {
   Address,
-  makeAssetClass,
-  makeAssets,
   makeInlineTxOutputDatum,
   makePubKeyHash,
   makeStakingAddress,
@@ -13,10 +11,6 @@ import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
 import { Err, Ok, Result } from "ts-res";
 
 import { fetchMintingData, fetchSettings } from "../configs/index.js";
-import {
-  LEGACY_POLICY_ID,
-  MINTING_DATA_HANDLE_NAME,
-} from "../constants/index.js";
 import {
   buildMintingData,
   buildMintingDataMintOrBurnRedeemer,
@@ -138,16 +132,7 @@ const prepareNewMintTransaction = async (
   // minting data asset value
   const mintingDataValue = makeValue(
     mintingDataTxInput.value.lovelace,
-    makeAssets([
-      [
-        makeAssetClass(
-          `${LEGACY_POLICY_ID}.${Buffer.from(MINTING_DATA_HANDLE_NAME).toString(
-            "hex"
-          )}`
-        ),
-        1n,
-      ],
-    ])
+    mintingDataTxInput.value.assets
   );
 
   // build redeemer for mint v1
