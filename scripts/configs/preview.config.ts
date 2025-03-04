@@ -23,7 +23,7 @@ export const MINTING_DATA_ASSET_CLASS = makeAssetClass(
 
 // allowed minters' verification key hash
 export const ALLOWED_MINTERS = [
-  "8ba59b21136f2f0c84865fb017a5f67245660ff348d85c65c23a1411",
+  "4da965a049dfd15ed1ee19fba6e2974a0b79fc416dd1796a1f97f5e1",
 ];
 export const TREASURY_ADDRESS = makeAddress(
   "addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j"
@@ -31,7 +31,7 @@ export const TREASURY_ADDRESS = makeAddress(
 
 // personalization script address
 export const PZ_SCRIPT_ADDRESS = makeAddress(
-  "addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j"
+  "addr_test1wzzctdyf9nkgrzqw6vxhaq8mpla7zhzjyjmk6txyu0wsgrgek9nj3"
 );
 
 export const TREASURY_FEE = 2_000_000n;

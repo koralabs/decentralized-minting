@@ -87,13 +87,16 @@ const fetchSettings = async (
 const fetchMintingData = async (): Promise<
   Result<{ mintingData: MintingData; mintingDataTxInput: TxInput }, string>
 > => {
-  const mintingDataHandle = await fetchApi(
-    `handles/${MINTING_DATA_HANDLE_NAME}`
-  ).then((res) => res.json());
-  const mintingDataHandleDatum: string = await fetchApi(
-    `handles/${MINTING_DATA_HANDLE_NAME}/datum`,
-    { "Content-Type": "text/plain" }
-  ).then((res) => res.text());
+  const [mintingDataHandle, mintingDataUtxo, mintingDataHandleDatum] =
+    await Promise.all([
+      fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}`).then((res) => res.json()),
+      fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}/utxo`).then((res) =>
+        res.json()
+      ),
+      fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}/datum`, {
+        "Content-Type": "text/plain",
+      }).then((res) => res.text()),
+    ]);
 
   if (!mintingDataHandleDatum) {
     throw new Error("Settings Datum Not Found");
@@ -104,7 +107,7 @@ const fetchMintingData = async (): Promise<
     makeTxOutput(
       makeAddress(mintingDataHandle.resolved_addresses.ada),
       makeValue(
-        BigInt(1),
+        BigInt(mintingDataUtxo.lovelace),
         makeAssets([
           [makeAssetClass(`${LEGACY_POLICY_ID}.${mintingDataHandle.hex}`), 1n],
         ])
