@@ -21,11 +21,11 @@ jobs:
           node-version: 20.18
           check-latest: true
 
-      - name: Update npm and install pnpm
-        run: npm install -g npm@latest pnpm
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Install Libssl
         run: |
@@ -54,11 +54,11 @@ jobs:
           node-version: 20.18
           check-latest: true
 
-      - name: Update npm and install pnpm
-        run: npm install -g npm@latest pnpm
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Install Libssl
         run: |
@@ -87,11 +87,11 @@ jobs:
           node-version: 20.18
           check-latest: true
 
-      - name: Update npm and install pnpm
-        run: npm install -g npm@latest pnpm
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Run tests
         run: npm run test
