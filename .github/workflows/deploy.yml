@@ -8,6 +8,12 @@ jobs:
     name: Deploying from ${{ github.ref_name }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check repo owner
+        if: github.repository_owner != 'koralabs'
+        run: |
+          echo "This action is only allowed to be run by the koralabs organization"
+          exit 0
+
       - name: Checkout code
         uses: actions/checkout@v1
 
