@@ -5,8 +5,8 @@ on:
       - master
 jobs:
   deploy:
-    name: Deploying from ${{ github.ref_name }}
     if: github.repository_owner == 'koralabs'
+    name: Deploying from ${{ github.ref_name }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
