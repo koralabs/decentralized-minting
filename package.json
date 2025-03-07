@@ -8,6 +8,7 @@
     "build": "rm -rf lib/ && tsc",
     "lint": "concurrently \"cd smart-contract && aiken fmt --check\" \"npx eslint './src/**/*.{ts,mjs}' --max-warnings=0\"",
     "test": "vitest run",
+    "test:aiken": "cd smart-contract &&  aiken check",
     "start:preview": "cd scripts/ && NODE_ENV=preview tsx ./run/index.ts",
     "start:preprod": "cd scripts/ && NODE_ENV=preprod tsx ./run/index.ts"
   },
