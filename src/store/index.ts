@@ -9,7 +9,7 @@ const init = async (folder: string): Promise<Trie> => {
 };
 
 const inspect = async (db: Trie) => {
-  console.log(db);
+  console.log(db.hash?.toString("hex") || Buffer.alloc(32).toString("hex"));
 };
 
 const clear = async (folder: string) => {

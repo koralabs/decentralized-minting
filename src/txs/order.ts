@@ -30,14 +30,11 @@ import { fetchDeployedScript } from "../utils/contract.js";
  * @property {NetworkName} network Network
  * @property {Address} address User's Wallet Address to perform order
  * @property {string} handle Handle Name to order (UTF8 format)
- * @property {AssetClass} settingsAssetClass De Mi Contract's Settings Asset Class
- * @property {TxOutputId} settingsAssetTxOutputId De Mi Contract's Settings Asset Tx Output ID
  */
 interface RequestParams {
   network: NetworkName;
   address: Address;
   handle: string;
-  blockfrostApiKey: string;
 }
 
 /**

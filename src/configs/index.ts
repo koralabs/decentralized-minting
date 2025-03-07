@@ -85,7 +85,7 @@ const fetchSettings = async (
 };
 
 const fetchMintingData = async (): Promise<
-  Result<{ mintingData: MintingData; mintingDataTxInput: TxInput }, string>
+  Result<{ mintingData: MintingData; mintingDataAssetTxInput: TxInput }, string>
 > => {
   const [mintingDataHandle, mintingDataUtxo, mintingDataHandleDatum] =
     await Promise.all([
@@ -102,7 +102,7 @@ const fetchMintingData = async (): Promise<
     throw new Error("Settings Datum Not Found");
   }
 
-  const mintingDataTxInput = makeTxInput(
+  const mintingDataAssetTxInput = makeTxInput(
     mintingDataHandle.utxo,
     makeTxOutput(
       makeAddress(mintingDataHandle.resolved_addresses.ada),
@@ -117,7 +117,7 @@ const fetchMintingData = async (): Promise<
   );
 
   const decodedSettingsResult = mayFail(() =>
-    decodeMintingDataDatum(mintingDataTxInput.datum)
+    decodeMintingDataDatum(mintingDataAssetTxInput.datum)
   );
   if (!decodedSettingsResult.ok) {
     return Err(decodedSettingsResult.error);
@@ -125,7 +125,7 @@ const fetchMintingData = async (): Promise<
 
   return Ok({
     mintingData: decodedSettingsResult.data,
-    mintingDataTxInput,
+    mintingDataAssetTxInput,
   });
 };
 
