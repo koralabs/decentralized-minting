@@ -33,6 +33,18 @@ const balanceOf = async (wallet: SimpleWallet) => {
   return balance;
 };
 
+const userAssetClass = (policyId: string, handleName: string) => {
+  return makeAssetClass(
+    `${policyId}.${PREFIX_222}${Buffer.from(handleName).toString("hex")}`
+  );
+};
+
+const referenceAssetClass = (policyId: string, handleName: string) => {
+  return makeAssetClass(
+    `${policyId}.${PREFIX_100}${Buffer.from(handleName).toString("hex")}`
+  );
+};
+
 const userAssetValue = (policyId: string, handleName: string) => {
   return makeValue(
     1n,
@@ -65,6 +77,8 @@ export {
   alwaysSuceedMintUplcProgram,
   balanceOf,
   extractScriptCborsFromUplcProgram,
+  referenceAssetClass,
   referenceAssetValue,
+  userAssetClass,
   userAssetValue,
 };
