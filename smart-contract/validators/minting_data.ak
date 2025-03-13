@@ -3,8 +3,6 @@ use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
 use validations/minting_data.{Proof, can_god_mode, can_mint_or_burn}
 
-// NOTE:
-// Proofs must be in same order as minting assets
 pub type MintingDataRedeemer {
   // when legacy or new handles are minted/burnt
   MintOrBurn(List<Proof>)

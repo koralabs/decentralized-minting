@@ -132,7 +132,7 @@ fn all_orders_are_satisfied(
           expect datum: OrderDatum = datum
           let OrderDatum { requested_handle, destination, .. } = datum
 
-          // extract user & ref output
+          // extract ref & user output
           expect [ref_output, user_output, ..rest_outputs] = outputs
 
           // make ref asset name and user asset name from requested_handle
