@@ -4,6 +4,7 @@ import { Ok } from "ts-res";
 import { assert, describe } from "vitest";
 
 import {
+  cancel,
   decodeMintingDataDatum,
   fetchSettings,
   inspect,
@@ -12,6 +13,7 @@ import {
   mayFailTransaction,
   mint,
   prepareLegacyMintTransaction,
+  removeHandle,
   request,
 } from "../src/index.js";
 import { myTest } from "./setup.js";
@@ -584,6 +586,212 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
   );
 
   myTest(
+    "user_4 orders new sub handle but sub handle which is not supported - <demi-6@user_4>",
+    async ({ network, emulator, wallets, ordersDetail }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { usersWallets } = wallets;
+      const user4Wallet = usersWallets[3];
+
+      const handleName = "demi-6@user_4";
+
+      const txBuilderResult = await request({
+        address: user4Wallet.address,
+        handle: handleName,
+        network,
+      });
+      invariant(txBuilderResult.ok, "Order tx failed");
+
+      const txBuilder = txBuilderResult.data;
+      const tx = await txBuilder.build({
+        changeAddress: user4Wallet.address,
+        spareUtxos: await user4Wallet.utxos,
+      });
+      tx.addSignatures(await user4Wallet.signTx(tx));
+      const txId = await user4Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      const orderTxInput = await emulator.getUtxo(makeTxOutputId(txId, 0));
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+      ordersDetail.push({
+        handleName,
+        txInput: orderTxInput,
+      });
+    }
+  );
+
+  myTest(
+    "can not mint new handle, because that is sub handle - <demi-6@user_4>",
+    async ({ db, wallets, ordersDetail }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { allowedMintersWallets } = wallets;
+      const allowedMinter1Wallet = allowedMintersWallets[0];
+
+      const handleNames = ordersDetail.map((order) => order.handleName);
+
+      const txBuilderResult = await mint({
+        address: allowedMinter1Wallet.address,
+        ordersTxInputs: ordersDetail.map((order) => order.txInput),
+        db,
+        blockfrostApiKey: "",
+      });
+      invariant(txBuilderResult.ok, "Mint Tx Building Failed");
+
+      const txBuilder = txBuilderResult.data;
+      const txResult = await mayFailTransaction(
+        txBuilder,
+        allowedMinter1Wallet.address,
+        await allowedMinter1Wallet.utxos
+      ).complete();
+      invariant(!txResult.ok, "Mint Tx Complete should fail");
+
+      // remove handle from DB as rollback
+      for (const handleName of handleNames) await removeHandle(db, handleName);
+
+      assert(
+        txResult.error.message.includes(
+          "expect is_sub_handle(handle_name) == False"
+        )
+      );
+    }
+  );
+
+  myTest(
+    "user_4 cancel his order, because sub handle is not supported - <demi-6@user_4>",
+    async ({ network, emulator, wallets, ordersDetail }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { usersWallets } = wallets;
+      const user4Wallet = usersWallets[3];
+
+      const orderDetail = ordersDetail[0];
+
+      const txBuilderResult = await cancel({
+        address: user4Wallet.address,
+        network,
+        orderTxInput: orderDetail.txInput,
+      });
+      invariant(txBuilderResult.ok, "Order tx failed");
+
+      const txBuilder = txBuilderResult.data;
+      const tx = await txBuilder.build({
+        changeAddress: user4Wallet.address,
+        spareUtxos: await user4Wallet.utxos,
+      });
+      tx.addSignatures(await user4Wallet.signTx(tx));
+      await user4Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      // empty orders detail
+      ordersDetail.length = 0;
+    }
+  );
+
+  myTest(
+    "user_4 orders new handle, but handle is too long - <abcdefghijklmnop>",
+    async ({ network, emulator, wallets, ordersDetail }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { usersWallets } = wallets;
+      const user4Wallet = usersWallets[3];
+
+      const handleName = "abcdefghijklmnop";
+
+      const txBuilderResult = await request({
+        address: user4Wallet.address,
+        handle: handleName,
+        network,
+      });
+      invariant(txBuilderResult.ok, "Order tx failed");
+
+      const txBuilder = txBuilderResult.data;
+      const tx = await txBuilder.build({
+        changeAddress: user4Wallet.address,
+        spareUtxos: await user4Wallet.utxos,
+      });
+      tx.addSignatures(await user4Wallet.signTx(tx));
+      const txId = await user4Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      const orderTxInput = await emulator.getUtxo(makeTxOutputId(txId, 0));
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+      ordersDetail.push({
+        handleName,
+        txInput: orderTxInput,
+      });
+    }
+  );
+
+  myTest(
+    "can not mint new handle, because that is too long - <abcdefghijklmnop>",
+    async ({ db, wallets, ordersDetail }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { allowedMintersWallets } = wallets;
+      const allowedMinter1Wallet = allowedMintersWallets[0];
+
+      const handleNames = ordersDetail.map((order) => order.handleName);
+
+      const txBuilderResult = await mint({
+        address: allowedMinter1Wallet.address,
+        ordersTxInputs: ordersDetail.map((order) => order.txInput),
+        db,
+        blockfrostApiKey: "",
+      });
+      invariant(txBuilderResult.ok, "Mint Tx Building Failed");
+
+      const txBuilder = txBuilderResult.data;
+      const txResult = await mayFailTransaction(
+        txBuilder,
+        allowedMinter1Wallet.address,
+        await allowedMinter1Wallet.utxos
+      ).complete();
+      invariant(!txResult.ok, "Mint Tx Complete should fail");
+
+      // remove handle from DB as rollback
+      for (const handleName of handleNames) await removeHandle(db, handleName);
+
+      assert(
+        txResult.error.message.includes(
+          "expect bytearray.length(handle_name) <= max_handle_length"
+        )
+      );
+    }
+  );
+
+  myTest(
+    "user_4 cancel his order, because handle is too long - <abcdefghijklmnop>",
+    async ({ network, emulator, wallets, ordersDetail }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { usersWallets } = wallets;
+      const user4Wallet = usersWallets[3];
+
+      const orderDetail = ordersDetail[0];
+
+      const txBuilderResult = await cancel({
+        address: user4Wallet.address,
+        network,
+        orderTxInput: orderDetail.txInput,
+      });
+      invariant(txBuilderResult.ok, "Order tx failed");
+
+      const txBuilder = txBuilderResult.data;
+      const tx = await txBuilder.build({
+        changeAddress: user4Wallet.address,
+        spareUtxos: await user4Wallet.utxos,
+      });
+      tx.addSignatures(await user4Wallet.signTx(tx));
+      await user4Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      // empty orders detail
+      ordersDetail.length = 0;
+    }
+  );
+
+  myTest(
     "can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>",
     async ({ db, legacyMintUplcProgram, legacyPolicyId, wallets }) => {
       const { usersWallets, allowedMintersWallets } = wallets;
@@ -597,6 +805,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
         db,
         blockfrostApiKey: "",
       });
+      console.log(txBuilderResult);
       invariant(txBuilderResult.ok, "Mint Tx Building Failed");
 
       const { txBuilder } = txBuilderResult.data;
@@ -606,6 +815,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
       legacyHandles.forEach((handle) =>
         mintingHandlesTokensValue.push([
+          // Missing ref asset
           userAssetClass(legacyPolicyId, handle).tokenName,
           1n,
         ])
@@ -627,7 +837,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
         allowedMinter2Wallet.address,
         await allowedMinter2Wallet.utxos
       ).complete();
-      invariant(!txResult.ok, "Mint Tx Complete can't succeed");
+      invariant(!txResult.ok, "Mint Tx Complete should fail");
 
       assert(
         txResult.error.message.includes(

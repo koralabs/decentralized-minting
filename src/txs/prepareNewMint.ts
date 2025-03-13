@@ -16,6 +16,7 @@ import {
   buildMintingDataMintOrBurnRedeemer,
   buildMintV1MintHandlesRedeemer,
   makeVoidData,
+  MintingData,
   parseMPTProofJSON,
   Proof,
   Settings,
@@ -127,7 +128,10 @@ const prepareNewMintTransaction = async (
   }
 
   // update all handles in minting data
-  mintingData.mpt_root_hash = db.hash.toString("hex");
+  const newMintingData: MintingData = {
+    ...mintingData,
+    mpt_root_hash: db.hash.toString("hex"),
+  };
 
   // minting data asset value
   const mintingDataValue = makeValue(
@@ -168,7 +172,7 @@ const prepareNewMintTransaction = async (
   txBuilder.payUnsafe(
     mintingDataAssetTxInput.address,
     mintingDataValue,
-    makeInlineTxOutputDatum(buildMintingData(mintingData))
+    makeInlineTxOutputDatum(buildMintingData(newMintingData))
   );
 
   // <-- withdraw from mint v1 withdraw validator (script from reference input)

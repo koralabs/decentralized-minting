@@ -1,3 +1,4 @@
+import { bytesToHex } from "@helios-lang/codec-utils";
 import {
   makeAssetClass,
   makeAssets,
@@ -303,6 +304,10 @@ const setup = async () => {
     new Promise((resolve) =>
       resolve({
         validatorHash: ordersConfig.ordersValidatorHash.toHex(),
+        cbor: bytesToHex(ordersConfig.ordersSpendUplcProgram.toCbor()),
+        unoptimizedCbor: bytesToHex(
+          ordersConfig.ordersSpendUplcProgram.alt!.toCbor()
+        ),
       } as ScriptDetails)
     )
   );
