@@ -89,7 +89,7 @@ const prepareLegacyMintTransaction = async (
   // check if current db trie hash is same as minting data root hash
   if (
     mintingData.mpt_root_hash.toLowerCase() !=
-    db.hash.toString("hex").toLowerCase()
+    (db.hash?.toString("hex") || Buffer.alloc(32).toString("hex")).toLowerCase()
   ) {
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
