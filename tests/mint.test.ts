@@ -805,7 +805,6 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
         db,
         blockfrostApiKey: "",
       });
-      console.log(txBuilderResult);
       invariant(txBuilderResult.ok, "Mint Tx Building Failed");
 
       const { txBuilder } = txBuilderResult.data;
