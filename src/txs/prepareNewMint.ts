@@ -16,6 +16,7 @@ import {
   buildMintingDataMintOrBurnRedeemer,
   buildMintV1MintHandlesRedeemer,
   makeVoidData,
+  MintingData,
   parseMPTProofJSON,
   Proof,
   Settings,
@@ -94,12 +95,12 @@ const prepareNewMintTransaction = async (
     return Err(
       new Error(`Failed to fetch minting data: ${mintingDataResult.error}`)
     );
-  const { mintingData, mintingDataTxInput } = mintingDataResult.data;
+  const { mintingData, mintingDataAssetTxInput } = mintingDataResult.data;
 
   // check if current db trie hash is same as minting data root hash
   if (
     mintingData.mpt_root_hash.toLowerCase() !=
-    db.hash.toString("hex").toLowerCase()
+    (db.hash?.toString("hex") || Buffer.alloc(32).toString("hex")).toLowerCase()
   ) {
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
@@ -127,12 +128,15 @@ const prepareNewMintTransaction = async (
   }
 
   // update all handles in minting data
-  mintingData.mpt_root_hash = db.hash.toString("hex");
+  const newMintingData: MintingData = {
+    ...mintingData,
+    mpt_root_hash: db.hash.toString("hex"),
+  };
 
   // minting data asset value
   const mintingDataValue = makeValue(
-    mintingDataTxInput.value.lovelace,
-    mintingDataTxInput.value.assets
+    mintingDataAssetTxInput.value.lovelace,
+    mintingDataAssetTxInput.value.assets
   );
 
   // build redeemer for mint v1
@@ -162,13 +166,13 @@ const prepareNewMintTransaction = async (
   );
 
   // <-- spend minting data utxo
-  txBuilder.spendUnsafe(mintingDataTxInput, mintingDataMintOrBurnRedeemer);
+  txBuilder.spendUnsafe(mintingDataAssetTxInput, mintingDataMintOrBurnRedeemer);
 
   // <-- lock minting data value with new root hash
   txBuilder.payUnsafe(
-    mintingDataTxInput.address,
+    mintingDataAssetTxInput.address,
     mintingDataValue,
-    makeInlineTxOutputDatum(buildMintingData(mintingData))
+    makeInlineTxOutputDatum(buildMintingData(newMintingData))
   );
 
   // <-- withdraw from mint v1 withdraw validator (script from reference input)

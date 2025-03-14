@@ -13,6 +13,11 @@ type MintV1Redeemer {
 // Can update minting logic here 
 // without changing policy id - which depends on mint_proxy validator
 //
+// CAUTION:
+// UTxOs in Order script (in transaction inputs) 
+// and Minted Handles' outputs (Reference NFT output to PZ script, User NFT output to user address)
+// must be in same order
+//
 validator {
   fn withdraw(redeemer: MintV1Redeemer, ctx: ScriptContext) -> Bool {
     let ScriptContext { purpose, transaction } = ctx

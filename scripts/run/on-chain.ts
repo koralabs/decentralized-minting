@@ -1,4 +1,5 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
+import { BlockFrostAPI } from "@blockfrost/blockfrost-js";
 import { bytesToHex } from "@helios-lang/codec-utils";
 import { makeAddress } from "@helios-lang/ledger";
 import { NetworkName } from "@helios-lang/tx-utils";
@@ -16,6 +17,7 @@ import {
   buildMintingData,
   buildSettingsData,
   buildSettingsV1Data,
+  checkAccountRegistrationStatus,
   deploy,
   fetchDeployedScript,
   fetchOrdersTxInputs,
@@ -24,6 +26,7 @@ import {
   mayFailTransaction,
   mint,
   MintingData,
+  registerStakingAddress,
   request,
   Settings,
   SettingsV1,
@@ -34,12 +37,6 @@ import { CommandImpl } from "./types.js";
 
 const doOnChainActions = async (commandImpl: CommandImpl) => {
   const blockfrostV0Client = getBlockfrostV0Client(BLOCKFROST_API_KEY);
-  const configs = GET_CONFIGS(NETWORK as NetworkName);
-  const {
-    SETTINGS_ASSET_CLASS,
-    SETTINGS_ASSET_TX_OUTPUT_ID,
-    MINTING_DATA_ASSET_CLASS,
-  } = configs;
 
   let finished: boolean = false;
   while (!finished) {
@@ -85,10 +82,42 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
           title: "staking-addresses",
           description: "Staking Addresses to Register",
           value: async () => {
+            const { address } = await prompts([
+              {
+                name: "address",
+                type: "text",
+                message: "Address to pay registration fee",
+              },
+            ]);
             const stakingAddresses = getStakingAddresses();
+            const blockfrostApi = new BlockFrostAPI({
+              projectId: BLOCKFROST_API_KEY,
+            });
+            const blockfrostV0Client =
+              getBlockfrostV0Client(BLOCKFROST_API_KEY);
+
+            // check if staking address is registered or not
+            const status = await checkAccountRegistrationStatus(
+              blockfrostApi,
+              stakingAddresses.mintV1StakingAddress
+            );
             console.log("\n\n------- Staking Addresses To Register -------\n");
             console.log(stakingAddresses);
             console.log("\n");
+            if (status != "registered") {
+              console.log("Staking address is not registered");
+              console.log(
+                "Please register the staking address using Script CBOR, just a sec..."
+              );
+              const txCbor = await registerStakingAddress(
+                NETWORK as NetworkName,
+                makeAddress(address),
+                await blockfrostV0Client.getUtxos(address),
+                stakingAddresses.mintV1StakingAddress
+              );
+              console.log({ txCbor });
+              console.log("\n");
+            }
           },
           disabled: !commandImpl.mpt,
         },
@@ -114,7 +143,6 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
               network: NETWORK as NetworkName,
               handle,
               address: makeAddress(address),
-              blockfrostApiKey: BLOCKFROST_API_KEY,
             });
             if (txBuilderResult.ok) {
               const txResult = await mayFailTransaction(
@@ -159,9 +187,6 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
               address: makeAddress(address),
               ordersTxInputs: ordersTxInputsResult.data,
               db: commandImpl.mpt!,
-              settingsAssetClass: SETTINGS_ASSET_CLASS,
-              settingsAssetTxOutputId: SETTINGS_ASSET_TX_OUTPUT_ID,
-              mintingDataAssetClass: MINTING_DATA_ASSET_CLASS,
               blockfrostApiKey: BLOCKFROST_API_KEY,
             });
             if (txBuilderResult.ok) {

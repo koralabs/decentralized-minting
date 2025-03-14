@@ -62,3 +62,6 @@ node_modules/
 
 # out dir
 /lib/
+
+# test db
+test-db/

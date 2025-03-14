@@ -2,13 +2,11 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import { ByteArrayLike, IntLike } from "@helios-lang/codec-utils";
 import {
   Address,
-  AssetClass,
   makeAssetClass,
   makeAssets,
   makeMintingPolicyHash,
   makeValue,
   TxInput,
-  TxOutputId,
 } from "@helios-lang/ledger";
 import { TxBuilder } from "@helios-lang/tx-utils";
 import { Err, Ok, Result } from "ts-res";
@@ -32,18 +30,12 @@ import { prepareNewMintTransaction } from "./prepareNewMint.js";
  * @property {Address} address Wallet Address to perform mint
  * @property {TxInput[]} ordersTxInputs Orders UTxOs
  * @property {Trie} db Trie DB
- * @property {AssetClass} settingsAssetClass De Mi Contract's Settings Asset Class
- * @property {TxOutputId} settingsAssetTxOutputId De Mi Contract's Settings Asset Tx Output ID
- * @property {AssetClass} mintingDataAssetClass De Mi Contract's Minting Data Asset Class
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface MintParams {
   address: Address;
   ordersTxInputs: TxInput[];
   db: Trie;
-  settingsAssetClass: AssetClass;
-  settingsAssetTxOutputId: TxOutputId;
-  mintingDataAssetClass: AssetClass;
   blockfrostApiKey: string;
 }
 

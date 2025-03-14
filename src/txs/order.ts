@@ -7,11 +7,13 @@ import {
   TxInput,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, NetworkName, TxBuilder } from "@helios-lang/tx-utils";
+import { decodeUplcProgramV2FromCbor } from "@helios-lang/uplc";
 import { ScriptDetails, ScriptType } from "@koralabs/kora-labs-common";
 import { Err, Ok, Result } from "ts-res";
 
 import { fetchSettings } from "../configs/index.js";
 import {
+  buildOrderCancelRedeemer,
   buildOrderData,
   decodeOrderDatum,
   makeSignatureMultiSigScriptData,
@@ -30,14 +32,11 @@ import { fetchDeployedScript } from "../utils/contract.js";
  * @property {NetworkName} network Network
  * @property {Address} address User's Wallet Address to perform order
  * @property {string} handle Handle Name to order (UTF8 format)
- * @property {AssetClass} settingsAssetClass De Mi Contract's Settings Asset Class
- * @property {TxOutputId} settingsAssetTxOutputId De Mi Contract's Settings Asset Tx Output ID
  */
 interface RequestParams {
   network: NetworkName;
   address: Address;
   handle: string;
-  blockfrostApiKey: string;
 }
 
 /**
@@ -102,6 +101,71 @@ const request = async (
 
 /**
  * @interface
+ * @typedef {object} CancelParmas
+ * @property {NetworkName} network Network
+ * @property {Address} address User's Wallet Address to perform order
+ * @property {TxInput} orderTxInput Order Tx Input
+ */
+interface CancelParmas {
+  network: NetworkName;
+  address: Address;
+  orderTxInput: TxInput;
+}
+
+/**
+ * @description Request handle to be minted
+ * @param {CancelParmas} params
+ * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
+ */
+const cancel = async (
+  params: CancelParmas
+): Promise<Result<TxBuilder, Error>> => {
+  const { network, address, orderTxInput } = params;
+
+  const isMainnet = network == "mainnet";
+  if (address.era == "Byron")
+    return Err(new Error("Byron Address not supported"));
+  if (address.spendingCredential.kind == "ValidatorHash")
+    return Err(new Error("Must be Base address"));
+
+  // fetch orders script
+  const ordersScriptDetailsResult = await mayFailAsync(() =>
+    fetchDeployedScript(ScriptType.DEMI_ORDERS)
+  ).complete();
+  if (!ordersScriptDetailsResult.ok)
+    return Err(
+      new Error(
+        `Failed to fetch deployed orders script: ${ordersScriptDetailsResult.error}`
+      )
+    );
+  const ordersScriptDetails = ordersScriptDetailsResult.data;
+
+  // make Order Uplc Program
+  if (!ordersScriptDetails.cbor || !ordersScriptDetails.unoptimizedCbor)
+    return Err(new Error(`Order Script Detail doesn't have CBOR`));
+  const orderUplcProgram = decodeUplcProgramV2FromCbor(
+    ordersScriptDetails.cbor
+  ).withAlt(decodeUplcProgramV2FromCbor(ordersScriptDetails.unoptimizedCbor));
+
+  // start building tx
+  const txBuilder = makeTxBuilder({
+    isMainnet,
+  });
+
+  // <-- attach order script
+  txBuilder.attachUplcProgram(orderUplcProgram);
+
+  // <-- spend order tx input
+  txBuilder.spendUnsafe(orderTxInput, buildOrderCancelRedeemer());
+
+  // <-- add signer
+  txBuilder.addSigners(address.spendingCredential);
+
+  return Ok(txBuilder);
+};
+
+/**
+ * @interface
  * @typedef {object} RequestParams
  * @property {NetworkName} network Network
  * @property {Address} address Wallet Address to perform mint
@@ -149,5 +213,5 @@ const fetchOrdersTxInputs = async (
   return Ok(orderUtxos);
 };
 
-export type { FetchOrdersTxInputsParams, RequestParams };
-export { fetchOrdersTxInputs, request };
+export type { CancelParmas, FetchOrdersTxInputsParams, RequestParams };
+export { cancel, fetchOrdersTxInputs, request };
