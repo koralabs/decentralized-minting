@@ -100,7 +100,7 @@ const prepareLegacyMintTransaction = async (
     try {
       // NOTE:
       // Have to remove handles if transaction fails
-      await db.insert(handleName, "LEGACY");
+      await db.insert(handleName, "");
       const mpfProof = await db.prove(handleName);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),

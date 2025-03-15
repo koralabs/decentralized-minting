@@ -7,9 +7,6 @@ use aiken/transaction.{
 use aiken/transaction/value.{PolicyId, Value}
 use common/cip68.{prefix_100, prefix_222}
 use common/hashes.{VerificationKeyHash}
-use decentralized_minting/constants.{
-  mpt_legacy_handle_value, mpt_new_handle_value,
-}
 use decentralized_minting/minting_data.{MintingData, resolve_minting_data}
 use decentralized_minting/settings.{Settings, find_settings}
 use decentralized_minting/settings_v1.{SettingsV1}
@@ -126,7 +123,7 @@ fn all_proofs_are_valid(
     [] -> continuation(root, expected_mint_value)
     [proof, ..rest_proofs] -> {
       let Proof { mpt_proof, handle, amount } = proof
-      let (handle_name, mpt_handle_value) = get_handle_name_and_value(handle)
+      let handle_name = get_handle_name(handle)
 
       // disable sub handle minting
       expect is_sub_handle(handle_name) == False
@@ -136,7 +133,7 @@ fn all_proofs_are_valid(
 
       all_proofs_are_valid(
         rest_proofs,
-        update_root(root, handle_name, mpt_handle_value, amount, mpt_proof),
+        update_root(root, handle_name, amount, mpt_proof),
         legacy_policy_id,
         new_policy_id,
         update_mint_value(
@@ -155,17 +152,16 @@ fn all_proofs_are_valid(
 fn update_root(
   root: mpt.MerklePatriciaForestry,
   handle_name: ByteArray,
-  mpt_handle_value: ByteArray,
   amount: Int,
   mpt_proof: mpt.Proof,
 ) -> mpt.MerklePatriciaForestry {
   when amount is {
     1 ->
       // mint
-      mpt.insert(root, handle_name, mpt_handle_value, mpt_proof)
+      mpt.insert(root, handle_name, #"", mpt_proof)
     -1 ->
       // burn
-      mpt.delete(root, handle_name, mpt_handle_value, mpt_proof)
+      mpt.delete(root, handle_name, #"", mpt_proof)
     _ -> fail @"proof amount can only be 1 or -1"
   }
 }
@@ -205,10 +201,10 @@ fn update_mint_value(
   }
 }
 
-fn get_handle_name_and_value(handle: Handle) -> (ByteArray, ByteArray) {
+fn get_handle_name(handle: Handle) -> ByteArray {
   when handle is {
-    Legacy(handle_name) -> (handle_name, mpt_legacy_handle_value)
-    New(handle_name) -> (handle_name, mpt_new_handle_value)
+    Legacy(handle_name) -> handle_name
+    New(handle_name) -> handle_name
   }
 }
 
