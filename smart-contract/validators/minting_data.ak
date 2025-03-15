@@ -1,7 +1,8 @@
 use aiken/transaction.{ScriptContext, Spend}
 use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
-use validations/minting_data.{Proof, can_god_mode, can_mint_or_burn}
+use validations/minting_data/types.{Proof}
+use validations/minting_data/validation.{can_god_mode, can_mint_or_burn}
 
 pub type MintingDataRedeemer {
   // when legacy or new handles are minted/burnt

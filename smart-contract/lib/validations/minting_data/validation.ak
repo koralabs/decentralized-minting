@@ -1,29 +1,15 @@
-use aiken/bytearray
 use aiken/list
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{
   InlineDatum, Input, OutputReference, Transaction, find_input,
 }
-use aiken/transaction/value.{PolicyId, Value}
-use common/cip68.{prefix_100, prefix_222}
+use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
 use decentralized_minting/minting_data.{MintingData, resolve_minting_data}
 use decentralized_minting/settings.{Settings, find_settings}
 use decentralized_minting/settings_v1.{SettingsV1}
-
-const max_handle_length = 15
-
-// with out asset name label
-pub type Handle {
-  Legacy(ByteArray)
-  New(ByteArray)
-}
-
-pub type Proof {
-  mpt_proof: mpt.Proof,
-  handle: Handle,
-  amount: Int,
-}
+use validations/minting_data/types.{Proof}
+use validations/minting_data/utils.{all_proofs_are_valid}
 
 // Validation:
 // Minting Data logic to check mpt_root_hash is correctly updated
@@ -108,107 +94,4 @@ pub fn can_god_mode(
   expect list.has(extra_signatories, god_verification_key_hash)
 
   True
-}
-
-// This function also check handle_name is valid or not
-fn all_proofs_are_valid(
-  proofs: List<Proof>,
-  root: mpt.MerklePatriciaForestry,
-  legacy_policy_id: PolicyId,
-  new_policy_id: PolicyId,
-  expected_mint_value: Value,
-  continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
-) -> result {
-  when proofs is {
-    [] -> continuation(root, expected_mint_value)
-    [proof, ..rest_proofs] -> {
-      let Proof { mpt_proof, handle, amount } = proof
-      let handle_name = get_handle_name(handle)
-
-      // disable sub handle minting
-      expect is_sub_handle(handle_name) == False
-
-      // check handle name length
-      expect bytearray.length(handle_name) <= max_handle_length
-
-      all_proofs_are_valid(
-        rest_proofs,
-        update_root(root, handle_name, amount, mpt_proof),
-        legacy_policy_id,
-        new_policy_id,
-        update_mint_value(
-          expected_mint_value,
-          legacy_policy_id,
-          new_policy_id,
-          handle,
-          amount,
-        ),
-        continuation,
-      )
-    }
-  }
-}
-
-fn update_root(
-  root: mpt.MerklePatriciaForestry,
-  handle_name: ByteArray,
-  amount: Int,
-  mpt_proof: mpt.Proof,
-) -> mpt.MerklePatriciaForestry {
-  when amount is {
-    1 ->
-      // mint
-      mpt.insert(root, handle_name, #"", mpt_proof)
-    -1 ->
-      // burn
-      mpt.delete(root, handle_name, #"", mpt_proof)
-    _ -> fail @"proof amount can only be 1 or -1"
-  }
-}
-
-fn update_mint_value(
-  mint_value: Value,
-  legacy_policy_id: PolicyId,
-  new_policy_id: PolicyId,
-  handle: Handle,
-  amount: Int,
-) -> Value {
-  when handle is {
-    Legacy(handle_name) ->
-      mint_value
-        |> value.add(
-            legacy_policy_id,
-            bytearray.concat(prefix_100, handle_name),
-            amount,
-          )
-        |> value.add(
-            legacy_policy_id,
-            bytearray.concat(prefix_222, handle_name),
-            amount,
-          )
-    New(handle_name) ->
-      mint_value
-        |> value.add(
-            new_policy_id,
-            bytearray.concat(prefix_100, handle_name),
-            amount,
-          )
-        |> value.add(
-            new_policy_id,
-            bytearray.concat(prefix_222, handle_name),
-            amount,
-          )
-  }
-}
-
-fn get_handle_name(handle: Handle) -> ByteArray {
-  when handle is {
-    Legacy(handle_name) -> handle_name
-    New(handle_name) -> handle_name
-  }
-}
-
-fn is_sub_handle(handle_name: ByteArray) -> Bool {
-  handle_name
-    |> bytearray.foldl(False, fn(char, result) { result || char == 0x40 })
 }
