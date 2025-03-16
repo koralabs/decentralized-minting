@@ -1043,7 +1043,6 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
         allowedMinter2Wallet.address,
         await allowedMinter2Wallet.utxos
       ).complete();
-      console.log(txResult);
       invariant(txResult.ok, "Mint Tx Complete Failed");
 
       const { tx } = txResult.data;
