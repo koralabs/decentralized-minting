@@ -14,6 +14,7 @@ import {
   buildMintingDataMintOrBurnRedeemer,
   getUTF8HandleName,
   Handle,
+  MintingData,
   parseMPTProofJSON,
   Proof,
   Settings,
@@ -106,6 +107,7 @@ const prepareLegacyMintTransaction = async (
   const proofs: Proof[] = [];
   for (const handle of handles) {
     const handleName = getUTF8HandleName(handle);
+    console.log(handleName);
     try {
       // NOTE:
       // Have to remove handles if transaction fails
@@ -123,7 +125,10 @@ const prepareLegacyMintTransaction = async (
   }
 
   // update all handles in minting data
-  mintingData.mpt_root_hash = db.hash.toString("hex");
+  const newMintingData: MintingData = {
+    ...mintingData,
+    mpt_root_hash: db.hash.toString("hex"),
+  };
 
   // minting data asset value
   const mintingDataValue = makeValue(
@@ -156,7 +161,7 @@ const prepareLegacyMintTransaction = async (
   txBuilder.payUnsafe(
     mintingDataAssetTxInput.address,
     mintingDataValue,
-    makeInlineTxOutputDatum(buildMintingData(mintingData))
+    makeInlineTxOutputDatum(buildMintingData(newMintingData))
   );
 
   // NOTE:

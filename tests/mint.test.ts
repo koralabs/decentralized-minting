@@ -24,9 +24,12 @@ import {
   referenceAssetValue,
   userAssetClass,
   userAssetValue,
+  virtualSubHandleAssetClass,
+  virtualSubHandleAssetValue,
 } from "./utils.js";
 
 describe.sequential("Koralab Decentralized Minting Tests", () => {
+  // user_1 orders new handle - <demi-1>
   myTest(
     "user_1 orders new handle - <demi-1>",
     async ({ network, emulator, wallets, ordersDetail }) => {
@@ -62,6 +65,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // mint new handle - <demi-1>
   myTest(
     "mint new handle - <demi-1>",
     async ({
@@ -143,6 +147,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // user_2 orders new handle - <demi-2>
   myTest(
     "user_2 orders new handle - <demi-2>",
     async ({ network, emulator, wallets, ordersDetail }) => {
@@ -178,6 +183,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // user_3 orders new handle - <demi-3>
   myTest(
     "user_3 orders new handle - <demi-3>",
     async ({ network, emulator, wallets, ordersDetail }) => {
@@ -213,6 +219,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // mint new handles - <demi-2, demi-3>
   myTest(
     "mint new handles - <demi-2, demi-3>",
     async ({
@@ -311,6 +318,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // mint legacy handles - <legacy-1, legacy-2>
   myTest(
     "mint legacy handles - <legacy-1, legacy-2>",
     async ({
@@ -422,6 +430,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // user_2 orders new handle - <demi-4>
   myTest(
     "user_2 orders new handle - <demi-4>",
     async ({ network, emulator, wallets, ordersDetail }) => {
@@ -457,6 +466,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // user_3 orders new handle - <demi-5>
   myTest(
     "user_3 orders new handle - <demi-5>",
     async ({ network, emulator, wallets, ordersDetail }) => {
@@ -492,6 +502,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // mint new handles after minting legacy handles - <demi-4, demi-5>
   myTest(
     "mint new handles after minting legacy handles - <demi-4, demi-5>",
     async ({
@@ -590,8 +601,9 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // user_4 orders new sub handle but sub handle is not supported - <demi-6@user_4>
   myTest(
-    "user_4 orders new sub handle but sub handle which is not supported - <demi-6@user_4>",
+    "user_4 orders new sub handle but sub handle is not supported - <demi-6@user_4>",
     async ({ network, emulator, wallets, ordersDetail }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -625,6 +637,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // can not mint new handle, because that is sub handle - <demi-6@user_4>
   myTest(
     "can not mint new handle, because that is sub handle - <demi-6@user_4>",
     async ({ db, wallets, ordersDetail }) => {
@@ -662,6 +675,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // user_4 cancel his order, because sub handle is not supported - <demi-6@user_4>
   myTest(
     "user_4 cancel his order, because sub handle is not supported - <demi-6@user_4>",
     async ({ network, emulator, wallets, ordersDetail }) => {
@@ -693,6 +707,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // user_4 orders new handle, but handle is too long - <abcdefghijklmnop>
   myTest(
     "user_4 orders new handle, but handle is too long - <abcdefghijklmnop>",
     async ({ network, emulator, wallets, ordersDetail }) => {
@@ -728,6 +743,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // can not mint new handle, because that is too long - <abcdefghijklmnop>
   myTest(
     "can not mint new handle, because that is too long - <abcdefghijklmnop>",
     async ({ db, wallets, ordersDetail }) => {
@@ -765,6 +781,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // user_4 cancel his order, because handle is too long - <abcdefghijklmnop>
   myTest(
     "user_4 cancel his order, because handle is too long - <abcdefghijklmnop>",
     async ({ network, emulator, wallets, ordersDetail }) => {
@@ -796,21 +813,22 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
+  // can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>
   myTest(
     "can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>",
     async ({ db, legacyMintUplcProgram, legacyPolicyId, wallets }) => {
       const { usersWallets, allowedMintersWallets } = wallets;
       const user1Wallet = usersWallets[0];
       const allowedMinter2Wallet = allowedMintersWallets[1];
-      const legacyHandlesNames = ["legacy-3", "legacy-4"];
-      const legacyHandles: Handle[] = legacyHandlesNames.map((handleName) => ({
+      const handleNames = ["legacy-3", "legacy-4"];
+      const handles: Handle[] = handleNames.map((handleName) => ({
         type: "legacy",
         legacy_handle_name: Buffer.from(handleName, "utf8").toString("hex"),
       }));
 
       const txBuilderResult = await prepareLegacyMintTransaction({
         address: allowedMinter2Wallet.address,
-        handles: legacyHandles,
+        handles,
         db,
         blockfrostApiKey: "",
       });
@@ -821,7 +839,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // mint legacy handles
       txBuilder.attachUplcProgram(legacyMintUplcProgram);
       const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
-      legacyHandlesNames.forEach((handleName) =>
+      handleNames.forEach((handleName) =>
         mintingHandlesTokensValue.push([
           // Missing ref asset
           userAssetClass(legacyPolicyId, handleName).tokenName,
@@ -833,7 +851,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
         mintingHandlesTokensValue,
         makeVoidData()
       );
-      legacyHandlesNames.forEach((handleName) =>
+      handleNames.forEach((handleName) =>
         txBuilder.payUnsafe(
           user1Wallet.address,
           userAssetValue(legacyPolicyId, handleName)
@@ -847,11 +865,222 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       ).complete();
       invariant(!txResult.ok, "Mint Tx Complete should fail");
 
+      // remove handle from DB as rollback
+      for (const handleName of handleNames) await removeHandle(db, handleName);
+
       assert(
         txResult.error.message.includes(
           "expect value.from_minted_value(mint) == expected_mint_value"
         )
       );
+    }
+  );
+
+  // mint legacy sub handle - <legacy-1@user_1>
+  myTest(
+    "mint legacy sub handle - <legacy-1@user_1>",
+    async ({
+      mockedFunctions,
+      db,
+      emulator,
+      legacyMintUplcProgram,
+      legacyPolicyId,
+      wallets,
+    }) => {
+      const { usersWallets, allowedMintersWallets, pzWallet } = wallets;
+      const user1Wallet = usersWallets[0];
+      const allowedMinter2Wallet = allowedMintersWallets[1];
+      const handleNames = ["legacy-1@user_1"];
+      const handles: Handle[] = handleNames.map((handleName) => ({
+        type: "legacy_sub",
+        legacy_sub_handle_name: Buffer.from(handleName, "utf8").toString("hex"),
+        legacy_root_handle_name: Buffer.from("user_1", "utf8").toString("hex"),
+      }));
+
+      const txBuilderResult = await prepareLegacyMintTransaction({
+        address: allowedMinter2Wallet.address,
+        handles,
+        db,
+        blockfrostApiKey: "",
+      });
+      invariant(txBuilderResult.ok, "Mint Tx Building Failed");
+
+      const { txBuilder, settingsV1 } = txBuilderResult.data;
+
+      // mint legacy handles
+      txBuilder.attachUplcProgram(legacyMintUplcProgram);
+      const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
+      handleNames.forEach((handleName) =>
+        mintingHandlesTokensValue.push(
+          [referenceAssetClass(legacyPolicyId, handleName).tokenName, 1n],
+          [userAssetClass(legacyPolicyId, handleName).tokenName, 1n]
+        )
+      );
+      txBuilder.mintPolicyTokensUnsafe(
+        legacyPolicyId,
+        mintingHandlesTokensValue,
+        makeVoidData()
+      );
+      handleNames.forEach((handleName) =>
+        txBuilder
+          .payUnsafe(
+            settingsV1.pz_script_address,
+            referenceAssetValue(legacyPolicyId, handleName)
+          )
+          .payUnsafe(
+            user1Wallet.address,
+            userAssetValue(legacyPolicyId, handleName)
+          )
+      );
+
+      const txResult = await mayFailTransaction(
+        txBuilder,
+        allowedMinter2Wallet.address,
+        await allowedMinter2Wallet.utxos
+      ).complete();
+      invariant(txResult.ok, "Mint Tx Complete Failed");
+
+      const { tx } = txResult.data;
+      tx.addSignatures(await allowedMinter2Wallet.signTx(tx));
+      const txId = await allowedMinter2Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      // check minted values
+      const user1Balance = await balanceOf(user1Wallet);
+      const pzBalance = await balanceOf(pzWallet);
+
+      assert(
+        user1Balance.isGreaterOrEqual(
+          addValues([userAssetValue(legacyPolicyId, handleNames[0])])
+        ) == true,
+        "User 1 Wallet Balance is not correct"
+      );
+      assert(
+        pzBalance.isGreaterOrEqual(
+          addValues([referenceAssetValue(legacyPolicyId, handleNames[0])])
+        ) == true,
+        "PZ Wallet Balance is not correct"
+      );
+
+      // update minting data input
+      const mintingDataAssetTxInput = await emulator.getUtxo(
+        makeTxOutputId(txId, 0)
+      );
+      const mintingData = decodeMintingDataDatum(mintingDataAssetTxInput.datum);
+      mockedFunctions.mockedFetchMintingData.mockReturnValue(
+        new Promise((resolve) =>
+          resolve(
+            Ok({
+              mintingData,
+              mintingDataAssetTxInput,
+            })
+          )
+        )
+      );
+
+      // inspect db
+      inspect(db);
+    }
+  );
+
+  // mint legacy virtual sub handle - <legacy-virtual-1@user_1>
+  myTest(
+    "mint legacy virtual sub handle - <legacy-virtual-1@user_1>",
+    async ({
+      mockedFunctions,
+      db,
+      emulator,
+      legacyMintUplcProgram,
+      legacyPolicyId,
+      wallets,
+    }) => {
+      const { usersWallets, allowedMintersWallets } = wallets;
+      const user1Wallet = usersWallets[0];
+      const allowedMinter2Wallet = allowedMintersWallets[1];
+      const handleNames = ["legacy-virtual-1@user_1"];
+      const handles: Handle[] = handleNames.map((handleName) => ({
+        type: "legacy_virtual_sub",
+        legacy_virtual_sub_handle_name: Buffer.from(
+          handleName,
+          "utf8"
+        ).toString("hex"),
+        legacy_root_handle_name: Buffer.from("user_1", "utf8").toString("hex"),
+      }));
+
+      const txBuilderResult = await prepareLegacyMintTransaction({
+        address: allowedMinter2Wallet.address,
+        handles,
+        db,
+        blockfrostApiKey: "",
+      });
+      invariant(txBuilderResult.ok, "Mint Tx Building Failed");
+
+      const { txBuilder } = txBuilderResult.data;
+
+      // mint legacy handles
+      txBuilder.attachUplcProgram(legacyMintUplcProgram);
+      const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
+      handleNames.forEach((handleName) =>
+        mintingHandlesTokensValue.push([
+          virtualSubHandleAssetClass(legacyPolicyId, handleName).tokenName,
+          1n,
+        ])
+      );
+      txBuilder.mintPolicyTokensUnsafe(
+        legacyPolicyId,
+        mintingHandlesTokensValue,
+        makeVoidData()
+      );
+      handleNames.forEach((handleName) =>
+        txBuilder.payUnsafe(
+          user1Wallet.address,
+          virtualSubHandleAssetValue(legacyPolicyId, handleName)
+        )
+      );
+
+      const txResult = await mayFailTransaction(
+        txBuilder,
+        allowedMinter2Wallet.address,
+        await allowedMinter2Wallet.utxos
+      ).complete();
+      console.log(txResult);
+      invariant(txResult.ok, "Mint Tx Complete Failed");
+
+      const { tx } = txResult.data;
+      tx.addSignatures(await allowedMinter2Wallet.signTx(tx));
+      const txId = await allowedMinter2Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      // check minted values
+      const user1Balance = await balanceOf(user1Wallet);
+
+      assert(
+        user1Balance.isGreaterOrEqual(
+          addValues([
+            virtualSubHandleAssetValue(legacyPolicyId, handleNames[0]),
+          ])
+        ) == true,
+        "User 1 Wallet Balance is not correct"
+      );
+
+      // update minting data input
+      const mintingDataAssetTxInput = await emulator.getUtxo(
+        makeTxOutputId(txId, 0)
+      );
+      const mintingData = decodeMintingDataDatum(mintingDataAssetTxInput.datum);
+      mockedFunctions.mockedFetchMintingData.mockReturnValue(
+        new Promise((resolve) =>
+          resolve(
+            Ok({
+              mintingData,
+              mintingDataAssetTxInput,
+            })
+          )
+        )
+      );
+
+      // inspect db
+      inspect(db);
     }
   );
 });

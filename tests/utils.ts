@@ -8,7 +8,7 @@ import {
 import { SimpleWallet } from "@helios-lang/tx-utils";
 import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
 
-import { PREFIX_100, PREFIX_222 } from "../src/constants/index.js";
+import { PREFIX_000, PREFIX_100, PREFIX_222 } from "../src/constants/index.js";
 
 const alwaysSuceedMintUplcProgram = (): UplcProgramV2 => {
   return decodeUplcProgramV2FromCbor(
@@ -45,6 +45,12 @@ const referenceAssetClass = (policyId: string, handleName: string) => {
   );
 };
 
+const virtualSubHandleAssetClass = (policyId: string, handleName: string) => {
+  return makeAssetClass(
+    `${policyId}.${PREFIX_000}${Buffer.from(handleName).toString("hex")}`
+  );
+};
+
 const userAssetValue = (policyId: string, handleName: string) => {
   return makeValue(
     1n,
@@ -73,6 +79,20 @@ const referenceAssetValue = (policyId: string, handleName: string) => {
   );
 };
 
+const virtualSubHandleAssetValue = (policyId: string, handleName: string) => {
+  return makeValue(
+    1n,
+    makeAssets([
+      [
+        makeAssetClass(
+          `${policyId}.${PREFIX_000}${Buffer.from(handleName).toString("hex")}`
+        ),
+        1n,
+      ],
+    ])
+  );
+};
+
 export {
   alwaysSuceedMintUplcProgram,
   balanceOf,
@@ -81,4 +101,6 @@ export {
   referenceAssetValue,
   userAssetClass,
   userAssetValue,
+  virtualSubHandleAssetClass,
+  virtualSubHandleAssetValue,
 };
