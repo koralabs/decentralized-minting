@@ -31,9 +31,6 @@ pub fn all_proofs_are_valid(
       // get handle name
       let handle_name = get_handle_name(handle)
 
-      // check handle name length
-      expect bytearray.length(handle_name) <= max_handle_length
-
       all_proofs_are_valid(
         rest_proofs,
         update_root(root, handle_name, amount, mpt_proof),
