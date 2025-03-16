@@ -12,7 +12,7 @@ use tests/mocks/fake_tx.{
   make_order_input, make_output, make_settings_reference_input,
   make_test_address, make_transaction,
 }
-use validations/mint_v1.{can_mint_handles}
+use validations/mint_v1/validation.{can_mint_handles}
 
 test can_mint_handles_0() {
   let settings_ref_input = make_settings_reference_input()

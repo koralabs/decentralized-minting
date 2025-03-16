@@ -108,16 +108,16 @@ fn update_mint_value(
             bytearray.concat(prefix_000, legacy_virtual_sub_handle_name),
             amount,
           )
-    NewHandle(handle_name) ->
+    NewHandle(new_handle_name) ->
       mint_value
         |> value.add(
             new_policy_id,
-            bytearray.concat(prefix_100, handle_name),
+            bytearray.concat(prefix_100, new_handle_name),
             amount,
           )
         |> value.add(
             new_policy_id,
-            bytearray.concat(prefix_222, handle_name),
+            bytearray.concat(prefix_222, new_handle_name),
             amount,
           )
   }

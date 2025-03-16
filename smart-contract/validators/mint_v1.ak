@@ -1,5 +1,5 @@
 use aiken/transaction.{ScriptContext, WithdrawFrom}
-use validations/mint_v1.{can_burn_handles, can_mint_handles}
+use validations/mint_v1/validation.{can_burn_handles, can_mint_handles}
 
 type MintV1Redeemer {
   MintHandles
