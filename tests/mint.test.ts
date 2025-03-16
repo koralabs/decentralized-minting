@@ -7,6 +7,7 @@ import {
   cancel,
   decodeMintingDataDatum,
   fetchSettings,
+  Handle,
   inspect,
   invariant,
   makeVoidData,
@@ -323,7 +324,11 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       const { usersWallets, allowedMintersWallets, pzWallet } = wallets;
       const user1Wallet = usersWallets[0];
       const allowedMinter2Wallet = allowedMintersWallets[1];
-      const legacyHandles = ["legacy-1", "legacy-2"];
+      const legacyHandlesNames = ["legacy-1", "legacy-2"];
+      const legacyHandles: Handle[] = legacyHandlesNames.map((handleName) => ({
+        type: "legacy",
+        legacy_handle_name: Buffer.from(handleName, "utf8").toString("hex"),
+      }));
 
       const txBuilderResult = await prepareLegacyMintTransaction({
         address: allowedMinter2Wallet.address,
@@ -338,10 +343,10 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // mint legacy handles
       txBuilder.attachUplcProgram(legacyMintUplcProgram);
       const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
-      legacyHandles.forEach((handle) =>
+      legacyHandlesNames.forEach((handleName) =>
         mintingHandlesTokensValue.push(
-          [referenceAssetClass(legacyPolicyId, handle).tokenName, 1n],
-          [userAssetClass(legacyPolicyId, handle).tokenName, 1n]
+          [referenceAssetClass(legacyPolicyId, handleName).tokenName, 1n],
+          [userAssetClass(legacyPolicyId, handleName).tokenName, 1n]
         )
       );
       txBuilder.mintPolicyTokensUnsafe(
@@ -349,15 +354,15 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
         mintingHandlesTokensValue,
         makeVoidData()
       );
-      legacyHandles.forEach((handle) =>
+      legacyHandlesNames.forEach((handleName) =>
         txBuilder
           .payUnsafe(
             settingsV1.pz_script_address,
-            referenceAssetValue(legacyPolicyId, handle)
+            referenceAssetValue(legacyPolicyId, handleName)
           )
           .payUnsafe(
             user1Wallet.address,
-            userAssetValue(legacyPolicyId, handle)
+            userAssetValue(legacyPolicyId, handleName)
           )
       );
 
@@ -380,8 +385,8 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       assert(
         user1Balance.isGreaterOrEqual(
           addValues([
-            userAssetValue(legacyPolicyId, legacyHandles[0]),
-            userAssetValue(legacyPolicyId, legacyHandles[1]),
+            userAssetValue(legacyPolicyId, legacyHandlesNames[0]),
+            userAssetValue(legacyPolicyId, legacyHandlesNames[1]),
           ])
         ) == true,
         "User 1 Wallet Balance is not correct"
@@ -389,8 +394,8 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       assert(
         pzBalance.isGreaterOrEqual(
           addValues([
-            referenceAssetValue(legacyPolicyId, legacyHandles[0]),
-            referenceAssetValue(legacyPolicyId, legacyHandles[1]),
+            referenceAssetValue(legacyPolicyId, legacyHandlesNames[0]),
+            referenceAssetValue(legacyPolicyId, legacyHandlesNames[1]),
           ])
         ) == true,
         "PZ Wallet Balance is not correct"
@@ -651,7 +656,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       assert(
         txResult.error.message.includes(
-          "expect is_sub_handle(handle_name) == False"
+          "expect !contains_at_symbol(handle_name)"
         )
       );
     }
@@ -797,7 +802,11 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       const { usersWallets, allowedMintersWallets } = wallets;
       const user1Wallet = usersWallets[0];
       const allowedMinter2Wallet = allowedMintersWallets[1];
-      const legacyHandles = ["legacy-3", "legacy-4"];
+      const legacyHandlesNames = ["legacy-3", "legacy-4"];
+      const legacyHandles: Handle[] = legacyHandlesNames.map((handleName) => ({
+        type: "legacy",
+        legacy_handle_name: Buffer.from(handleName, "utf8").toString("hex"),
+      }));
 
       const txBuilderResult = await prepareLegacyMintTransaction({
         address: allowedMinter2Wallet.address,
@@ -812,10 +821,10 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // mint legacy handles
       txBuilder.attachUplcProgram(legacyMintUplcProgram);
       const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
-      legacyHandles.forEach((handle) =>
+      legacyHandlesNames.forEach((handleName) =>
         mintingHandlesTokensValue.push([
           // Missing ref asset
-          userAssetClass(legacyPolicyId, handle).tokenName,
+          userAssetClass(legacyPolicyId, handleName).tokenName,
           1n,
         ])
       );
@@ -824,10 +833,10 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
         mintingHandlesTokensValue,
         makeVoidData()
       );
-      legacyHandles.forEach((handle) =>
+      legacyHandlesNames.forEach((handleName) =>
         txBuilder.payUnsafe(
           user1Wallet.address,
-          userAssetValue(legacyPolicyId, handle)
+          userAssetValue(legacyPolicyId, handleName)
         )
       );
 

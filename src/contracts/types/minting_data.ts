@@ -4,17 +4,36 @@ interface MintingData {
   mpt_root_hash: string;
 }
 
+// NOTE:
+// handle_name is in hex format
+//
 type LegacyHandle = {
   type: "legacy";
-  handle_name: string;
+  legacy_handle_name: string;
+};
+
+type LegacySubHandle = {
+  type: "legacy_sub";
+  legacy_sub_handle_name: string;
+  legacy_root_handle_name: string;
+};
+
+type LegacyVirtualSubHandle = {
+  type: "legacy_virtual_sub";
+  legacy_virtual_sub_handle_name: string;
+  legacy_root_handle_name: string;
 };
 
 type NewHandle = {
   type: "new";
-  handle_name: string;
+  new_handle_name: string;
 };
 
-type Handle = LegacyHandle | NewHandle;
+type Handle =
+  | LegacyHandle
+  | LegacySubHandle
+  | LegacyVirtualSubHandle
+  | NewHandle;
 
 type Proof = {
   mpt_proof: MPTProof;
@@ -22,4 +41,12 @@ type Proof = {
   amount: bigint;
 };
 
-export type { Handle, LegacyHandle, MintingData, NewHandle, Proof };
+export type {
+  Handle,
+  LegacyHandle,
+  LegacySubHandle,
+  LegacyVirtualSubHandle,
+  MintingData,
+  NewHandle,
+  Proof,
+};

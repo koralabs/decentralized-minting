@@ -15,6 +15,8 @@ import {
   buildMintingData,
   buildMintingDataMintOrBurnRedeemer,
   buildMintV1MintHandlesRedeemer,
+  getUTF8HandleName,
+  Handle,
   makeVoidData,
   MintingData,
   parseMPTProofJSON,
@@ -29,13 +31,13 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
  * @interface
  * @typedef {object} PrepareNewMintParams
  * @property {Address} address Wallet Address to perform mint
- * @property {string[]} handles New Handles name to mint
+ * @property {Handle[]} handles New Handles to mint
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareNewMintParams {
   address: Address;
-  handles: string[];
+  handles: Handle[];
   db: Trie;
   blockfrostApiKey: string;
 }
@@ -64,6 +66,12 @@ const prepareNewMintTransaction = async (
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
+
+  // check handles are all new handles
+  for (const handle of handles) {
+    if (handle.type != "new")
+      return Err(new Error("All handles must be new handles"));
+  }
 
   // fetch deployed scripts
   const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
@@ -107,7 +115,8 @@ const prepareNewMintTransaction = async (
 
   // make Proofs for Minting Data V1 Redeemer
   const proofs: Proof[] = [];
-  for (const handleName of handles) {
+  for (const handle of handles) {
+    const handleName = getUTF8HandleName(handle);
     try {
       // NOTE:
       // Have to remove handles if transaction fails
@@ -115,10 +124,7 @@ const prepareNewMintTransaction = async (
       const mpfProof = await db.prove(handleName);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        handle: {
-          handle_name: Buffer.from(handleName).toString("hex"),
-          type: "new",
-        },
+        handle,
         amount: 1n,
       });
     } catch (e) {
