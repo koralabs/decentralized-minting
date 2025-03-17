@@ -107,7 +107,6 @@ const prepareLegacyMintTransaction = async (
   const proofs: Proof[] = [];
   for (const handle of handles) {
     const handleName = getUTF8HandleName(handle);
-    console.log(handleName);
     try {
       // NOTE:
       // Have to remove handles if transaction fails
