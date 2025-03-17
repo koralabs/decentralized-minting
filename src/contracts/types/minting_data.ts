@@ -5,7 +5,7 @@ interface MintingData {
 }
 
 // NOTE:
-// handle_name is in hex format
+// handle_name is in hex format (ByteArray - without asset name label)
 //
 type LegacyHandle = {
   type: "legacy";
