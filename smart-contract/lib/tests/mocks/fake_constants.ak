@@ -49,8 +49,4 @@ pub const order_script_hash: ScriptHash = #"5555"
 pub const minting_data_script_hash: ScriptHash = #"3333"
 
 // other constants
-pub const mpt_new_handle_value = "NEW"
-
-pub const mpt_legacy_handle_value = "LEGACY"
-
 pub const min_order_lovelace = 3_000_000

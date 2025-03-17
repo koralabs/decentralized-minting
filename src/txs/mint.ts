@@ -19,6 +19,7 @@ import {
 import {
   buildOrderExecuteRedeemer,
   decodeOrderDatum,
+  Handle,
   makeVoidData,
 } from "../contracts/index.js";
 import { getNetwork } from "../helpers/index.js";
@@ -56,9 +57,12 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   ordersTxInputs.sort((a, b) => (a.id.toString() > b.id.toString() ? 1 : -1));
   if (ordersTxInputs.length == 0) return Err(new Error("No Order requested"));
   console.log(`${ordersTxInputs.length} Handles are ordered`);
-  const handles = ordersTxInputs.map((order) => {
+  const handles: Handle[] = ordersTxInputs.map((order) => {
     const decodedOrder = decodeOrderDatum(order.datum, network);
-    return Buffer.from(decodedOrder.requested_handle, "hex").toString("utf8");
+    return {
+      type: "new",
+      new_handle_name: decodedOrder.requested_handle,
+    };
   });
   const preparedTxBuilderResult = await prepareNewMintTransaction({
     ...params,

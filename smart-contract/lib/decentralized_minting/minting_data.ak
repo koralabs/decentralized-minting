@@ -37,6 +37,7 @@ pub fn find_minting_data(inputs: List<Input>) -> (Output, MintingData) {
 
 // this function also makes sure that
 // spending UTxO has minting data asset
+// with correct MintingData datum
 pub fn resolve_minting_data(spending_output: Output) -> MintingData {
   // check input has minting data asset
   expect

@@ -27,6 +27,9 @@ export const PREFIX_333 = "0014df10";
 /// (444) Rich-Fungible Token Prefix
 export const PREFIX_444 = "001bc280";
 
+/// (000) Virtual Sub Handle Prefix
+export const PREFIX_000 = "00000000";
+
 export const PZ_UTXO_MIN_LOVELACE = 2_000_000n;
 
 // Contract names

@@ -23,7 +23,7 @@ const fillHandles = async (
   progress: () => void
 ) => {
   for (const handle of handles) {
-    await db.insert(handle, "LEGACY");
+    await db.insert(handle, "");
     progress();
   }
   console.log(db);

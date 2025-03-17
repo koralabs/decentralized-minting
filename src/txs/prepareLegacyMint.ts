@@ -12,6 +12,9 @@ import { fetchMintingData, fetchSettings } from "../configs/index.js";
 import {
   buildMintingData,
   buildMintingDataMintOrBurnRedeemer,
+  getUTF8HandleName,
+  Handle,
+  MintingData,
   parseMPTProofJSON,
   Proof,
   Settings,
@@ -24,13 +27,13 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
  * @interface
  * @typedef {object} PrepareLegacyMintParams
  * @property {Address} address Wallet Address to perform mint
- * @property {string[]} handles New Handles name to mint
+ * @property {Handle[]} handles Legacy Handles to mint (legacy_handle, legacy_sub_handle, legacy_virtual_sub_handle)
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareLegacyMintParams {
   address: Address;
-  handles: string[];
+  handles: Handle[];
   db: Trie;
   blockfrostApiKey: string;
 }
@@ -59,6 +62,12 @@ const prepareLegacyMintTransaction = async (
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
+
+  // check handles are all legacy handles
+  for (const handle of handles) {
+    if (handle.type === "new")
+      return Err(new Error("All handles must be legacy handles"));
+  }
 
   // fetch deployed scripts
   const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
@@ -96,18 +105,16 @@ const prepareLegacyMintTransaction = async (
 
   // make Proofs for Minting Data V1 Redeemer
   const proofs: Proof[] = [];
-  for (const handleName of handles) {
+  for (const handle of handles) {
+    const handleName = getUTF8HandleName(handle);
     try {
       // NOTE:
       // Have to remove handles if transaction fails
-      await db.insert(handleName, "LEGACY");
+      await db.insert(handleName, "");
       const mpfProof = await db.prove(handleName);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        handle: {
-          handle_name: Buffer.from(handleName).toString("hex"),
-          type: "legacy",
-        },
+        handle,
         amount: 1n,
       });
     } catch (e) {
@@ -117,7 +124,10 @@ const prepareLegacyMintTransaction = async (
   }
 
   // update all handles in minting data
-  mintingData.mpt_root_hash = db.hash.toString("hex");
+  const newMintingData: MintingData = {
+    ...mintingData,
+    mpt_root_hash: db.hash.toString("hex"),
+  };
 
   // minting data asset value
   const mintingDataValue = makeValue(
@@ -150,12 +160,14 @@ const prepareLegacyMintTransaction = async (
   txBuilder.payUnsafe(
     mintingDataAssetTxInput.address,
     mintingDataValue,
-    makeInlineTxOutputDatum(buildMintingData(mintingData))
+    makeInlineTxOutputDatum(buildMintingData(newMintingData))
   );
 
   // NOTE:
   // After call this function
-  // using txBuilder (return value), they can continue with minting assets (e.g. ref and user asset)
+  // using txBuilder (return value), they can continue with minting assets
+  // e.g. ref and user asset if legacy handle
+  // prefix_000 asset if virtual sub handle
 
   return Ok({
     txBuilder,
