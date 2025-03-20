@@ -105,16 +105,28 @@ pub fn is_handle_valid(
       True
     }
 
-  fail_if_false(is_sub_handle_supported, @"sub handle is not supported")
+  fail_if_false(
+    is_sub_handle_supported,
+    @"De-Mi Sub handle is not supported for now",
+  )
 
   if is_sub_handle {
-    expect bytearray.length(handle_name) <= max_sub_handle_length
-    expect bytearray.length(root_handle_name) <= max_handle_length
+    fail_if_false(
+      bytearray.length(handle_name) <= max_sub_handle_length,
+      @"Sub handle is too long",
+    )
+    fail_if_false(
+      bytearray.length(root_handle_name) <= max_handle_length,
+      @"Root handle is too long",
+    )
     True
   } else {
     // if not sub handle, it should not be virtual
-    expect !is_virtual
-    expect bytearray.length(handle_name) <= max_handle_length
+    fail_if_false(!is_virtual, @"Only Sub Handle supports virtual handle")
+    fail_if_false(
+      bytearray.length(handle_name) <= max_handle_length,
+      @"Root handle is too long",
+    )
     True
   }
 }
