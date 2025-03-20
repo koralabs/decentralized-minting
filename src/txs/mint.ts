@@ -59,10 +59,7 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   console.log(`${ordersTxInputs.length} Handles are ordered`);
   const handles: Handle[] = ordersTxInputs.map((order) => {
     const decodedOrder = decodeOrderDatum(order.datum, network);
-    return {
-      type: "new",
-      new_handle_name: decodedOrder.requested_handle,
-    };
+    return decodedOrder.requested_handle;
   });
   const preparedTxBuilderResult = await prepareNewMintTransaction({
     ...params,

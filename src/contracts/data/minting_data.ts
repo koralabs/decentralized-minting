@@ -11,7 +11,8 @@ import {
 
 import { invariant } from "../../helpers/index.js";
 import { MintingData } from "../types/index.js";
-import { Handle, Proof } from "../types/index.js";
+import { Proof } from "../types/index.js";
+import { makeBoolData } from "./common.js";
 import { buildMPTProofData } from "./mpt.js";
 
 const buildMintingData = (mintingData: MintingData): UplcData => {
@@ -36,44 +37,36 @@ const decodeMintingDataDatum = (
   return { mpt_root_hash };
 };
 
-const buildHandleData = (handle: Handle): UplcData => {
-  if (handle.type == "new")
-    return makeConstrData(0, [makeByteArrayData(handle.new_handle_name)]);
-  if (handle.type == "legacy")
-    return makeConstrData(1, [makeByteArrayData(handle.legacy_handle_name)]);
-  if (handle.type == "legacy_sub")
-    return makeConstrData(2, [
-      makeByteArrayData(handle.legacy_sub_handle_name),
-      makeByteArrayData(handle.legacy_root_handle_name),
-    ]);
-  if (handle.type == "legacy_virtual_sub")
-    return makeConstrData(3, [
-      makeByteArrayData(handle.legacy_virtual_sub_handle_name),
-      makeByteArrayData(handle.legacy_root_handle_name),
-    ]);
-  else throw new Error("Invalid handle type");
-};
-
 const buildProofData = (proof: Proof): UplcData => {
-  const { mpt_proof, handle, amount } = proof;
+  const { mpt_proof, handle_name, is_virtual, amount } = proof;
   return makeConstrData(0, [
     buildMPTProofData(mpt_proof),
-    buildHandleData(handle),
+    makeByteArrayData(handle_name),
+    makeBoolData(is_virtual),
     makeIntData(amount),
   ]);
 };
 
-const buildMintingDataMintOrBurnRedeemer = (proofs: Proof[]): UplcData => {
+const buildMintingDataMintOrBurnNewHandlesRedeemer = (
+  proofs: Proof[]
+): UplcData => {
   return makeConstrData(0, [makeListData(proofs.map(buildProofData))]);
 };
 
+const buildMintingDataMintOrBurnLegacyHandlesRedeemer = (
+  proofs: Proof[]
+): UplcData => {
+  return makeConstrData(1, [makeListData(proofs.map(buildProofData))]);
+};
+
 const buildMintingDataGodModeRedeemer = (): UplcData => {
-  return makeConstrData(1, []);
+  return makeConstrData(2, []);
 };
 
 export {
   buildMintingData,
   buildMintingDataGodModeRedeemer,
-  buildMintingDataMintOrBurnRedeemer,
+  buildMintingDataMintOrBurnLegacyHandlesRedeemer,
+  buildMintingDataMintOrBurnNewHandlesRedeemer,
   decodeMintingDataDatum,
 };
