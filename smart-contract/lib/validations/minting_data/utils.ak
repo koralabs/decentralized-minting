@@ -2,6 +2,7 @@ use aiken/bytearray
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction/value.{PolicyId, Value}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
+use common/logs.{fail_if_false}
 use validations/minting_data/types.{Proof}
 
 const max_handle_length = 15
@@ -103,7 +104,8 @@ pub fn is_handle_valid(
     } else {
       True
     }
-  expect is_sub_handle_supported
+
+  fail_if_false(is_sub_handle_supported, @"sub handle is not supported")
 
   if is_sub_handle {
     expect bytearray.length(handle_name) <= max_sub_handle_length
