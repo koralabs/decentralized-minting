@@ -60,7 +60,14 @@ pub fn can_mint_or_burn(
   let
     new_root,
     expected_mint_value,
-  <- all_proofs_are_valid(proofs, root, minting_policy_id, value.zero())
+  <-
+    all_proofs_are_valid(
+      proofs,
+      root,
+      minting_policy_id,
+      value.zero(),
+      is_minting_new_handles,
+    )
 
   // calculate new root and expected mint value
   let new_mpt_root_hash = new_root |> mpt.root

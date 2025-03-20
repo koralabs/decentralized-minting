@@ -14,6 +14,7 @@ pub fn all_proofs_are_valid(
   root: mpt.MerklePatriciaForestry,
   minting_policy_id: PolicyId,
   expected_mint_value: Value,
+  is_minting_new_handles: Bool,
   continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
 ) -> result {
   when proofs is {
@@ -22,7 +23,7 @@ pub fn all_proofs_are_valid(
       let Proof { mpt_proof, handle_name, is_virtual, amount } = proof
 
       // check handle is valid
-      expect is_handle_valid(handle_name, is_virtual)
+      expect is_handle_valid(handle_name, is_virtual, is_minting_new_handles)
 
       all_proofs_are_valid(
         rest_proofs,
@@ -35,6 +36,7 @@ pub fn all_proofs_are_valid(
           is_virtual,
           amount,
         ),
+        is_minting_new_handles,
         continuation,
       )
     }
@@ -87,8 +89,21 @@ fn update_mint_value(
   }
 }
 
-pub fn is_handle_valid(handle_name: ByteArray, is_virtual: Bool) -> Bool {
+pub fn is_handle_valid(
+  handle_name: ByteArray,
+  is_virtual: Bool,
+  is_minting_new_handles: Bool,
+) -> Bool {
   let (root_handle_name, is_sub_handle) = parse_handle_name(handle_name)
+
+  // New sub handle is not supported for now
+  let is_sub_handle_supported =
+    if is_minting_new_handles {
+      !is_sub_handle
+    } else {
+      True
+    }
+  expect is_sub_handle_supported
 
   if is_sub_handle {
     expect bytearray.length(handle_name) <= max_sub_handle_length
