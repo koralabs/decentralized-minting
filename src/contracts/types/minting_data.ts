@@ -7,6 +7,11 @@ interface MintingData {
 // NOTE:
 // handle_name is in hex format (ByteArray - without asset name label)
 //
+type NewHandle = {
+  type: "new";
+  new_handle_name: string;
+};
+
 type LegacyHandle = {
   type: "legacy";
   legacy_handle_name: string;
@@ -24,16 +29,11 @@ type LegacyVirtualSubHandle = {
   legacy_root_handle_name: string;
 };
 
-type NewHandle = {
-  type: "new";
-  new_handle_name: string;
-};
-
 type Handle =
+  | NewHandle
   | LegacyHandle
   | LegacySubHandle
-  | LegacyVirtualSubHandle
-  | NewHandle;
+  | LegacyVirtualSubHandle;
 
 type Proof = {
   mpt_proof: MPTProof;

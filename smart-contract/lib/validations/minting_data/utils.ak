@@ -74,6 +74,18 @@ fn update_mint_value(
   amount: Int,
 ) -> Value {
   when handle is {
+    NewHandle(new_handle_name) ->
+      mint_value
+        |> value.add(
+            new_policy_id,
+            bytearray.concat(prefix_100, new_handle_name),
+            amount,
+          )
+        |> value.add(
+            new_policy_id,
+            bytearray.concat(prefix_222, new_handle_name),
+            amount,
+          )
     LegacyHandle(legacy_handle_name) ->
       mint_value
         |> value.add(
@@ -105,23 +117,15 @@ fn update_mint_value(
             bytearray.concat(prefix_000, legacy_virtual_sub_handle_name),
             amount,
           )
-    NewHandle(new_handle_name) ->
-      mint_value
-        |> value.add(
-            new_policy_id,
-            bytearray.concat(prefix_100, new_handle_name),
-            amount,
-          )
-        |> value.add(
-            new_policy_id,
-            bytearray.concat(prefix_222, new_handle_name),
-            amount,
-          )
   }
 }
 
 pub fn is_handle_valid(handle: Handle) -> Bool {
   when handle is {
+    NewHandle(new_handle_name) -> {
+      expect is_handle_name_valid(new_handle_name)
+      True
+    }
     LegacyHandle(legacy_handle_name) -> {
       expect is_handle_name_valid(legacy_handle_name)
       True
@@ -143,10 +147,6 @@ pub fn is_handle_valid(handle: Handle) -> Bool {
           legacy_virtual_sub_handle_name,
           legacy_root_handle_name,
         )
-      True
-    }
-    NewHandle(new_handle_name) -> {
-      expect is_handle_name_valid(new_handle_name)
       True
     }
   }

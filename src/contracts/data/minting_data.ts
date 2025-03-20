@@ -37,20 +37,20 @@ const decodeMintingDataDatum = (
 };
 
 const buildHandleData = (handle: Handle): UplcData => {
+  if (handle.type == "new")
+    return makeConstrData(0, [makeByteArrayData(handle.new_handle_name)]);
   if (handle.type == "legacy")
-    return makeConstrData(0, [makeByteArrayData(handle.legacy_handle_name)]);
+    return makeConstrData(1, [makeByteArrayData(handle.legacy_handle_name)]);
   if (handle.type == "legacy_sub")
-    return makeConstrData(1, [
+    return makeConstrData(2, [
       makeByteArrayData(handle.legacy_sub_handle_name),
       makeByteArrayData(handle.legacy_root_handle_name),
     ]);
   if (handle.type == "legacy_virtual_sub")
-    return makeConstrData(2, [
+    return makeConstrData(3, [
       makeByteArrayData(handle.legacy_virtual_sub_handle_name),
       makeByteArrayData(handle.legacy_root_handle_name),
     ]);
-  if (handle.type == "new")
-    return makeConstrData(3, [makeByteArrayData(handle.new_handle_name)]);
   else throw new Error("Invalid handle type");
 };
 

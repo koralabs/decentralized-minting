@@ -47,11 +47,11 @@ const makeMintingDataUplcProgramParameterDatum = (
 };
 
 const getHandleName = (handle: Handle): string => {
+  if (handle.type == "new") return handle.new_handle_name;
   if (handle.type == "legacy") return handle.legacy_handle_name;
   if (handle.type == "legacy_sub") return handle.legacy_sub_handle_name;
   if (handle.type == "legacy_virtual_sub")
     return handle.legacy_virtual_sub_handle_name;
-  if (handle.type == "new") return handle.new_handle_name;
   throw new Error("Invalid handle type");
 };
 
