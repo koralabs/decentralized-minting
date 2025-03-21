@@ -88,7 +88,7 @@ pub fn can_mint_or_burn(
     )
   expect minting_data_output.reference_script == None
 
-  // check actual mint value
+  // check minted handles
   expect value.from_minted_value(mint) == expected_mint_value
 
   True
