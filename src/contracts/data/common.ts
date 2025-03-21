@@ -21,6 +21,10 @@ import {
   UplcData,
 } from "@helios-lang/uplc";
 
+const makeBoolData = (value: boolean): UplcData => {
+  return makeConstrData(value ? 1 : 0, []);
+};
+
 const buildCredentialData = (credential: SpendingCredential): UplcData => {
   return makeConstrData(credential.kind == "PubKeyHash" ? 0 : 1, [
     makeByteArrayData(credential.toHex()),
@@ -161,6 +165,7 @@ export {
   decodeCredentialFromData,
   decodeDatumFromData,
   decodeStakingCredentialFromData,
+  makeBoolData,
   makeRedeemerWrapper,
   makeVoidData,
 };

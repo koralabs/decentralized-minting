@@ -13,12 +13,13 @@ import { Err, Ok, Result } from "ts-res";
 import { fetchMintingData, fetchSettings } from "../configs/index.js";
 import {
   buildMintingData,
-  buildMintingDataMintOrBurnRedeemer,
+  buildMintingDataMintOrBurnNewHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
-  getUTF8HandleName,
+  getIsVirtual,
   Handle,
   makeVoidData,
   MintingData,
+  parseHandle,
   parseMPTProofJSON,
   Proof,
   Settings,
@@ -67,10 +68,10 @@ const prepareNewMintTransaction = async (
     return Err(new Error("Byron Address not supported"));
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
 
-  // check handles are all new handles
+  // check every handle is not virtual handle
   for (const handle of handles) {
-    if (handle.type != "new")
-      return Err(new Error("All handles must be new handles"));
+    if (getIsVirtual(handle))
+      return Err(new Error("Virtual Sub Handles not supported"));
   }
 
   // fetch deployed scripts
@@ -116,20 +117,22 @@ const prepareNewMintTransaction = async (
   // make Proofs for Minting Data V1 Redeemer
   const proofs: Proof[] = [];
   for (const handle of handles) {
-    const handleName = getUTF8HandleName(handle);
+    const { handleName, handleUTF8Name, isVirtual } = parseHandle(handle);
+
     try {
       // NOTE:
       // Have to remove handles if transaction fails
-      await db.insert(handleName, "");
-      const mpfProof = await db.prove(handleName);
+      await db.insert(handleUTF8Name, "");
+      const mpfProof = await db.prove(handleUTF8Name);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        handle,
+        handle_name: handleName,
+        is_virtual: isVirtual,
         amount: 1n,
       });
     } catch (e) {
-      console.warn("Handle already exists", handleName, e);
-      return Err(new Error(`Handle "${handleName}" already exists`));
+      console.warn("Handle already exists", handleUTF8Name, e);
+      return Err(new Error(`Handle "${handleUTF8Name}" already exists`));
     }
   }
 
@@ -150,7 +153,7 @@ const prepareNewMintTransaction = async (
 
   // build proofs redeemer for minting data v1
   const mintingDataMintOrBurnRedeemer =
-    buildMintingDataMintOrBurnRedeemer(proofs);
+    buildMintingDataMintOrBurnNewHandlesRedeemer(proofs);
 
   // start building tx
   const txBuilder = makeTxBuilder({

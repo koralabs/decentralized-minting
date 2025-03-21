@@ -6,7 +6,8 @@ use validations/minting_data/validation.{can_god_mode, can_mint_or_burn}
 
 pub type MintingDataRedeemer {
   // when legacy or new handles are minted/burnt
-  MintOrBurn(List<Proof>)
+  MintOrBurnNewHandles(List<Proof>)
+  MintOrBurnLegacyHandles(List<Proof>)
   // god mode - only available to kora lab admins
   GodMode
 }
@@ -42,12 +43,21 @@ validator(
     expect Spend(spending_output_reference) = purpose
 
     when redeemer is {
-      MintOrBurn(proofs) ->
+      MintOrBurnNewHandles(proofs) ->
         can_mint_or_burn(
           transaction,
           spending_output_reference,
           proofs,
           legacy_policy_id,
+          True,
+        )
+      MintOrBurnLegacyHandles(proofs) ->
+        can_mint_or_burn(
+          transaction,
+          spending_output_reference,
+          proofs,
+          legacy_policy_id,
+          False,
         )
       GodMode -> can_god_mode(transaction, god_verification_key_hash)
     }

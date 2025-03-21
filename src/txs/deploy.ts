@@ -216,5 +216,5 @@ const fetchAllDeployedScripts = async (
   }
 };
 
-export type { DeployedScripts, DeployParams };
+export type { DeployData, DeployedScripts, DeployParams };
 export { deploy, fetchAllDeployedScripts };

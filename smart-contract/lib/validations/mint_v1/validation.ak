@@ -65,7 +65,7 @@ pub fn can_mint_handles(transaction: Transaction) -> Bool {
   let
     total_treasury_fee,
     total_minter_fee,
-    expected_mint_value,
+    expected_new_mint_value,
   <-
     all_orders_are_satisfied(
       order_script_hash,
@@ -92,7 +92,7 @@ pub fn can_mint_handles(transaction: Transaction) -> Bool {
   expect minter_output.reference_script == None
 
   // check minted handles
-  expect value.from_minted_value(mint) == expected_mint_value
+  expect value.from_minted_value(mint) == expected_new_mint_value
 
   True
 }
