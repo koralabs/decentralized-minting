@@ -1,6 +1,7 @@
 use aiken/list
 use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/value
+use common/assert.{assert, unwrap_option}
 
 const minting_data_asset_policy_id =
   #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
@@ -19,16 +20,19 @@ pub type MintingData {
 }
 
 pub fn find_minting_data(inputs: List<Input>) -> (Output, MintingData) {
-  expect Some(minting_data_input) =
-    list.find(
-      inputs,
-      fn(i) {
-        value.quantity_of(
-          i.output.value,
-          minting_data_asset_policy_id,
-          minting_data_asset_name,
-        ) == 1
-      },
+  let minting_data_input =
+    unwrap_option(
+      list.find(
+        inputs,
+        fn(i) {
+          value.quantity_of(
+            i.output.value,
+            minting_data_asset_policy_id,
+            minting_data_asset_name,
+          ) == 1
+        },
+      ),
+      @"MINTING_DATA_INPUT_NOT_FOUND",
     )
   expect InlineDatum(inline_minting_data) = minting_data_input.output.datum
   expect minting_data: MintingData = inline_minting_data
@@ -40,12 +44,14 @@ pub fn find_minting_data(inputs: List<Input>) -> (Output, MintingData) {
 // with correct MintingData datum
 pub fn resolve_minting_data(spending_output: Output) -> MintingData {
   // check input has minting data asset
-  expect
+  assert(
     value.quantity_of(
       spending_output.value,
       minting_data_asset_policy_id,
       minting_data_asset_name,
-    ) == 1
+    ) == 1,
+    @"MINTING_DATA_ASSET_NOT_FOUND",
+  )
 
   // resolve minting data datum
   expect InlineDatum(inline_minting_data) = spending_output.datum
