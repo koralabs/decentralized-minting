@@ -1,8 +1,9 @@
+use aiken/builtin
 use aiken/bytearray
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction/value.{PolicyId, Value}
+use common/assert.{assert}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
-use common/logs.{fail_if_false}
 use validations/minting_data/types.{Proof}
 
 const max_handle_length = 15
@@ -57,7 +58,7 @@ fn update_root(
     -1 ->
       // burn
       mpt.delete(root, handle_name, #"", mpt_proof)
-    _ -> fail @"proof amount can only be 1 or -1"
+    _ -> fail @"INVALID_AMOUNT"
   }
 }
 
@@ -105,27 +106,24 @@ pub fn is_handle_valid(
       True
     }
 
-  fail_if_false(
-    is_sub_handle_supported,
-    @"De-Mi Sub handle is not supported for now",
-  )
+  assert(is_sub_handle_supported, @"NEW_SUB_HANDLE_NOT_SUPPORTED")
 
   if is_sub_handle {
-    fail_if_false(
+    assert(
       bytearray.length(handle_name) <= max_sub_handle_length,
-      @"Sub handle is too long",
+      @"SUB_HANDLE_TOO_LONG",
     )
-    fail_if_false(
+    assert(
       bytearray.length(root_handle_name) <= max_handle_length,
-      @"Root handle is too long",
+      @"ROOT_HANDLE_TOO_LONG",
     )
     True
   } else {
     // if not sub handle, it should not be virtual
-    fail_if_false(!is_virtual, @"Only Sub Handle supports virtual handle")
-    fail_if_false(
+    assert(!is_virtual, @"ONLY_SUB_HANDLE_SUPPORTS_VIRTUAL_HANDLE")
+    assert(
       bytearray.length(handle_name) <= max_handle_length,
-      @"Root handle is too long",
+      @"ROOT_HANDLE_TOO_LONG",
     )
     True
   }
@@ -134,25 +132,38 @@ pub fn is_handle_valid(
 // parse handle name
 // get root handle name and is sub handle
 pub fn parse_handle_name(handle_name: ByteArray) -> (ByteArray, Bool) {
-  let (drop_length, is_sub_handle) =
-    bytearray.foldl(
-      handle_name,
-      (0, False),
-      fn(byte, acc) {
-        let (d_length, is_s_handle) = acc
-        if is_s_handle {
-          // no more @ symbol after one is found
-          expect byte != 0x40
-          (d_length, True)
-        } else {
-          (d_length + 1, byte == 0x40)
-        }
-      },
-    )
+  when index_of_at_symbol(handle_name) is {
+    Some(idx) -> {
+      // if handle_name contains @ symbol, it is a sub handle
+      let root_handle_name = bytearray.drop(handle_name, idx + 1)
+      // root_handle_name should not contain @ symbol
+      assert(
+        index_of_at_symbol(root_handle_name) == None,
+        @"ROOT_HANDLE_SHOULD_NOT_CONTAIN_AT_SYMBOL",
+      )
+      (root_handle_name, True)
+    }
+    None -> (#"", False)
+  }
+}
 
-  if is_sub_handle {
-    (bytearray.drop(handle_name, drop_length), True)
+fn index_of_at_symbol(handle_name: ByteArray) -> Option<Int> {
+  let length = bytearray.length(handle_name)
+  do_index_of_at_symbol(handle_name, 0, length)
+}
+
+fn do_index_of_at_symbol(
+  handle_name: ByteArray,
+  idx: Int,
+  length: Int,
+) -> Option<Int> {
+  if idx >= length {
+    None
   } else {
-    (#"", False)
+    if builtin.index_bytearray(handle_name, idx) == 0x40 {
+      Some(idx)
+    } else {
+      do_index_of_at_symbol(handle_name, idx + 1, length)
+    }
   }
 }
