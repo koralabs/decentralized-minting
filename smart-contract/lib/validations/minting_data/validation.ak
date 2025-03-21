@@ -24,6 +24,7 @@ pub fn can_mint_or_burn(
   spending_output_reference: OutputReference,
   proofs: List<Proof>,
   legacy_policy_id: PolicyId,
+  is_minting_new_handles: Bool,
 ) -> Bool {
   let Transaction { inputs, reference_inputs, outputs, mint, .. } = transaction
 
@@ -47,8 +48,15 @@ pub fn can_mint_or_burn(
   // build merkle patricia trie from root hash
   let root = mpt.from_root(mpt_root_hash)
 
+  // minting policy id
+  let minting_policy_id =
+    if is_minting_new_handles {
+      new_policy_id
+    } else {
+      legacy_policy_id
+    }
+
   // check proofs and 
-  // calculate new root and expected mint value
   let
     new_root,
     expected_mint_value,
@@ -56,10 +64,12 @@ pub fn can_mint_or_burn(
     all_proofs_are_valid(
       proofs,
       root,
-      legacy_policy_id,
-      new_policy_id,
+      minting_policy_id,
       value.zero(),
+      is_minting_new_handles,
     )
+
+  // calculate new root and expected mint value
   let new_mpt_root_hash = new_root |> mpt.root
 
   // check minting data output
