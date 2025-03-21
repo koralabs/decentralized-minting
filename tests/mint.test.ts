@@ -666,7 +666,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // remove handle from DB as rollback
       for (const handleName of handleNames) await removeHandle(db, handleName);
 
-      assert(txResult.error.message.includes("NEW_SUB_HANDLE_NOT_SUPPORTED"));
+      assert(txResult.error.message.includes("expect is_sub_handle_supported"));
     }
   );
 
@@ -768,7 +768,11 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // remove handle from DB as rollback
       for (const handleName of handleNames) await removeHandle(db, handleName);
 
-      assert(txResult.error.message.includes("HANDLE_TOO_LONG"));
+      assert(
+        txResult.error.message.includes(
+          "expect bytearray.length(handle_name) <= max_handle_length"
+        )
+      );
     }
   );
 
@@ -1125,7 +1129,11 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // remove handle from DB as rollback
       for (const handleName of handleNames) await removeHandle(db, handleName);
 
-      assert(txResult.error.message.includes("SUB_HANDLE_TOO_LONG"));
+      assert(
+        txResult.error.message.includes(
+          "expect bytearray.length(handle_name) <= max_sub_handle_length"
+        )
+      );
     }
   );
 
@@ -1187,7 +1195,11 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // remove handle from DB as rollback
       for (const handleName of handleNames) await removeHandle(db, handleName);
 
-      assert(txResult.error.message.includes("ROOT_HANDLE_TOO_LONG"));
+      assert(
+        txResult.error.message.includes(
+          "expect bytearray.length(root_handle_name) <= max_handle_length"
+        )
+      );
     }
   );
 

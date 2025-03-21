@@ -2,7 +2,6 @@ use aiken/builtin
 use aiken/bytearray
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction/value.{PolicyId, Value}
-use common/assert.{assert}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
 use validations/minting_data/types.{Proof}
 
@@ -106,25 +105,16 @@ pub fn is_handle_valid(
       True
     }
 
-  assert(is_sub_handle_supported, @"NEW_SUB_HANDLE_NOT_SUPPORTED")
+  expect is_sub_handle_supported
 
   if is_sub_handle {
-    assert(
-      bytearray.length(handle_name) <= max_sub_handle_length,
-      @"SUB_HANDLE_TOO_LONG",
-    )
-    assert(
-      bytearray.length(root_handle_name) <= max_handle_length,
-      @"ROOT_HANDLE_TOO_LONG",
-    )
+    expect bytearray.length(handle_name) <= max_sub_handle_length
+    expect bytearray.length(root_handle_name) <= max_handle_length
     True
   } else {
     // if not sub handle, it should not be virtual
-    assert(!is_virtual, @"ONLY_SUB_HANDLE_SUPPORTS_VIRTUAL_HANDLE")
-    assert(
-      bytearray.length(handle_name) <= max_handle_length,
-      @"ROOT_HANDLE_TOO_LONG",
-    )
+    expect !is_virtual
+    expect bytearray.length(handle_name) <= max_handle_length
     True
   }
 }
@@ -137,10 +127,7 @@ pub fn parse_handle_name(handle_name: ByteArray) -> (ByteArray, Bool) {
       // if handle_name contains @ symbol, it is a sub handle
       let root_handle_name = bytearray.drop(handle_name, idx + 1)
       // root_handle_name should not contain @ symbol
-      assert(
-        index_of_at_symbol(root_handle_name) == None,
-        @"ROOT_HANDLE_SHOULD_NOT_CONTAIN_AT_SYMBOL",
-      )
+      expect index_of_at_symbol(root_handle_name) == None
       (root_handle_name, True)
     }
     None -> (#"", False)
