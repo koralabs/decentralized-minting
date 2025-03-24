@@ -26,6 +26,7 @@ pub fn can_mint_or_burn(
   legacy_policy_id: PolicyId,
   is_minting_new_handles: Bool,
 ) -> Bool {
+  trace @"Start Minting Data"
   let Transaction { inputs, reference_inputs, outputs, mint, .. } = transaction
 
   // find settings 
@@ -89,7 +90,11 @@ pub fn can_mint_or_burn(
   expect minting_data_output.reference_script == None
 
   // check minted handles
-  expect value.from_minted_value(mint) == expected_mint_value
+  expect
+    value.merge(
+      value.from_minted_value(mint),
+      value.negate(expected_mint_value),
+    ) == value.zero()
 
   True
 }
