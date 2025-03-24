@@ -35,6 +35,9 @@ interface DeployData {
   unOptimizedCbor?: string;
   datumCbor?: string;
   validatorHash: string;
+  policyId?: string;
+  scriptAddress?: string;
+  scriptStakingAddress?: string;
 }
 
 /**
@@ -74,6 +77,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
           makeMintProxyUplcProgramParameterDatum(mintVersion).data.toCbor()
         ),
         validatorHash: mintProxyConfig.mintProxyPolicyHash.toHex(),
+        policyId: mintProxyConfig.mintProxyPolicyHash.toHex(),
       };
     case "mint_v1.withdraw":
       return {
@@ -81,6 +85,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
           mintV1Config.mintV1WithdrawUplcProgram
         ),
         validatorHash: mintV1Config.mintV1ValiatorHash.toHex(),
+        scriptStakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
       };
     case "minting_data.spend":
       return {
@@ -94,6 +99,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
           ).data.toCbor()
         ),
         validatorHash: mintingDataConfig.mintingDataValidatorHash.toHex(),
+        scriptAddress: mintingDataConfig.mintingDataValidatorAddress.toBech32(),
       };
     case "orders.spend":
       return {
@@ -101,6 +107,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
           ordersConfig.ordersSpendUplcProgram
         ),
         validatorHash: ordersConfig.ordersValidatorHash.toHex(),
+        scriptAddress: ordersConfig.ordersValidatorAddress.toBech32(),
       };
     default:
       throw new Error(
