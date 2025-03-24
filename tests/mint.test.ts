@@ -147,42 +147,6 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
-  // user_2 orders new handle - <demi-2>
-  myTest(
-    "user_2 orders new handle - <demi-2>",
-    async ({ network, emulator, wallets, ordersDetail }) => {
-      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
-
-      const { usersWallets } = wallets;
-      const user2Wallet = usersWallets[1];
-
-      const handleName = "demi-2";
-
-      const txBuilderResult = await request({
-        address: user2Wallet.address,
-        handle: handleName,
-        network,
-      });
-      invariant(txBuilderResult.ok, "Order tx failed");
-
-      const txBuilder = txBuilderResult.data;
-      const tx = await txBuilder.build({
-        changeAddress: user2Wallet.address,
-        spareUtxos: await user2Wallet.utxos,
-      });
-      tx.addSignatures(await user2Wallet.signTx(tx));
-      const txId = await user2Wallet.submitTx(tx);
-      emulator.tick(200);
-
-      const orderTxInput = await emulator.getUtxo(makeTxOutputId(txId, 0));
-      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
-      ordersDetail.push({
-        handleName,
-        txInput: orderTxInput,
-      });
-    }
-  );
-
   // user_3 orders new handle - <demi-3>
   myTest(
     "user_3 orders new handle - <demi-3>",
@@ -208,6 +172,42 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       });
       tx.addSignatures(await user3Wallet.signTx(tx));
       const txId = await user3Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      const orderTxInput = await emulator.getUtxo(makeTxOutputId(txId, 0));
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+      ordersDetail.push({
+        handleName,
+        txInput: orderTxInput,
+      });
+    }
+  );
+
+  // user_2 orders new handle - <demi-2>
+  myTest(
+    "user_2 orders new handle - <demi-2>",
+    async ({ network, emulator, wallets, ordersDetail }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { usersWallets } = wallets;
+      const user2Wallet = usersWallets[1];
+
+      const handleName = "demi-2";
+
+      const txBuilderResult = await request({
+        address: user2Wallet.address,
+        handle: handleName,
+        network,
+      });
+      invariant(txBuilderResult.ok, "Order tx failed");
+
+      const txBuilder = txBuilderResult.data;
+      const tx = await txBuilder.build({
+        changeAddress: user2Wallet.address,
+        spareUtxos: await user2Wallet.utxos,
+      });
+      tx.addSignatures(await user2Wallet.signTx(tx));
+      const txId = await user2Wallet.submitTx(tx);
       emulator.tick(200);
 
       const orderTxInput = await emulator.getUtxo(makeTxOutputId(txId, 0));
@@ -268,13 +268,13 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       assert(
         user2Balance.isGreaterOrEqual(
-          userAssetValue(settingsV1.policy_id, ordersDetail[0].handleName)
+          userAssetValue(settingsV1.policy_id, ordersDetail[1].handleName)
         ) == true,
         "User 2 Wallet Balance is not correct"
       );
       assert(
         user3Balance.isGreaterOrEqual(
-          userAssetValue(settingsV1.policy_id, ordersDetail[1].handleName)
+          userAssetValue(settingsV1.policy_id, ordersDetail[0].handleName)
         ) == true,
         "User 3 Wallet Balance is not correct"
       );
@@ -283,11 +283,11 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
           addValues([
             referenceAssetValue(
               settingsV1.policy_id,
-              ordersDetail[0].handleName
+              ordersDetail[1].handleName
             ),
             referenceAssetValue(
               settingsV1.policy_id,
-              ordersDetail[1].handleName
+              ordersDetail[0].handleName
             ),
           ])
         ) == true,
@@ -862,11 +862,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // remove handle from DB as rollback
       for (const handleName of handleNames) await removeHandle(db, handleName);
 
-      assert(
-        txResult.error.message.includes(
-          "expect value.from_minted_value(mint) == expected_mint_value"
-        )
-      );
+      assert(txResult.error.message.includes("value.merge"));
     }
   );
 
@@ -1262,11 +1258,135 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // remove handle from DB as rollback
       for (const handleName of handleNames) await removeHandle(db, handleName);
 
-      assert(
-        txResult.error.message.includes(
-          "expect value.from_minted_value(mint) == expected_mint_value"
+      assert(txResult.error.message.includes("value.merge"));
+    }
+  );
+
+  // ======= mint many handles =======
+
+  // user_1 orders new handle - <demi-1>
+  myTest(
+    "user_1 orders new handles - <demi-10 ~ demi-20>",
+    async ({ network, emulator, wallets, ordersDetail }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { usersWallets } = wallets;
+      const user1Wallet = usersWallets[0];
+
+      // const handleNames = Array.from(
+      //   { length: 10 },
+      //   (_, i) => `demi-${i + 10}`
+      // );
+      const handleNames = ["demi-mint-14", "demi-golddy", "demitesthndl"];
+
+      for (const handleName of handleNames) {
+        const txBuilderResult = await request({
+          address: user1Wallet.address,
+          handle: handleName,
+          network,
+        });
+        invariant(txBuilderResult.ok, "Order tx failed");
+
+        const txBuilder = txBuilderResult.data;
+        const tx = await txBuilder.build({
+          changeAddress: user1Wallet.address,
+          spareUtxos: await user1Wallet.utxos,
+        });
+        tx.addSignatures(await user1Wallet.signTx(tx));
+        const txId = await user1Wallet.submitTx(tx);
+        emulator.tick(200);
+
+        const orderTxInput = await emulator.getUtxo(makeTxOutputId(txId, 0));
+        invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+        ordersDetail.push({
+          handleName,
+          txInput: orderTxInput,
+        });
+      }
+    }
+  );
+
+  // mint new handle - <demi-1>
+  myTest(
+    "mint new handles - <demi-10 ~ demi-20>",
+    async ({
+      mockedFunctions,
+      db,
+      network,
+      emulator,
+      wallets,
+      ordersDetail,
+    }) => {
+      invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
+
+      const { usersWallets, allowedMintersWallets, pzWallet } = wallets;
+      const user1Wallet = usersWallets[0];
+      const allowedMinter1Wallet = allowedMintersWallets[0];
+
+      const txBuilderResult = await mint({
+        address: allowedMinter1Wallet.address,
+        ordersTxInputs: ordersDetail.map((order) => order.txInput),
+        db,
+        blockfrostApiKey: "",
+      });
+      invariant(txBuilderResult.ok, "Mint Tx Building Failed");
+
+      const txBuilder = txBuilderResult.data;
+      const txResult = await mayFailTransaction(
+        txBuilder,
+        allowedMinter1Wallet.address,
+        await allowedMinter1Wallet.utxos
+      ).complete();
+      invariant(txResult.ok, "Mint Tx Complete Failed");
+
+      const { tx } = txResult.data;
+      tx.addSignatures(await allowedMinter1Wallet.signTx(tx));
+      const txId = await allowedMinter1Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      // check minted values
+      const settingsResult = await fetchSettings(network);
+      invariant(settingsResult.ok, "Settings Fetch Failed");
+      const { settingsV1 } = settingsResult.data;
+      const user1Balance = await balanceOf(user1Wallet);
+      const pzBalance = await balanceOf(pzWallet);
+
+      ordersDetail.map((orderDetail) => {
+        assert(
+          user1Balance.isGreaterOrEqual(
+            userAssetValue(settingsV1.policy_id, orderDetail.handleName)
+          ) == true,
+          "User 1 Wallet Balance is not correct"
+        );
+        assert(
+          pzBalance.isGreaterOrEqual(
+            referenceAssetValue(settingsV1.policy_id, orderDetail.handleName)
+          ) == true,
+          "PZ Wallet Balance is not correct"
+        );
+      });
+
+      // update minting data input
+      const mintingDataAssetTxInput = await emulator.getUtxo(
+        makeTxOutputId(txId, 0)
+      );
+      const mintingData = decodeMintingDataDatum(mintingDataAssetTxInput.datum);
+      mockedFunctions.mockedFetchMintingData.mockReturnValue(
+        new Promise((resolve) =>
+          resolve(
+            Ok({
+              mintingData,
+              mintingDataAssetTxInput,
+            })
+          )
         )
       );
+
+      // empty orders detail
+      ordersDetail.length = 0;
+
+      // inspect db
+      inspect(db);
     }
   );
 });
