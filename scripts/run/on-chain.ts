@@ -33,7 +33,6 @@ import {
   TxSuccessResult,
 } from "../../src/index.js";
 import { GET_CONFIGS } from "../configs/index.js";
-import { deployContract } from "./tx.js";
 import { CommandImpl } from "./types.js";
 
 const doOnChainActions = async (commandImpl: CommandImpl) => {
@@ -333,32 +332,13 @@ const doDeployActions = async () => {
               legacyPolicyId: LEGACY_POLICY_ID,
               godVerificationKeyHash: GOD_VERIFICATION_KEY_HASH,
             });
-            const { handle, address, lockAddress } = await prompts([
-              {
-                name: "handle",
-                type: "text",
-                message: "The handle you want to attach to the script",
-              },
-              {
-                name: "address",
-                type: "text",
-                message: "Wallet Address to deploy script",
-              },
-              {
-                name: "lockAddress",
-                type: "text",
-                message: "Address to where the contract is deployed to",
-              },
-            ]);
 
-            const txCbor = await deployContract({
-              deployData,
-              handle,
-              address: makeAddress(address),
-              lockAddress: makeAddress(lockAddress),
+            const { filepath } = await prompts({
+              name: "filepath",
+              type: "text",
+              message: "File Path to save data",
             });
-
-            await handleTxCbor(txCbor);
+            await fs.writeFile(filepath, JSON.stringify(deployData));
 
             if (contract === "mint_proxy.mint") {
               console.log(
