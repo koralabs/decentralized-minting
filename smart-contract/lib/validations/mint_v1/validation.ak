@@ -22,6 +22,7 @@ use validations/mint_v1/utils.{all_orders_are_satisfied}
 // - confirm no other assets than new handles (from orders) are minted
 //
 pub fn can_mint_handles(transaction: Transaction) -> Bool {
+  trace @"Start Mint V1"
   let Transaction {
     inputs,
     reference_inputs,
@@ -65,7 +66,7 @@ pub fn can_mint_handles(transaction: Transaction) -> Bool {
   let
     total_treasury_fee,
     total_minter_fee,
-    expected_mint_value,
+    expected_new_mint_value,
   <-
     all_orders_are_satisfied(
       order_script_hash,
@@ -92,7 +93,11 @@ pub fn can_mint_handles(transaction: Transaction) -> Bool {
   expect minter_output.reference_script == None
 
   // check minted handles
-  expect value.from_minted_value(mint) == expected_mint_value
+  expect
+    value.merge(
+      value.from_minted_value(mint),
+      value.negate(expected_new_mint_value),
+    ) == value.zero()
 
   True
 }

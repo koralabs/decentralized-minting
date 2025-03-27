@@ -115,8 +115,9 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
                 await blockfrostV0Client.getUtxos(address),
                 stakingAddresses.mintV1StakingAddress
               );
-              console.log({ txCbor });
-              console.log("\n");
+              await handleTxCbor(txCbor);
+            } else {
+              console.log("\nStaking Address is already registered\n");
             }
           },
           disabled: !commandImpl.mpt,
@@ -331,12 +332,33 @@ const doDeployActions = async () => {
               legacyPolicyId: LEGACY_POLICY_ID,
               godVerificationKeyHash: GOD_VERIFICATION_KEY_HASH,
             });
+
             const { filepath } = await prompts({
               name: "filepath",
               type: "text",
               message: "File Path to save data",
             });
             await fs.writeFile(filepath, JSON.stringify(deployData));
+
+            if (contract === "mint_proxy.mint") {
+              console.log(
+                "\n\n------- Be careful with Mint Proxy Mint Script -------\n"
+              );
+              console.log("!!! THIS WILL CHANGE POLICY ID !!!");
+              console.log("\n");
+            } else if (contract === "mint_v1.withdraw") {
+              console.log(
+                "\n\n------- After Deploying Mint V1 Withdraw Script -------\n"
+              );
+              console.log("!!! UPDATE SETTINGS DATUM !!!");
+              console.log("\n");
+            } else if (contract === "minting_data.spend") {
+              console.log(
+                "\n\n------- After Deploying Minting Data Spend Script -------\n"
+              );
+              console.log("!!! UPDATE SETTINGS DATUM !!!");
+              console.log("\n");
+            }
           },
         })),
         {
@@ -363,6 +385,20 @@ const handleTxResult = async (txResult: TxSuccessResult) => {
     JSON.stringify({
       cbor: bytesToHex(txResult.tx.toCbor()),
       dump: txResult.dump,
+    })
+  );
+};
+
+const handleTxCbor = async (txCbor: string) => {
+  const { filepath } = await prompts({
+    name: "filepath",
+    type: "text",
+    message: "File Path to save Tx CBOR and dump",
+  });
+  await fs.writeFile(
+    filepath,
+    JSON.stringify({
+      cbor: txCbor,
     })
   );
 };

@@ -47,23 +47,38 @@ const makeMintingDataUplcProgramParameterDatum = (
 };
 
 const getHandleName = (handle: Handle): string => {
-  if (handle.type == "legacy") return handle.legacy_handle_name;
-  if (handle.type == "legacy_sub") return handle.legacy_sub_handle_name;
-  if (handle.type == "legacy_virtual_sub")
-    return handle.legacy_virtual_sub_handle_name;
-  if (handle.type == "new") return handle.new_handle_name;
-  throw new Error("Invalid handle type");
+  if (typeof handle === "string") return handle;
+  return handle.handle_name;
 };
 
 const getUTF8HandleName = (handle: Handle): string => {
-  return Buffer.from(getHandleName(handle), "hex").toString("utf8");
+  if (typeof handle === "string")
+    return Buffer.from(handle, "hex").toString("utf8");
+  return Buffer.from(handle.handle_name, "hex").toString("utf8");
+};
+
+const getIsVirtual = (handle: Handle): boolean => {
+  if (typeof handle === "string") return false;
+  return handle.is_virtual;
+};
+
+const parseHandle = (
+  handle: Handle
+): { handleName: string; handleUTF8Name: string; isVirtual: boolean } => {
+  return {
+    handleName: getHandleName(handle),
+    handleUTF8Name: getUTF8HandleName(handle),
+    isVirtual: getIsVirtual(handle),
+  };
 };
 
 export {
   getHandleName,
+  getIsVirtual,
   getUTF8HandleName,
   makeMintingDataUplcProgramParameter,
   makeMintingDataUplcProgramParameterDatum,
   makeMintProxyUplcProgramParameter,
   makeMintProxyUplcProgramParameterDatum,
+  parseHandle,
 };
