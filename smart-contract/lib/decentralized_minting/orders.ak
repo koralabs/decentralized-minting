@@ -13,10 +13,11 @@ pub type Destination {
 // Using this information, validator can calculate handle's price
 
 pub type OrderDatum {
-  // sundae swap multi sig script data
+  // the keyhash of the wallet that placed the order that is used for cancelling the order
   owner: Data,
-  // without asset name
+  // without asset label
   requested_handle: ByteArray,
+  // the payment credential in the address that the Handle should be sent to
   destination: Destination,
 }
 
