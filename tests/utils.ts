@@ -93,10 +93,23 @@ const virtualSubHandleAssetValue = (policyId: string, handleName: string) => {
   );
 };
 
+const getRandomString = (min: number, max: number): string => {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-";
+  const length = Math.floor(Math.random() * (max - min + 1)) + min;
+  let result = "";
+
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return result;
+};
+
 export {
   alwaysSuceedMintUplcProgram,
   balanceOf,
   extractScriptCborsFromUplcProgram,
+  getRandomString,
   referenceAssetClass,
   referenceAssetValue,
   userAssetClass,
