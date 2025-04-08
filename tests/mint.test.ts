@@ -20,6 +20,7 @@ import {
 import { myTest } from "./setup.js";
 import {
   balanceOf,
+  getRandomString,
   referenceAssetClass,
   referenceAssetValue,
   userAssetClass,
@@ -1264,20 +1265,18 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
   // ======= mint many handles =======
 
-  // user_1 orders new handle - <demi-1>
+  // user_2 orders many handle - <10 random handles>
   myTest(
-    "user_1 orders new handles - <demi-10 ~ demi-20>",
+    "user_2 orders many handle - <10 random handles>",
     async ({ network, emulator, wallets, ordersDetail }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
       const { usersWallets } = wallets;
       const user1Wallet = usersWallets[0];
 
-      // const handleNames = Array.from(
-      //   { length: 10 },
-      //   (_, i) => `demi-${i + 10}`
-      // );
-      const handleNames = ["demi-mint-14", "demi-golddy", "demitesthndl"];
+      const handleNames = Array.from({ length: 10 }, () =>
+        getRandomString(8, 15)
+      );
 
       for (const handleName of handleNames) {
         const txBuilderResult = await request({
@@ -1306,9 +1305,9 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
-  // mint new handle - <demi-1>
+  // mint many handles - <10 random handles>
   myTest(
-    "mint new handles - <demi-10 ~ demi-20>",
+    "mint many handles - <10 random handles>",
     async ({
       mockedFunctions,
       db,
@@ -1384,6 +1383,120 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       // empty orders detail
       ordersDetail.length = 0;
+
+      // inspect db
+      inspect(db);
+    }
+  );
+
+  myTest(
+    "mint legacy handles - <20 random handles>",
+    async ({
+      mockedFunctions,
+      db,
+      emulator,
+      legacyMintUplcProgram,
+      legacyPolicyId,
+      wallets,
+    }) => {
+      const { usersWallets, allowedMintersWallets, pzWallet } = wallets;
+      const user1Wallet = usersWallets[0];
+      const allowedMinter2Wallet = allowedMintersWallets[1];
+      const handleNames = Array.from({ length: 20 }, () =>
+        getRandomString(8, 15)
+      );
+      const handles: Handle[] = handleNames.map((handleName) =>
+        Buffer.from(handleName, "utf8").toString("hex")
+      );
+
+      const txBuilderResult = await prepareLegacyMintTransaction({
+        address: allowedMinter2Wallet.address,
+        handles,
+        db,
+        blockfrostApiKey: "",
+      });
+      invariant(txBuilderResult.ok, "Mint Tx Building Failed");
+
+      const { txBuilder, settingsV1 } = txBuilderResult.data;
+
+      // mint legacy handles
+      txBuilder.attachUplcProgram(legacyMintUplcProgram);
+      const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
+      handleNames.forEach((handleName) =>
+        mintingHandlesTokensValue.push(
+          [referenceAssetClass(legacyPolicyId, handleName).tokenName, 1n],
+          [userAssetClass(legacyPolicyId, handleName).tokenName, 1n]
+        )
+      );
+      txBuilder.mintPolicyTokensUnsafe(
+        legacyPolicyId,
+        mintingHandlesTokensValue,
+        makeVoidData()
+      );
+      handleNames.forEach((handleName) =>
+        txBuilder
+          .payUnsafe(
+            settingsV1.pz_script_address,
+            referenceAssetValue(legacyPolicyId, handleName)
+          )
+          .payUnsafe(
+            user1Wallet.address,
+            userAssetValue(legacyPolicyId, handleName)
+          )
+      );
+
+      const txResult = await mayFailTransaction(
+        txBuilder,
+        allowedMinter2Wallet.address,
+        await allowedMinter2Wallet.utxos
+      ).complete();
+      invariant(txResult.ok, "Mint Tx Complete Failed");
+
+      const { tx } = txResult.data;
+      tx.addSignatures(await allowedMinter2Wallet.signTx(tx));
+      const txId = await allowedMinter2Wallet.submitTx(tx);
+      emulator.tick(200);
+
+      // check minted values
+      const user1Balance = await balanceOf(user1Wallet);
+      const pzBalance = await balanceOf(pzWallet);
+
+      assert(
+        user1Balance.isGreaterOrEqual(
+          addValues(
+            handleNames.map((handleName) =>
+              userAssetValue(legacyPolicyId, handleName)
+            )
+          )
+        ) == true,
+        "User 1 Wallet Balance is not correct"
+      );
+      assert(
+        pzBalance.isGreaterOrEqual(
+          addValues(
+            handleNames.map((handleName) =>
+              referenceAssetValue(legacyPolicyId, handleName)
+            )
+          )
+        ) == true,
+        "PZ Wallet Balance is not correct"
+      );
+
+      // update minting data input
+      const mintingDataAssetTxInput = await emulator.getUtxo(
+        makeTxOutputId(txId, 0)
+      );
+      const mintingData = decodeMintingDataDatum(mintingDataAssetTxInput.datum);
+      mockedFunctions.mockedFetchMintingData.mockReturnValue(
+        new Promise((resolve) =>
+          resolve(
+            Ok({
+              mintingData,
+              mintingDataAssetTxInput,
+            })
+          )
+        )
+      );
 
       // inspect db
       inspect(db);

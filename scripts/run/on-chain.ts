@@ -352,6 +352,8 @@ const doDeployActions = async () => {
               );
               console.log("!!! UPDATE SETTINGS DATUM !!!");
               console.log("\n");
+              console.log("!!! Register Staking Addresses !!!");
+              console.log("\n");
             } else if (contract === "minting_data.spend") {
               console.log(
                 "\n\n------- After Deploying Minting Data Spend Script -------\n"
