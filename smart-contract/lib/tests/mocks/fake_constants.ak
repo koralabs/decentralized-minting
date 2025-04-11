@@ -13,7 +13,7 @@ pub const minting_data_asset_policy_id: PolicyId =
   #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
 
 pub const minting_data_asset_name: AssetName =
-  #"000de14068616e646c65735f726f6f744068616e646c655f73657474696e6773"
+  #"000de14068616e646c655f726f6f744068616e646c655f73657474696e6773"
 
 // settings
 
