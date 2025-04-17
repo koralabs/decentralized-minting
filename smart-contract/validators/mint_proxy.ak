@@ -11,11 +11,11 @@ use decentralized_minting/settings.{Settings, find_settings}
 // - version (in parameter) is changed
 // - decentralized_minting/settings library is changed
 //
-// Why we have version as paramter?
+// Why we have version as parameter?
 // There can be some reason to update policy id
-// without chaning mint logic
+// without changing mint logic
 //
-// WARN >> version must be greater than or eqaual to 0
+// WARN >> version must be greater than or equal to 0
 // and settings' mint_version must be same as parameter to mint handles
 //
 validator(version: Int) {
