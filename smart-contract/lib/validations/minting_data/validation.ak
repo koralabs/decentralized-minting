@@ -103,7 +103,10 @@ pub fn can_god_mode(
   transaction: Transaction,
   god_verification_key_hash: VerificationKeyHash,
 ) -> Bool {
-  let Transaction { extra_signatories, .. } = transaction
+  let Transaction { extra_signatories, mint, .. } = transaction
+
+  // must not mint anything
+  expect value.from_minted_value(mint) == value.zero()
 
   // must be signed by god
   expect list.has(extra_signatories, god_verification_key_hash)
