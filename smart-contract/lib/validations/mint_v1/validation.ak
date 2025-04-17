@@ -14,9 +14,9 @@ use validations/mint_v1/utils.{all_orders_are_satisfied}
 // - check transaction is signed by one of allowed minters
 // - check minting data asset is spent from minting_data script which assures
 // minting_data (mpt_root_hash) is correctly updated corresponding real minted asset
-// - all orders (from order script) are correctly formated (Order Datum) 
-// and has enough lovelace to cover fees (minter fee, treasury fee)
-// - all orders are satisfied correcly which means 
+// - all orders (from order script) are correctly formatted (Order Datum) 
+// and have enough lovelace to cover fees (minter fee, treasury fee)
+// - all orders are satisfied correctly which means 
 // corresponding assets (ref asset & user asset) are correctly minted,
 // and are sent to correct addresses (ref asset to pz_script, user asset to destination)
 // - confirm no other assets than new handles (from orders) are minted

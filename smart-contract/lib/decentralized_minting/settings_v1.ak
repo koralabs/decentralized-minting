@@ -27,7 +27,7 @@ pub type SettingsV1 {
   order_script_hash: ScriptHash,
   // minting data script is used to check
   // mpt root hash is correctly updated
-  // minting_data_asset is locked inside that sccript
+  // minting_data_asset is locked inside that script
   minting_data_script_hash: ScriptHash,
 }
 //

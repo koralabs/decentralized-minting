@@ -1,0 +1,24 @@
+{
+  "version": "0.2",
+  "language": "en, lorem",
+  "words": [
+    "preview",
+    "preprod",
+    "mainnet",
+    "subhandle",
+    "demi",
+    "bytearray",
+    "merkle",
+    "kora",
+    "koralab"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    ".git",
+    "package.json",
+    "package-lock.json",
+    "**/plutus.json",
+    "**/*-blueprints.ts",
+    ".vscode/**"
+  ]
+}
