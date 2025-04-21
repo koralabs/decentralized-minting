@@ -19,6 +19,10 @@ pub type OrderDatum {
   requested_handle: ByteArray,
   // the payment credential in the address that the Handle should be sent to
   destination: Destination,
+  // whether order for legacy handle or not (1: legacy handle, 0: new handle)
+  is_legacy: Int,
+  // whether order for virtual sub handle or not (1: virtual, 0: not)
+  is_virtual: Int,
 }
 
 pub type OrderRedeemer {

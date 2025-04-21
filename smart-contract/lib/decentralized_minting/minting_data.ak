@@ -18,21 +18,22 @@ pub type MintingData {
   mpt_root_hash: ByteArray,
 }
 
-pub fn find_minting_data(inputs: List<Input>) -> (Output, MintingData) {
-  expect Some(minting_data_input) =
-    list.find(
-      inputs,
-      fn(i) {
-        value.quantity_of(
-          i.output.value,
-          minting_data_asset_policy_id,
-          minting_data_asset_name,
-        ) == 1
-      },
-    )
-  expect InlineDatum(inline_minting_data) = minting_data_input.output.datum
+pub fn find_minting_data(
+  inputs: List<Input>,
+  minting_data_index: Int,
+) -> (Output, MintingData) {
+  expect Some(minting_data_input) = list.at(inputs, minting_data_index)
+  let minting_data_output = minting_data_input.output
+  expect
+    value.quantity_of(
+      minting_data_output.value,
+      minting_data_asset_policy_id,
+      minting_data_asset_name,
+    ) == 1
+
+  expect InlineDatum(inline_minting_data) = minting_data_output.datum
   expect minting_data: MintingData = inline_minting_data
-  (minting_data_input.output, minting_data)
+  (minting_data_output, minting_data)
 }
 
 // this function also makes sure that

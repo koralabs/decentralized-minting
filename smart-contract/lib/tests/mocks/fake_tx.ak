@@ -43,6 +43,8 @@ pub fn make_order_input(
       destination: Destination {
         address: credential.from_verification_key(owner_verification_key_hash),
       },
+      is_legacy: 0,
+      is_virtual: 0,
     }
   Input {
     output_reference: OutputReference {

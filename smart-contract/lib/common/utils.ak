@@ -8,3 +8,11 @@ pub fn is_withdrawal_script_executed(
 ) -> Bool {
   pairs.has_key(withdrawals, Inline(ScriptCredential(script_hash)))
 }
+
+pub fn parse_bool_from_int(value: Int) -> Bool {
+  when value is {
+    0 -> False
+    1 -> True
+    _ -> fail @"Invalid bool value"
+  }
+}
