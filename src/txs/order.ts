@@ -24,7 +24,7 @@ import {
   mayFail,
   mayFailAsync,
 } from "../helpers/index.js";
-import { fetchDeployedScript } from "../utils/contract.js";
+import { fetchDeployedScript, getHandlePrice } from "../utils/index.js";
 
 /**
  * @interface
@@ -32,11 +32,15 @@ import { fetchDeployedScript } from "../utils/contract.js";
  * @property {NetworkName} network Network
  * @property {Address} address User's Wallet Address to perform order
  * @property {string} handle Handle Name to order (UTF8 format)
+ * @property {boolean | undefined} is_legacy Whether the handle is legacy. Default is false
+ * @property {boolean | undefined} is_virtual Whether the handle is virtual. Default is false
  */
 interface RequestParams {
   network: NetworkName;
   address: Address;
   handle: string;
+  is_legacy?: boolean;
+  is_virtual?: boolean;
 }
 
 /**
@@ -47,7 +51,13 @@ interface RequestParams {
 const request = async (
   params: RequestParams
 ): Promise<Result<TxBuilder, Error>> => {
-  const { network, address, handle } = params;
+  const {
+    network,
+    address,
+    handle,
+    is_legacy = false,
+    is_virtual = false,
+  } = params;
 
   // fetch settings
   const settingsResult = await fetchSettings(network);
@@ -77,12 +87,17 @@ const request = async (
   );
 
   const order: OrderDatum = {
+    owner: makeSignatureMultiSigScriptData(address.spendingCredential),
+    requested_handle: Buffer.from(handle).toString("hex"),
     destination: {
       address,
     },
-    owner: makeSignatureMultiSigScriptData(address.spendingCredential),
-    requested_handle: Buffer.from(handle).toString("hex"),
+    is_legacy: is_legacy ? 1n : 0n,
+    is_virtual: is_virtual ? 1n : 0n,
   };
+
+  // get handle price
+  const handlePrice = getHandlePrice(handle);
 
   // start building tx
   const txBuilder = makeTxBuilder({
@@ -92,7 +107,7 @@ const request = async (
   // <-- lock order
   txBuilder.payUnsafe(
     ordersScriptAddress,
-    makeValue(3_000_000n + minter_fee + treasury_fee),
+    makeValue(3_000_000n + handlePrice + minter_fee + treasury_fee),
     makeInlineTxOutputDatum(buildOrderData(order))
   );
 
@@ -101,12 +116,12 @@ const request = async (
 
 /**
  * @interface
- * @typedef {object} CancelParmas
+ * @typedef {object} CancelParams
  * @property {NetworkName} network Network
  * @property {Address} address User's Wallet Address to perform order
  * @property {TxInput} orderTxInput Order Tx Input
  */
-interface CancelParmas {
+interface CancelParams {
   network: NetworkName;
   address: Address;
   orderTxInput: TxInput;
@@ -114,11 +129,11 @@ interface CancelParmas {
 
 /**
  * @description Request handle to be minted
- * @param {CancelParmas} params
+ * @param {CancelParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
 const cancel = async (
-  params: CancelParmas
+  params: CancelParams
 ): Promise<Result<TxBuilder, Error>> => {
   const { network, address, orderTxInput } = params;
 
@@ -213,5 +228,5 @@ const fetchOrdersTxInputs = async (
   return Ok(orderUtxos);
 };
 
-export type { CancelParmas, FetchOrdersTxInputsParams, RequestParams };
+export type { CancelParams, FetchOrdersTxInputsParams, RequestParams };
 export { cancel, fetchOrdersTxInputs, request };

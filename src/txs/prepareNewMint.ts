@@ -13,13 +13,11 @@ import { Err, Ok, Result } from "ts-res";
 import { fetchMintingData, fetchSettings } from "../configs/index.js";
 import {
   buildMintingData,
-  buildMintingDataMintOrBurnNewHandlesRedeemer,
+  buildMintingDataMintHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
-  getIsVirtual,
   Handle,
   makeVoidData,
   MintingData,
-  parseHandle,
   parseMPTProofJSON,
   Proof,
   Settings,
@@ -68,21 +66,15 @@ const prepareNewMintTransaction = async (
     return Err(new Error("Byron Address not supported"));
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
 
-  // check every handle is not virtual handle
-  for (const handle of handles) {
-    if (getIsVirtual(handle))
-      return Err(new Error("Virtual Sub Handles not supported"));
-  }
-
   // fetch deployed scripts
   const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
   if (!fetchedResult.ok)
-    return Err(new Error(`Faied to fetch scripts: ${fetchedResult.error}`));
+    return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const {
     mintProxyScriptTxInput,
+    mintingDataScriptTxInput,
     mintV1ScriptDetails,
     mintV1ScriptTxInput,
-    mintingDataScriptTxInput,
     ordersScriptTxInput,
   } = fetchedResult.data;
 
@@ -94,11 +86,6 @@ const prepareNewMintTransaction = async (
   const { allowed_minters, minter_fee, treasury_address, treasury_fee } =
     settingsV1;
 
-  // fetch minting data
-  // const mintingDataAddress = makeAddress(
-  //   isMainnet,
-  //   makeValidatorHash(mintingDataScriptDetails.validatorHash)
-  // );
   const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
     return Err(
@@ -117,22 +104,23 @@ const prepareNewMintTransaction = async (
   // make Proofs for Minting Data V1 Redeemer
   const proofs: Proof[] = [];
   for (const handle of handles) {
-    const { handleName, handleUTF8Name, isVirtual } = parseHandle(handle);
+    const { utf8Name } = handle;
 
     try {
       // NOTE:
       // Have to remove handles if transaction fails
-      await db.insert(handleUTF8Name, "");
-      const mpfProof = await db.prove(handleUTF8Name);
+      await db.insert(utf8Name, "");
+      const mpfProof = await db.prove(utf8Name);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        handle_name: handleName,
-        is_virtual: isVirtual,
-        amount: 1n,
+        // NOTE:
+        // for now root handle settings index is -1
+        // because we don't support sub handle minting yet
+        root_handle_settings_index: -1n,
       });
     } catch (e) {
-      console.warn("Handle already exists", handleUTF8Name, e);
-      return Err(new Error(`Handle "${handleUTF8Name}" already exists`));
+      console.warn("Handle already exists", utf8Name, e);
+      return Err(new Error(`Handle "${utf8Name}" already exists`));
     }
   }
 
@@ -152,8 +140,8 @@ const prepareNewMintTransaction = async (
   const mintV1MintHandlesRedeemer = buildMintV1MintHandlesRedeemer();
 
   // build proofs redeemer for minting data v1
-  const mintingDataMintOrBurnRedeemer =
-    buildMintingDataMintOrBurnNewHandlesRedeemer(proofs);
+  const mintingDataMintHandlesRedeemer =
+    buildMintingDataMintHandlesRedeemer(proofs);
 
   // start building tx
   const txBuilder = makeTxBuilder({
@@ -175,7 +163,10 @@ const prepareNewMintTransaction = async (
   );
 
   // <-- spend minting data utxo
-  txBuilder.spendUnsafe(mintingDataAssetTxInput, mintingDataMintOrBurnRedeemer);
+  txBuilder.spendUnsafe(
+    mintingDataAssetTxInput,
+    mintingDataMintHandlesRedeemer
+  );
 
   // <-- lock minting data value with new root hash
   txBuilder.payUnsafe(

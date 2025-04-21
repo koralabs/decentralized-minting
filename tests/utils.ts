@@ -10,7 +10,7 @@ import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
 
 import { PREFIX_000, PREFIX_100, PREFIX_222 } from "../src/constants/index.js";
 
-const alwaysSuceedMintUplcProgram = (): UplcProgramV2 => {
+const alwaysSucceedMintUplcProgram = (): UplcProgramV2 => {
   return decodeUplcProgramV2FromCbor(
     "5834010000323232323222533300353330033370e900018021baa3006300730053754002294458526136565734aae7555cf2ba157441"
   );
@@ -106,7 +106,7 @@ const getRandomString = (min: number, max: number): string => {
 };
 
 export {
-  alwaysSuceedMintUplcProgram,
+  alwaysSucceedMintUplcProgram,
   balanceOf,
   extractScriptCborsFromUplcProgram,
   getRandomString,

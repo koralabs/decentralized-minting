@@ -12,9 +12,14 @@ interface SettingsV1 {
   // user makes an order (as UTxO) in order script
   order_script_hash: string;
   // minting data script is used to check
-  // mpt root hash is correctly updated
-  // minting_data_asset is locked inside that sccript
+  // all minting handles logic (for both new and legacy)
+  // minting_data_asset is locked inside that script
   minting_data_script_hash: string;
+  // valid handle price assets
+  // only handle price info attached with these assets
+  // are valid
+  // list of asset ids
+  valid_handle_price_assets: string[];
 }
 
 export type { SettingsV1 };

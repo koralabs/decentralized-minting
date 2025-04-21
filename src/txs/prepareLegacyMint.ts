@@ -11,10 +11,9 @@ import { Err, Ok, Result } from "ts-res";
 import { fetchMintingData, fetchSettings } from "../configs/index.js";
 import {
   buildMintingData,
-  buildMintingDataMintOrBurnLegacyHandlesRedeemer,
+  buildMintingDataMintHandlesRedeemer,
   Handle,
   MintingData,
-  parseHandle,
   parseMPTProofJSON,
   Proof,
   Settings,
@@ -66,7 +65,7 @@ const prepareLegacyMintTransaction = async (
   // fetch deployed scripts
   const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
   if (!fetchedResult.ok)
-    return Err(new Error(`Faied to fetch scripts: ${fetchedResult.error}`));
+    return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const { mintingDataScriptTxInput } = fetchedResult.data;
 
   // fetch settings
@@ -76,12 +75,6 @@ const prepareLegacyMintTransaction = async (
   const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
   const { allowed_minters } = settingsV1;
 
-  // fetch minting data
-  // THIS IS WHERE THE MINTING DATA HANDLE NEEDS TO LIVE
-  // const mintingDataAddress = makeAddress(
-  //   isMainnet,
-  //   makeValidatorHash(mintingDataScriptDetails.validatorHash)
-  // );
   const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
     return Err(
@@ -100,22 +93,20 @@ const prepareLegacyMintTransaction = async (
   // make Proofs for Minting Data V1 Redeemer
   const proofs: Proof[] = [];
   for (const handle of handles) {
-    const { handleName, handleUTF8Name, isVirtual } = parseHandle(handle);
+    const { utf8Name } = handle;
 
     try {
       // NOTE:
       // Have to remove handles if transaction fails
-      await db.insert(handleUTF8Name, "");
-      const mpfProof = await db.prove(handleUTF8Name);
+      await db.insert(utf8Name, "");
+      const mpfProof = await db.prove(utf8Name);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        handle_name: handleName,
-        is_virtual: isVirtual,
-        amount: 1n,
+        root_handle_settings_index: -1n,
       });
     } catch (e) {
-      console.warn("Handle already exists", handleUTF8Name, e);
-      return Err(new Error(`Handle "${handleUTF8Name}" already exists`));
+      console.warn("Handle already exists", utf8Name, e);
+      return Err(new Error(`Handle "${utf8Name}" already exists`));
     }
   }
 
@@ -132,8 +123,8 @@ const prepareLegacyMintTransaction = async (
   );
 
   // build proofs redeemer for minting data v1
-  const mintingDataMintOrBurnRedeemer =
-    buildMintingDataMintOrBurnLegacyHandlesRedeemer(proofs);
+  const mintingDataMintHandlesRedeemer =
+    buildMintingDataMintHandlesRedeemer(proofs);
 
   // start building tx
   const txBuilder = makeTxBuilder({
@@ -150,7 +141,10 @@ const prepareLegacyMintTransaction = async (
   txBuilder.refer(mintingDataScriptTxInput);
 
   // <-- spend minting data utxo
-  txBuilder.spendUnsafe(mintingDataAssetTxInput, mintingDataMintOrBurnRedeemer);
+  txBuilder.spendUnsafe(
+    mintingDataAssetTxInput,
+    mintingDataMintHandlesRedeemer
+  );
 
   // <-- lock minting data value with new root hash
   txBuilder.payUnsafe(

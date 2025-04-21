@@ -37,7 +37,7 @@ import {
   SettingsV1,
 } from "../src/index.js";
 import {
-  alwaysSuceedMintUplcProgram,
+  alwaysSucceedMintUplcProgram,
   extractScriptCborsFromUplcProgram,
 } from "./utils.js";
 
@@ -102,7 +102,7 @@ const setup = async () => {
   const emulator = makeEmulator();
 
   // legacy handles policy id
-  const legacyMintUplcProgram = alwaysSuceedMintUplcProgram();
+  const legacyMintUplcProgram = alwaysSucceedMintUplcProgram();
   // policy id: f060f0ef7fa4c3c6d3a4f831c639038db0f625c548a711f2b276a282
   const legacyPolicyId = makeMintingPolicyHash(
     legacyMintUplcProgram.hash()
@@ -152,12 +152,12 @@ const setup = async () => {
 
   // ============ build contracts ============
   const mintVersion = 0n;
-  const godPubKeyHash = godWallet.spendingPubKeyHash.toHex();
+  const adminPubKeyHash = adminWallet.spendingPubKeyHash.toHex();
   const contractsConfig = buildContracts({
     network,
     mint_version: mintVersion,
     legacy_policy_id: legacyPolicyId,
-    god_verification_key_hash: godPubKeyHash,
+    admin_verification_key_hash: adminPubKeyHash,
   });
   const {
     handlePolicyHash,
@@ -178,9 +178,10 @@ const setup = async () => {
     order_script_hash: ordersConfig.ordersValidatorHash.toHex(),
     minting_data_script_hash:
       mintingDataConfig.mintingDataValidatorHash.toHex(),
+    valid_handle_price_assets: [],
   };
   const settings: Settings = {
-    mint_governor: mintV1Config.mintV1ValiatorHash.toHex(),
+    mint_governor: mintV1Config.mintV1ValidatorHash.toHex(),
     mint_version: mintVersion,
     data: buildSettingsV1Data(settingsV1),
   };

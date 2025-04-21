@@ -229,7 +229,7 @@ const buildSettingsDataCbor = () => {
   const {
     MINT_VERSION,
     LEGACY_POLICY_ID,
-    GOD_VERIFICATION_KEY_HASH,
+    ADMIN_VERIFICATION_KEY_HASH,
     ALLOWED_MINTERS,
     TREASURY_ADDRESS,
     PZ_SCRIPT_ADDRESS,
@@ -241,7 +241,7 @@ const buildSettingsDataCbor = () => {
     network: NETWORK as NetworkName,
     mint_version: MINT_VERSION,
     legacy_policy_id: LEGACY_POLICY_ID,
-    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
+    admin_verification_key_hash: ADMIN_VERIFICATION_KEY_HASH,
   });
   const {
     mintV1: mintV1Config,
@@ -260,9 +260,10 @@ const buildSettingsDataCbor = () => {
     order_script_hash: ordersConfig.ordersValidatorHash.toHex(),
     minting_data_script_hash:
       mintingDataConfig.mintingDataValidatorHash.toHex(),
+    valid_handle_price_assets: [],
   };
   const settings: Settings = {
-    mint_governor: mintV1Config.mintV1ValiatorHash.toHex(),
+    mint_governor: mintV1Config.mintV1ValidatorHash.toHex(),
     mint_version: MINT_VERSION,
     data: buildSettingsV1Data(settingsV1),
   };
@@ -272,13 +273,14 @@ const buildSettingsDataCbor = () => {
 
 const buildMintingDataCbor = (db: Trie) => {
   const configs = GET_CONFIGS(NETWORK as NetworkName);
-  const { MINT_VERSION, LEGACY_POLICY_ID, GOD_VERIFICATION_KEY_HASH } = configs;
+  const { MINT_VERSION, LEGACY_POLICY_ID, ADMIN_VERIFICATION_KEY_HASH } =
+    configs;
 
   const contractsConfig = buildContracts({
     network: NETWORK as NetworkName,
     mint_version: MINT_VERSION,
     legacy_policy_id: LEGACY_POLICY_ID,
-    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
+    admin_verification_key_hash: ADMIN_VERIFICATION_KEY_HASH,
   });
   const { mintingData: mintingDataConfig } = contractsConfig;
 
@@ -295,13 +297,14 @@ const buildMintingDataCbor = (db: Trie) => {
 
 const getStakingAddresses = () => {
   const configs = GET_CONFIGS(NETWORK as NetworkName);
-  const { MINT_VERSION, LEGACY_POLICY_ID, GOD_VERIFICATION_KEY_HASH } = configs;
+  const { MINT_VERSION, LEGACY_POLICY_ID, ADMIN_VERIFICATION_KEY_HASH } =
+    configs;
 
   const contractsConfig = buildContracts({
     network: NETWORK as NetworkName,
     mint_version: MINT_VERSION,
     legacy_policy_id: LEGACY_POLICY_ID,
-    god_verification_key_hash: GOD_VERIFICATION_KEY_HASH,
+    admin_verification_key_hash: ADMIN_VERIFICATION_KEY_HASH,
   });
   const { mintV1: mintV1Config } = contractsConfig;
 
@@ -312,7 +315,8 @@ const getStakingAddresses = () => {
 
 const doDeployActions = async () => {
   const configs = GET_CONFIGS(NETWORK as NetworkName);
-  const { MINT_VERSION, LEGACY_POLICY_ID, GOD_VERIFICATION_KEY_HASH } = configs;
+  const { MINT_VERSION, LEGACY_POLICY_ID, ADMIN_VERIFICATION_KEY_HASH } =
+    configs;
 
   let finished: boolean = false;
   while (!finished) {
@@ -330,7 +334,7 @@ const doDeployActions = async () => {
               contractName: contract,
               mintVersion: MINT_VERSION,
               legacyPolicyId: LEGACY_POLICY_ID,
-              godVerificationKeyHash: GOD_VERIFICATION_KEY_HASH,
+              adminVerificationKeyHash: ADMIN_VERIFICATION_KEY_HASH,
             });
 
             const { filepath } = await prompts({

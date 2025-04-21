@@ -10,7 +10,16 @@
     "bytearray",
     "merkle",
     "kora",
-    "koralab"
+    "koralab",
+    "koralabs",
+    "bech",
+    "uplc",
+    "cardano",
+    "cbor",
+    "cbors",
+    "utxo",
+    "utxos",
+    "blockfrost"
   ],
   "ignorePaths": [
     "node_modules",

@@ -12,7 +12,6 @@ import {
 import { invariant } from "../../helpers/index.js";
 import { MintingData } from "../types/index.js";
 import { Proof } from "../types/index.js";
-import { makeBoolData } from "./common.js";
 import { buildMPTProofData } from "./mpt.js";
 
 const buildMintingData = (mintingData: MintingData): UplcData => {
@@ -38,35 +37,24 @@ const decodeMintingDataDatum = (
 };
 
 const buildProofData = (proof: Proof): UplcData => {
-  const { mpt_proof, handle_name, is_virtual, amount } = proof;
+  const { mpt_proof, root_handle_settings_index } = proof;
   return makeConstrData(0, [
     buildMPTProofData(mpt_proof),
-    makeByteArrayData(handle_name),
-    makeBoolData(is_virtual),
-    makeIntData(amount),
+    makeIntData(root_handle_settings_index),
   ]);
 };
 
-const buildMintingDataMintOrBurnNewHandlesRedeemer = (
-  proofs: Proof[]
-): UplcData => {
+const buildMintingDataMintHandlesRedeemer = (proofs: Proof[]): UplcData => {
   return makeConstrData(0, [makeListData(proofs.map(buildProofData))]);
 };
 
-const buildMintingDataMintOrBurnLegacyHandlesRedeemer = (
-  proofs: Proof[]
-): UplcData => {
-  return makeConstrData(1, [makeListData(proofs.map(buildProofData))]);
-};
-
-const buildMintingDataGodModeRedeemer = (): UplcData => {
-  return makeConstrData(2, []);
+const buildMintingDataUpdateMPTRedeemer = (): UplcData => {
+  return makeConstrData(1, []);
 };
 
 export {
   buildMintingData,
-  buildMintingDataGodModeRedeemer,
-  buildMintingDataMintOrBurnLegacyHandlesRedeemer,
-  buildMintingDataMintOrBurnNewHandlesRedeemer,
+  buildMintingDataMintHandlesRedeemer,
+  buildMintingDataUpdateMPTRedeemer,
   decodeMintingDataDatum,
 };

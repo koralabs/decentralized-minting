@@ -57,13 +57,22 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   ordersTxInputs.sort((a, b) => (a.id.toString() > b.id.toString() ? 1 : -1));
   if (ordersTxInputs.length == 0) return Err(new Error("No Order requested"));
   console.log(`${ordersTxInputs.length} Handles are ordered`);
-  const handles: Handle[] = ordersTxInputs.map((order) => {
+
+  const orderedHandles: Handle[] = ordersTxInputs.map((order) => {
     const decodedOrder = decodeOrderDatum(order.datum, network);
-    return decodedOrder.requested_handle;
+    return {
+      utf8Name: Buffer.from(decodedOrder.requested_handle, "hex").toString(
+        "utf8"
+      ),
+      hexName: decodedOrder.requested_handle,
+      destination: decodedOrder.destination,
+      isLegacy: decodedOrder.is_legacy === 1n,
+      isVirtual: decodedOrder.is_virtual === 1n,
+    };
   });
   const preparedTxBuilderResult = await prepareNewMintTransaction({
     ...params,
-    handles,
+    handles: orderedHandles,
   });
 
   if (!preparedTxBuilderResult.ok) {
