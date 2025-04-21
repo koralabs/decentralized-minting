@@ -2,16 +2,6 @@ use aiken/list
 use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/value
 
-const handle_price_info_asset_policy_id =
-  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
-
-// price@handle_settings
-// hold handle price info
-// This will be updated regularly
-//
-const handle_price_info_asset_name =
-  #"000de14070726963654068616e646c655f73657474696e6773"
-
 // This is table of handle length and price
 // key is handle length
 // value is price
@@ -36,17 +26,26 @@ pub type HandlePriceInfo {
 pub fn find_handle_price_info(
   reference_inputs: List<Input>,
   handle_price_info_index: Int,
+  valid_handle_price_assets: List<(ByteArray, ByteArray)>,
 ) -> HandlePriceInfo {
+  // get handle_price_info_input from index
   expect Some(handle_price_info_input) =
     list.at(reference_inputs, handle_price_info_index)
+  // check output value has one of valid assets
   let handle_price_info_output = handle_price_info_input.output
-  let output_has_handle_price_info_asset =
-    value.quantity_of(
-      handle_price_info_output.value,
-      handle_price_info_asset_policy_id,
-      handle_price_info_asset_name,
-    ) == 1
-  expect output_has_handle_price_info_asset
+  let has_valid_handle_price_asset =
+    valid_handle_price_assets
+      |> list.any(
+          fn(valid_asset) {
+            let (policy_id, asset_name) = valid_asset
+            value.quantity_of(
+              handle_price_info_output.value,
+              policy_id,
+              asset_name,
+            ) == 1
+          },
+        )
+  expect has_valid_handle_price_asset
 
   expect InlineDatum(inline_handle_price_info) = handle_price_info_output.datum
   expect handle_price_info: HandlePriceInfo = inline_handle_price_info

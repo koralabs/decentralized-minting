@@ -50,6 +50,7 @@ pub fn can_mint_handles(
     minter_fee,
     pz_script_address,
     order_script_hash,
+    valid_handle_price_assets,
     ..
   } = settings_datum
 
@@ -63,7 +64,11 @@ pub fn can_mint_handles(
 
   // find handle price info
   let handle_price_info =
-    find_handle_price_info(reference_inputs, handle_price_info_index)
+    find_handle_price_info(
+      reference_inputs,
+      handle_price_info_index,
+      valid_handle_price_assets,
+    )
 
   // parse outputs
   expect [minting_data_output, treasury_output, minter_output, ..rest_outputs] =

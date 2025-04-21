@@ -48,5 +48,15 @@ pub const order_script_hash: ScriptHash = #"5555"
 
 pub const minting_data_script_hash: ScriptHash = #"3333"
 
+pub const valid_handle_price_policy_id: PolicyId =
+  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
+
+pub const valid_handle_price_asset_name: AssetName =
+  #"000de14070726963654068616e646c655f73657474696e6773"
+
+pub fn valid_handle_price_assets() -> List<(ByteArray, ByteArray)> {
+  [(valid_handle_price_policy_id, valid_handle_price_asset_name)]
+}
+
 // other constants
 pub const min_order_lovelace = 3_000_000

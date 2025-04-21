@@ -18,6 +18,7 @@ use tests/mocks/fake_constants.{
   minting_data_asset_policy_id, minting_data_script_hash, new_policy_id,
   order_script_hash, pz_script_address, settings_asset_name,
   settings_asset_policy_id, treasury_address, treasury_fee,
+  valid_handle_price_assets,
 }
 
 pub fn make_output(address: Address, v: Value) -> Output {
@@ -76,6 +77,7 @@ pub fn make_settings_reference_input() -> Input {
       pz_script_address: pz_script_address(),
       order_script_hash,
       minting_data_script_hash,
+      valid_handle_price_assets: valid_handle_price_assets(),
     }
   let settings: Settings =
     Settings { mint_governor, mint_version, data: settings_v1 }

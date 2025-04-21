@@ -26,9 +26,14 @@ pub type SettingsV1 {
   // user makes an order (as UTxO) in order script
   order_script_hash: ScriptHash,
   // minting data script is used to check
-  // mpt root hash is correctly updated
+  // all minting handles logic (for both new and legacy)
   // minting_data_asset is locked inside that script
   minting_data_script_hash: ScriptHash,
+  // valid handle price assets
+  // only handle price info attached with these assets
+  // are valid
+  // list of (policy_id, asset_name)
+  valid_handle_price_assets: List<(ByteArray, ByteArray)>,
 }
 //
 // NOTE:
