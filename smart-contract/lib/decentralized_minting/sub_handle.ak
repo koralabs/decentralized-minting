@@ -4,33 +4,28 @@ use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/value.{PolicyId}
 use common/cip68.{prefix_001}
 
-// sub handle settings struct
-// helios-defined type
 // struct SubHandleSettings {
-//     public_minting_enabled: Bool
-//     pz_enabled: Bool
+//     public_minting_enabled: Int
+//     pz_enabled: Int
 //     tier_pricing: [][]Int
-//     creator_defaults: Data
+//     default_styles: Data
 //     save_original_address: Int
 // }
+type SubHandleSettings =
+  (Int, Int, List<List<Int>>, Data, Int)
 
-pub type SubHandleSettings =
-  (Bool, Bool, List<List<Int>>, Data, Int)
-
-// (001) token
-// root handle settings
-// helios-defined type
 // struct OwnerSettings {
 //     nft: SubHandleSettings
 //     virtual: SubHandleSettings
 //     buy_down_price: Int
 //     buy_down_paid: Int
+//     buy_down_percent: Int
 //     agreed_terms: Data
-//     payment_address: ByteArray
 //     migrate_sig_required: Int
+//     payment_address: ByteArray
 // }
-pub type OwnerSettings =
-  (SubHandleSettings, SubHandleSettings, Int, Int, Data, ByteArray, Int)
+type OwnerSettings =
+  (SubHandleSettings, SubHandleSettings, Int, Int, Int, Data, Int, ByteArray)
 
 pub fn get_root_handle_settings(
   reference_inputs: List<Input>,

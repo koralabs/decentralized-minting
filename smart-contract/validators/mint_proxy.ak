@@ -19,7 +19,7 @@ use decentralized_minting/settings.{Settings, find_settings}
 // and settings' mint_version must be same as parameter to mint handles
 //
 validator(version: Int) {
-  pub fn mint(_r: Data, ctx: ScriptContext) {
+  fn mint(_r: Data, ctx: ScriptContext) {
     let ScriptContext { transaction, purpose } = ctx
     expect Mint(_) = purpose
 
