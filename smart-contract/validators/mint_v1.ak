@@ -3,7 +3,7 @@ use common/hashes.{ScriptHash}
 use validations/mint_v1/validation.{can_burn_handles, can_mint_handles}
 
 type MintV1Redeemer {
-  MintHandles(Int)
+  MintHandles
   BurnHandles
 }
 
@@ -21,12 +21,7 @@ validator(minting_data_script_hash: ScriptHash) {
     expect WithdrawFrom(_) = purpose
 
     when redeemer is {
-      MintHandles(minting_data_index) ->
-        can_mint_handles(
-          transaction,
-          minting_data_index,
-          minting_data_script_hash,
-        )
+      MintHandles -> can_mint_handles(transaction, minting_data_script_hash)
       BurnHandles -> can_burn_handles(transaction)
     }
   }

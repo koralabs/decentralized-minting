@@ -25,7 +25,6 @@ pub fn can_mint_handles(
   transaction: Transaction,
   spending_output_reference: OutputReference,
   proofs: List<Proof>,
-  handle_price_info_index: Int,
   legacy_policy_id: PolicyId,
 ) -> Bool {
   trace @"Start Minting Data"
@@ -64,11 +63,7 @@ pub fn can_mint_handles(
 
   // find handle price info
   let handle_price_info =
-    find_handle_price_info(
-      reference_inputs,
-      handle_price_info_index,
-      valid_handle_price_assets,
-    )
+    find_handle_price_info(reference_inputs, valid_handle_price_assets)
 
   // parse outputs
   expect [minting_data_output, treasury_output, minter_output, ..rest_outputs] =

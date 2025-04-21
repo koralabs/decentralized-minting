@@ -10,9 +10,9 @@ use aiken/transaction/value
 // meaning that we assume Pairs are in ascending order
 // e.g.,
 // [
-//   (2, 120_000_000), // ultraRare: 120 ada
-//   (3, 80_000_000), // rare: 80 ada
-//   (7, 50_000_000), // common: 50 ada
+//   (2, 2_000_000_000), // ultraRare: 2_000 ada
+//   (3, 500_000_000), // rare: 500 ada
+//   (7, 100_000_000), // common: 100 ada
 //   (15, 10_000_000), // basic: 10 ada
 // ]
 //
@@ -25,28 +25,25 @@ pub type HandlePriceInfo {
 
 pub fn find_handle_price_info(
   reference_inputs: List<Input>,
-  handle_price_info_index: Int,
   valid_handle_price_assets: List<(ByteArray, ByteArray)>,
 ) -> HandlePriceInfo {
   // get handle_price_info_input from index
-  expect Some(handle_price_info_input) =
-    list.at(reference_inputs, handle_price_info_index)
   // check output value has one of valid assets
-  let handle_price_info_output = handle_price_info_input.output
-  let has_valid_handle_price_asset =
-    valid_handle_price_assets
-      |> list.any(
-          fn(valid_asset) {
-            let (policy_id, asset_name) = valid_asset
-            value.quantity_of(
-              handle_price_info_output.value,
-              policy_id,
-              asset_name,
-            ) == 1
-          },
-        )
-  expect has_valid_handle_price_asset
+  expect Some(handle_price_info_input) =
+    list.find(
+      reference_inputs,
+      fn(input) {
+        valid_handle_price_assets
+          |> list.any(
+              fn(valid_asset) {
+                let (policy_id, asset_name) = valid_asset
+                value.quantity_of(input.output.value, policy_id, asset_name) == 1
+              },
+            )
+      },
+    )
 
+  let handle_price_info_output = handle_price_info_input.output
   expect InlineDatum(inline_handle_price_info) = handle_price_info_output.datum
   expect handle_price_info: HandlePriceInfo = inline_handle_price_info
   handle_price_info
