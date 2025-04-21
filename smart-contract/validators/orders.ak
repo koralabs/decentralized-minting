@@ -5,7 +5,7 @@ use decentralized_minting/settings.{Settings, find_settings}
 use sundae/multisig
 
 validator {
-  pub fn spend(
+  fn spend(
     datum: OrderDatum,
     redeemer: OrderRedeemer,
     ctx: ScriptContext,

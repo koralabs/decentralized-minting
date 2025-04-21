@@ -4,7 +4,7 @@ use common/hashes.{VerificationKeyHash}
 use validations/minting_data/types.{Proof}
 use validations/minting_data/validation.{can_mint_handles, can_update_mpt}
 
-pub type MintingDataRedeemer {
+type MintingDataRedeemer {
   MintHandles(List<Proof>, Int)
   // Update MPT
   UpdateMPT
@@ -31,7 +31,7 @@ validator(
   legacy_policy_id: PolicyId,
   admin_verification_key_hash: VerificationKeyHash,
 ) {
-  pub fn spend(
+  fn spend(
     _minting_data: Data,
     redeemer: MintingDataRedeemer,
     ctx: ScriptContext,
