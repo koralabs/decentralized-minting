@@ -16,6 +16,9 @@ const max_handle_length = 15
 
 const max_sub_handle_length = 28
 
+// min lovelace to send with User NFT
+const min_user_handle_utxo_lovelace = 2_000_000
+
 // This function also check handle_name is valid or not
 pub fn all_orders_are_satisfied(
   inputs: List<Input>,
@@ -319,13 +322,19 @@ fn check_ref_and_user_outputs(
       // check user output
       expect user_output.address == order_destination_address
       // user output value = order value - handle_price - treasury_fee - minter_fee + minted handle (user)
+      // also check order input lovelace is enough
+      let order_input_lovelace =
+        value.quantity_of(
+          order_input.output.value,
+          ada_policy_id,
+          ada_asset_name,
+        )
+      let user_handle_utxo_lovelace =
+        order_input_lovelace - ( handle_price + treasury_fee + minter_fee )
+      expect user_handle_utxo_lovelace >= min_user_handle_utxo_lovelace
+
       let expected_user_value =
-        order_input.output.value
-          |> value.add(
-              ada_policy_id,
-              ada_asset_name,
-              -(handle_price + treasury_fee + minter_fee),
-            )
+        value.from_lovelace(user_handle_utxo_lovelace)
           |> value.add(minting_handle_policy_id, user_asset_name, 1)
       expect user_output.value == expected_user_value
 

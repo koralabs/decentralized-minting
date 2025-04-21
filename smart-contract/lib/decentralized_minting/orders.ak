@@ -15,7 +15,7 @@ pub type Destination {
 pub type OrderDatum {
   // the key hash of the wallet that placed the order that is used for cancelling the order
   owner: Data,
-  // without asset label
+  // without asset name label
   requested_handle: ByteArray,
   // the payment credential in the address that the Handle should be sent to
   destination: Destination,
