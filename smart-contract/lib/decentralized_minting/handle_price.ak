@@ -1,6 +1,6 @@
 use aiken/list
 use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/value
+use aiken/transaction/value.{AssetName, PolicyId}
 
 // This is table of handle length and price
 // key is handle length
@@ -25,7 +25,7 @@ pub type HandlePriceInfo {
 
 pub fn find_handle_price_info(
   reference_inputs: List<Input>,
-  valid_handle_price_assets: List<(ByteArray, ByteArray)>,
+  valid_handle_price_asset: (PolicyId, AssetName),
 ) -> HandlePriceInfo {
   // get handle_price_info_input from index
   // check output value has one of valid assets
@@ -33,13 +33,8 @@ pub fn find_handle_price_info(
     list.find(
       reference_inputs,
       fn(input) {
-        valid_handle_price_assets
-          |> list.any(
-              fn(valid_asset) {
-                let (policy_id, asset_name) = valid_asset
-                value.quantity_of(input.output.value, policy_id, asset_name) == 1
-              },
-            )
+        let (policy_id, asset_name) = valid_handle_price_asset
+        value.quantity_of(input.output.value, policy_id, asset_name) == 1
       },
     )
 

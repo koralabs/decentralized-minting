@@ -1,5 +1,5 @@
 use aiken/bytearray
-use validations/minting_data/utils.{parse_handle_name}
+use common/handle.{parse_handle_name}
 
 test parse_handle_name_0() {
   (#"", False) == parse_handle_name(bytearray.from_string(@"abc"))

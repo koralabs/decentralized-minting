@@ -30,14 +30,36 @@ pub const allowed_minter_0: VerificationKeyHash = #"11112222"
 
 pub const allowed_minter_1: VerificationKeyHash = #"33334444"
 
+pub const valid_handle_price_policy_id_0: PolicyId =
+  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
+
+pub const valid_handle_price_asset_name_0: AssetName =
+  #"000de14070726963654068616e646c655f73657474696e6773"
+
+pub const valid_handle_price_policy_id_1: PolicyId =
+  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
+
+pub const valid_handle_price_asset_name_1: AssetName =
+  #"000de1407072696365314068616e646c655f73657474696e6773"
+
+pub fn valid_handle_price_asset_0() -> (PolicyId, AssetName) {
+  (valid_handle_price_policy_id_0, valid_handle_price_asset_name_0)
+}
+
+pub fn valid_handle_price_asset_1() -> (PolicyId, AssetName) {
+  (valid_handle_price_policy_id_1, valid_handle_price_asset_name_1)
+}
+
 pub fn treasury_address() -> Address {
   credential.from_verification_key(#"1111")
     |> credential.with_delegation_key(#"2222")
 }
 
-pub const treasury_fee: Int = 2_000_000
+pub const treasury_fee_percentage: Int = 90
 
-pub const minter_fee: Int = 2_000_000
+pub const min_treasury_fee: Int = 2_000_000
+
+pub const min_minter_fee: Int = 2_000_000
 
 pub fn pz_script_address() -> Address {
   credential.from_verification_key(#"8888")
@@ -47,16 +69,6 @@ pub fn pz_script_address() -> Address {
 pub const order_script_hash: ScriptHash = #"5555"
 
 pub const minting_data_script_hash: ScriptHash = #"3333"
-
-pub const valid_handle_price_policy_id: PolicyId =
-  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
-
-pub const valid_handle_price_asset_name: AssetName =
-  #"000de14070726963654068616e646c655f73657474696e6773"
-
-pub fn valid_handle_price_assets() -> List<(ByteArray, ByteArray)> {
-  [(valid_handle_price_policy_id, valid_handle_price_asset_name)]
-}
 
 // other constants
 pub const min_order_lovelace = 3_000_000

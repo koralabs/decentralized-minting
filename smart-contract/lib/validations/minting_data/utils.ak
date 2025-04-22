@@ -1,4 +1,3 @@
-use aiken/builtin
 use aiken/bytearray
 use aiken/math
 use aiken/merkle_patricia_forestry as mpt
@@ -6,6 +5,7 @@ use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/credential.{Address, ScriptCredential}
 use aiken/transaction/value.{PolicyId, Value, ada_asset_name, ada_policy_id}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
+use common/handle.{parse_handle_name}
 use common/hashes.{ScriptHash}
 use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
@@ -21,34 +21,23 @@ const min_user_handle_utxo_lovelace = 2_000_000
 
 // This function also check handle_name is valid or not
 pub fn all_orders_are_satisfied(
+  order_script_hash: ScriptHash,
   inputs: List<Input>,
   outputs: List<Output>,
   reference_inputs: List<Input>,
-  order_script_hash: ScriptHash,
+  new_policy_id: PolicyId,
+  legacy_policy_id: PolicyId,
   pz_script_address: Address,
   handle_price_info: HandlePriceInfo,
   proofs: List<Proof>,
-  new_policy_id: PolicyId,
-  legacy_policy_id: PolicyId,
-  treasury_fee: Int,
-  minter_fee: Int,
   root: mpt.MerklePatriciaForestry,
   expected_mint_value: Value,
   total_handles_price: Int,
-  total_treasury_fee: Int,
-  total_minter_fee: Int,
-  continuation: fn(mpt.MerklePatriciaForestry, Value, Int, Int, Int) -> result,
+  continuation: fn(mpt.MerklePatriciaForestry, Value, Int) -> result,
 ) -> result {
   // go through inputs and process order UTxO
   when inputs is {
-    [] ->
-      continuation(
-        root,
-        expected_mint_value,
-        total_handles_price,
-        total_treasury_fee,
-        total_minter_fee,
-      )
+    [] -> continuation(root, expected_mint_value, total_handles_price)
     [order_input, ..rest_inputs] -> {
       let Output { address, datum, .. } = order_input.output
       let is_order = is_order_script_address(address, order_script_hash)
@@ -104,12 +93,10 @@ pub fn all_orders_are_satisfied(
               outputs,
               minting_handle_policy_id,
               requested_handle,
-              is_virtual_bool,
               handle_price,
+              is_virtual_bool,
               pz_script_address,
               destination.address,
-              treasury_fee,
-              minter_fee,
             )
 
           let new_mint_value =
@@ -122,44 +109,36 @@ pub fn all_orders_are_satisfied(
             )
 
           all_orders_are_satisfied(
+            order_script_hash,
             rest_inputs,
             rest_outputs,
             reference_inputs,
-            order_script_hash,
+            new_policy_id,
+            legacy_policy_id,
             pz_script_address,
             handle_price_info,
             rest_proofs,
-            new_policy_id,
-            legacy_policy_id,
-            treasury_fee,
-            minter_fee,
             new_root,
             new_mint_value,
             total_handles_price + handle_price,
-            total_treasury_fee + treasury_fee,
-            total_minter_fee + minter_fee,
             continuation,
           )
         }
 
         False ->
           all_orders_are_satisfied(
+            order_script_hash,
             rest_inputs,
             outputs,
             reference_inputs,
-            order_script_hash,
+            new_policy_id,
+            legacy_policy_id,
             pz_script_address,
             handle_price_info,
             proofs,
-            new_policy_id,
-            legacy_policy_id,
-            treasury_fee,
-            minter_fee,
             root,
             expected_mint_value,
             total_handles_price,
-            total_treasury_fee,
-            total_minter_fee,
             continuation,
           )
       }
@@ -223,42 +202,6 @@ pub fn check_handle_validity_and_get_price(
   }
 }
 
-// parse handle name
-// get root handle name and is sub handle
-pub fn parse_handle_name(handle_name: ByteArray) -> (ByteArray, Bool) {
-  when index_of_at_symbol(handle_name) is {
-    Some(idx) -> {
-      // if handle_name contains @ symbol, it is a sub handle
-      let root_handle_name = bytearray.drop(handle_name, idx + 1)
-      // root_handle_name should not contain @ symbol
-      expect index_of_at_symbol(root_handle_name) == None
-      (root_handle_name, True)
-    }
-    None -> (#"", False)
-  }
-}
-
-fn index_of_at_symbol(handle_name: ByteArray) -> Option<Int> {
-  let length = bytearray.length(handle_name)
-  do_index_of_at_symbol(handle_name, 0, length)
-}
-
-fn do_index_of_at_symbol(
-  handle_name: ByteArray,
-  idx: Int,
-  length: Int,
-) -> Option<Int> {
-  if idx >= length {
-    None
-  } else {
-    if builtin.index_bytearray(handle_name, idx) == 0x40 {
-      Some(idx)
-    } else {
-      do_index_of_at_symbol(handle_name, idx + 1, length)
-    }
-  }
-}
-
 fn update_root(
   root: mpt.MerklePatriciaForestry,
   handle_name: ByteArray,
@@ -281,12 +224,10 @@ fn check_ref_and_user_outputs(
   outputs: List<Output>,
   minting_handle_policy_id: PolicyId,
   requested_handle: ByteArray,
-  is_virtual: Bool,
   handle_price: Int,
+  is_virtual: Bool,
   pz_script_address: Address,
   order_destination_address: Address,
-  treasury_fee: Int,
-  minter_fee: Int,
 ) -> List<Output> {
   // make ref asset name and user asset name from requested_handle
   let virtual_asset_name = bytearray.concat(prefix_000, requested_handle)
@@ -321,7 +262,7 @@ fn check_ref_and_user_outputs(
 
       // check user output
       expect user_output.address == order_destination_address
-      // user output value = order value - handle_price - treasury_fee - minter_fee + minted handle (user)
+      // user output value = order value - handle_price + minted handle (user)
       // also check order input lovelace is enough
       let order_input_lovelace =
         value.quantity_of(
@@ -329,8 +270,7 @@ fn check_ref_and_user_outputs(
           ada_policy_id,
           ada_asset_name,
         )
-      let user_handle_utxo_lovelace =
-        order_input_lovelace - ( handle_price + treasury_fee + minter_fee )
+      let user_handle_utxo_lovelace = order_input_lovelace - handle_price
       expect user_handle_utxo_lovelace >= min_user_handle_utxo_lovelace
 
       let expected_user_value =
@@ -370,4 +310,26 @@ fn update_mint_value(
           amount,
         )
   }
+}
+
+pub fn calculate_treasury_fee_and_minter_fee(
+  total_handles_price: Int,
+  treasury_fee_percentage: Int,
+  min_treasury_fee: Int,
+  min_minter_fee: Int,
+) -> (Int, Int) {
+  expect treasury_fee_percentage >= 0
+  expect treasury_fee_percentage <= 100
+
+  let treasury_fee =
+    math.max(
+      total_handles_price * treasury_fee_percentage / 100,
+      min_treasury_fee,
+    )
+  let minter_fee =
+    math.max(
+      total_handles_price * ( 100 - treasury_fee_percentage ) / 100,
+      min_minter_fee,
+    )
+  (treasury_fee, minter_fee)
 }
