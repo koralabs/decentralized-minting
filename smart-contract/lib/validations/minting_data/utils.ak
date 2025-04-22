@@ -11,6 +11,9 @@ use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings_v1.{min_minter_fee, min_treasury_fee}
+use decentralized_minting/sub_handle.{
+  get_root_handle_settings, get_sub_handle_price,
+}
 use validations/minting_data/types.{Proof}
 
 const max_handle_length = 15
@@ -78,6 +81,8 @@ pub fn all_orders_are_satisfied(
               handle_price_info,
               reference_inputs,
               root_handle_settings_index,
+              new_policy_id,
+              legacy_policy_id,
             )
           //
           // update root
@@ -175,22 +180,35 @@ pub fn check_handle_validity_and_get_price(
   handle_name: ByteArray,
   is_virtual: Bool,
   handle_price_info: HandlePriceInfo,
-  _reference_inputs: List<Input>,
-  _root_handle_settings_index: Int,
+  reference_inputs: List<Input>,
+  root_handle_settings_index: Int,
+  new_policy_id: PolicyId,
+  legacy_policy_id: PolicyId,
 ) -> Int {
   // parse handle name
   // get root handle name and is sub handle
-  let (root_handle_name, is_sub_handle) = parse_handle_name(handle_name)
+  let (root_handle_name, is_sub_handle, sub_handle_name) =
+    parse_handle_name(handle_name)
 
   if is_sub_handle {
     expect bytearray.length(handle_name) <= max_sub_handle_length
     expect bytearray.length(root_handle_name) <= max_handle_length
-    // TODO:
+
     // get root handle settings from reference inputs
-    // and get sub handle price
-    // add sub handle price logic
-    // until then, disable sub handle minting
-    fail @"SUB_HANDLE_MINTING_DISABLED"
+    let root_handle_settings =
+      get_root_handle_settings(
+        reference_inputs,
+        root_handle_settings_index,
+        root_handle_name,
+        new_policy_id,
+        legacy_policy_id,
+      )
+
+    // get sub handle price
+    let sub_handle_price =
+      get_sub_handle_price(root_handle_settings, sub_handle_name, is_virtual)
+
+    sub_handle_price
   } else {
     // if not sub handle, it should not be virtual
     expect !is_virtual

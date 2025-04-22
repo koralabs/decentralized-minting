@@ -12,7 +12,7 @@ use common/cip68.{prefix_001}
 //     save_original_address: Int
 // }
 type SubHandleSettings =
-  (Int, Int, List<List<Int>>, Data, Int)
+  (Int, Int, List<(Int, Int)>, Data, Int)
 
 // struct OwnerSettings {
 //     nft: SubHandleSettings
@@ -54,25 +54,46 @@ pub fn get_root_handle_settings(
   expect owner_settings: OwnerSettings = inline_datum
   owner_settings
 }
+
 //
-// TODO:
-// add functions to get sub handle price
+// this function gets sub handle price
+// from root handle owner settings
 // when it is virtual or nft
-// from sub handle settings
-
+// sub handle name is without root handle name
 //
-// pub fn get_sub_handle_price(
-//   root_handle_settings: OwnerSettings,
-//   sub_handle_name: ByteArray,
-//   is_virtual: Bool,
-// ) -> Int {
-//   let OwnerSettings(nft_sub_handle_settings, virtual_sub_handle_settings, ..) =
-//     root_handle_settings
+pub fn get_sub_handle_price(
+  root_handle_settings: OwnerSettings,
+  sub_handle_name: ByteArray,
+  is_virtual: Bool,
+) -> Int {
+  let (nft_sub_handle_settings, virtual_sub_handle_settings, _, _, _, _, _, _) =
+    root_handle_settings
 
-//   let sub_handle_settings =
-//     if is_virtual {
-//       virtual_sub_handle_settings
-//     } else {
-//       nft_sub_handle_settings
-//     }
-// }
+  let sub_handle_settings =
+    if is_virtual {
+      virtual_sub_handle_settings
+    } else {
+      nft_sub_handle_settings
+    }
+
+  let (_, _, tier_pricing, _, _) = sub_handle_settings
+  let sub_handle_length = bytearray.length(sub_handle_name)
+  get_sub_handle_price_from_tier_pricing(tier_pricing, sub_handle_length)
+}
+
+fn get_sub_handle_price_from_tier_pricing(
+  tier_pricing: List<(Int, Int)>,
+  sub_handle_length: Int,
+) -> Int {
+  when tier_pricing is {
+    [] -> fail @"INVALID_TIER_PRICING"
+    [pricing, ..rest] -> {
+      let (length, price) = pricing
+      if sub_handle_length <= length {
+        price
+      } else {
+        get_sub_handle_price_from_tier_pricing(rest, sub_handle_length)
+      }
+    }
+  }
+}
