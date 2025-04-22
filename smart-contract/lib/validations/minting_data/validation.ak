@@ -52,8 +52,6 @@ pub fn can_mint_handles(
     valid_handle_price_assets,
     treasury_address,
     treasury_fee_percentage,
-    min_treasury_fee,
-    min_minter_fee,
     pz_script_address,
     order_script_hash,
     ..
@@ -130,8 +128,6 @@ pub fn can_mint_handles(
     calculate_treasury_fee_and_minter_fee(
       total_handles_price,
       treasury_fee_percentage,
-      min_treasury_fee,
-      min_minter_fee,
     )
 
   // check treasury output

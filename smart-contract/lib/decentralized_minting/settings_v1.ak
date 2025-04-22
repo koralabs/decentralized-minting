@@ -3,17 +3,10 @@ use aiken/transaction/credential.{Address}
 use aiken/transaction/value.{AssetName, PolicyId}
 use common/hashes.{ScriptHash, VerificationKeyHash}
 
-// pub type Prices {
-//   common: Int,
-//   basic: Int,
-//   rare: Int,
-//   ultra_rare: Int,
-// }
+// constants
+pub const min_treasury_fee: Int = 2_000_000
 
-// pub type PriceSettingsV1 {
-//   previous_prices: Prices,
-//   current_prices: Prices,
-// }
+pub const min_minter_fee: Int = 2_000_000
 
 pub type SettingsV1 {
   policy_id: PolicyId,
@@ -27,10 +20,6 @@ pub type SettingsV1 {
   treasury_address: Address,
   // treasury fee percentage (0-100)
   treasury_fee_percentage: Int,
-  // minimum fee for treasury
-  min_treasury_fee: Int,
-  // minimum fee for minter
-  min_minter_fee: Int,
   // personalization script where ref asset is sent
   pz_script_address: Address,
   // user makes an order (as UTxO) in order script

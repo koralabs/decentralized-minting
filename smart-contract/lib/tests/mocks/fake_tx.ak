@@ -13,12 +13,12 @@ use decentralized_minting/settings.{Settings}
 use decentralized_minting/settings_v1.{SettingsV1}
 use sundae/multisig.{Signature}
 use tests/mocks/fake_constants.{
-  allowed_minter_0, allowed_minter_1, min_minter_fee, min_order_lovelace,
-  min_treasury_fee, mint_governor, mint_version, minting_data_asset_name,
-  minting_data_asset_policy_id, minting_data_script_hash, new_policy_id,
-  order_script_hash, pz_script_address, settings_asset_name,
-  settings_asset_policy_id, treasury_address, treasury_fee_percentage,
-  valid_handle_price_asset_0, valid_handle_price_asset_1,
+  allowed_minter_0, allowed_minter_1, min_order_lovelace, mint_governor,
+  mint_version, minting_data_asset_name, minting_data_asset_policy_id,
+  minting_data_script_hash, new_policy_id, order_script_hash, pz_script_address,
+  settings_asset_name, settings_asset_policy_id, treasury_address,
+  treasury_fee_percentage, valid_handle_price_asset_0,
+  valid_handle_price_asset_1,
 }
 
 pub fn make_output(address: Address, v: Value) -> Output {
@@ -77,8 +77,6 @@ pub fn make_settings_reference_input() -> Input {
       ],
       treasury_address: treasury_address(),
       treasury_fee_percentage,
-      min_treasury_fee,
-      min_minter_fee,
       pz_script_address: pz_script_address(),
       order_script_hash,
       minting_data_script_hash,
