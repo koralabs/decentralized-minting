@@ -16,11 +16,13 @@ test parse_handle_name_2() {
 }
 
 test parse_handle_name_3() {
-  (#"", True, #"") == parse_handle_name(bytearray.from_string(@"abc@"))
+  (#"", True, bytearray.from_string(@"abc")) == parse_handle_name(
+    bytearray.from_string(@"abc@"),
+  )
 }
 
 test parse_handle_name_4() {
-  (bytearray.from_string(@"abc"), True, bytearray.from_string(@"abc")) == parse_handle_name(
+  (bytearray.from_string(@"abc"), True, #"") == parse_handle_name(
     bytearray.from_string(@"@abc"),
   )
 }
