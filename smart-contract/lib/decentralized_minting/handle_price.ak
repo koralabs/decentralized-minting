@@ -17,8 +17,8 @@ use aiken/transaction/value.{AssetName, PolicyId}
 // ]
 //
 pub type HandlePriceInfo {
-  prev_data: Pairs<Int, Int>,
   current_data: Pairs<Int, Int>,
+  prev_data: Pairs<Int, Int>,
   // UNIX timestamp
   updated_at: Int,
 }
@@ -48,7 +48,8 @@ pub fn get_handle_price(
   handle_price_info: HandlePriceInfo,
   handle_length: Int,
 ) -> (Int, Int) {
-  let HandlePriceInfo { prev_data, current_data, .. } = handle_price_info
+  expect handle_length > 0
+  let HandlePriceInfo { current_data, prev_data, .. } = handle_price_info
   let current_price =
     get_handle_price_from_price_table(handle_length, current_data)
   let prev_price = get_handle_price_from_price_table(handle_length, prev_data)

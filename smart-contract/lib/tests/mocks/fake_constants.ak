@@ -61,6 +61,26 @@ pub const min_treasury_fee: Int = 2_000_000
 
 pub const min_minter_fee: Int = 2_000_000
 
+// price info
+
+pub fn current_handle_price_data() -> Pairs<Int, Int> {
+  [
+    Pair(2, 1_000_000_000),
+    Pair(3, 500_000_000),
+    Pair(7, 100_000_000),
+    Pair(15, 10_000_000),
+  ]
+}
+
+pub fn prev_handle_price_data() -> Pairs<Int, Int> {
+  [
+    Pair(2, 1_000_000_000),
+    Pair(3, 500_000_000),
+    Pair(7, 80_000_000),
+    Pair(15, 5_000_000),
+  ]
+}
+
 pub fn pz_script_address() -> Address {
   credential.from_verification_key(#"8888")
     |> credential.with_delegation_key(#"9999")

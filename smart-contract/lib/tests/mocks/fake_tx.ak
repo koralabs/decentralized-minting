@@ -5,17 +5,19 @@ use aiken/transaction.{
   TransactionId,
 }
 use aiken/transaction/credential.{Address, StakeCredential}
-use aiken/transaction/value.{Value}
+use aiken/transaction/value.{AssetName, PolicyId, Value}
 use common/hashes.{ScriptHash, VerificationKeyHash}
+use decentralized_minting/handle_price.{HandlePriceInfo}
 use decentralized_minting/minting_data.{MintingData}
 use decentralized_minting/orders.{Destination, OrderDatum}
 use decentralized_minting/settings.{Settings}
 use decentralized_minting/settings_v1.{SettingsV1}
 use sundae/multisig.{Signature}
 use tests/mocks/fake_constants.{
-  allowed_minter_0, allowed_minter_1, min_order_lovelace, mint_governor,
-  mint_version, minting_data_asset_name, minting_data_asset_policy_id,
-  minting_data_script_hash, new_policy_id, order_script_hash, pz_script_address,
+  allowed_minter_0, allowed_minter_1, current_handle_price_data,
+  min_order_lovelace, mint_governor, mint_version, minting_data_asset_name,
+  minting_data_asset_policy_id, minting_data_script_hash, new_policy_id,
+  order_script_hash, prev_handle_price_data, pz_script_address,
   settings_asset_name, settings_asset_policy_id, treasury_address,
   treasury_fee_percentage, valid_handle_price_asset_0,
   valid_handle_price_asset_1,
@@ -128,6 +130,32 @@ pub fn make_minting_data_input(
       value: value.zero()
         |> value.add(minting_data_asset_policy_id, minting_data_asset_name, 1),
       datum: InlineDatum(minting_data),
+      reference_script: None,
+    },
+  }
+}
+
+pub fn make_handle_price_info_reference_input(
+  valid_handle_price_asset: (PolicyId, AssetName),
+) -> Input {
+  let (policy_id, asset_name) = valid_handle_price_asset
+  let handle_price_info: HandlePriceInfo =
+    HandlePriceInfo {
+      current_data: current_handle_price_data(),
+      prev_data: prev_handle_price_data(),
+      updated_at: 0,
+    }
+
+  Input {
+    output_reference: OutputReference {
+      transaction_id: TransactionId { hash: #"aaac" },
+      output_index: 0,
+    },
+    output: Output {
+      address: credential.from_verification_key(#"abab"),
+      value: value.zero()
+        |> value.add(policy_id, asset_name, 1),
+      datum: InlineDatum(handle_price_info),
       reference_script: None,
     },
   }
