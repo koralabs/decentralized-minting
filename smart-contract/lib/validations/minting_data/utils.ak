@@ -2,11 +2,13 @@ use aiken/bytearray
 use aiken/math
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/credential.{Address, ScriptCredential}
+use aiken/transaction/credential.{
+  Address, ScriptCredential, VerificationKeyCredential,
+}
 use aiken/transaction/value.{PolicyId, Value, ada_asset_name, ada_policy_id}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
 use common/handle.{parse_handle_name}
-use common/hashes.{ScriptHash}
+use common/hashes.{ScriptHash, VerificationKeyHash}
 use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
@@ -19,9 +21,6 @@ use validations/minting_data/types.{Proof}
 const max_handle_length = 15
 
 const max_sub_handle_length = 28
-
-// min lovelace to send with User NFT
-const min_user_handle_utxo_lovelace = 2_000_000
 
 // This function also check handle_name is valid or not
 pub fn all_orders_are_satisfied(
@@ -260,54 +259,64 @@ fn check_ref_and_user_outputs(
   let ref_asset_name = bytearray.concat(prefix_100, requested_handle)
   let user_asset_name = bytearray.concat(prefix_222, requested_handle)
 
+  // check order input value
+  let order_input_lovelace =
+    value.quantity_of(order_input.output.value, ada_policy_id, ada_asset_name)
+  let order_is_enough = order_input_lovelace >= handle_price
+  expect order_is_enough
+
   when is_virtual is {
     True -> {
       expect [virtual_output, ..rest_outputs] = outputs
+      let Output {
+        address: virtual_output_address,
+        value: virtual_output_value,
+        reference_script: virtual_output_reference_script,
+        ..
+      } = virtual_output
+
       // check virtual output
-      expect virtual_output.address == pz_script_address
+      expect virtual_output_address == pz_script_address
       let expected_virtual_value =
         value.zero()
           |> value.add(minting_handle_policy_id, virtual_asset_name, 1)
       expect
-        value.without_lovelace(virtual_output.value) == expected_virtual_value
+        value.without_lovelace(virtual_output_value) == expected_virtual_value
       // virtual asset's datum is set by minter
-      expect virtual_output.reference_script == None
+      expect virtual_output_reference_script == None
 
       rest_outputs
     }
     False -> {
       expect [ref_output, user_output, ..rest_outputs] = outputs
+      let Output {
+        address: ref_output_address,
+        value: ref_output_value,
+        reference_script: ref_output_reference_script,
+        ..
+      } = ref_output
+      let Output { address: user_output_address, value: user_output_value, .. } =
+        user_output
+
       // check ref output
-      expect ref_output.address == pz_script_address
+      expect ref_output_address == pz_script_address
       let expected_ref_value =
         value.zero()
           |> value.add(minting_handle_policy_id, ref_asset_name, 1)
-      expect value.without_lovelace(ref_output.value) == expected_ref_value
+      expect value.without_lovelace(ref_output_value) == expected_ref_value
       // ref asset's datum is set by minter
-      expect ref_output.reference_script == None
+      expect ref_output_reference_script == None
 
       // check user output
-      expect user_output.address == order_destination_address
-      // user output value = order value - handle_price + minted handle (user)
-      // also check order input lovelace is enough
-      let order_input_lovelace =
-        value.quantity_of(
-          order_input.output.value,
-          ada_policy_id,
-          ada_asset_name,
-        )
-      let user_handle_utxo_lovelace = order_input_lovelace - handle_price
-      expect user_handle_utxo_lovelace >= min_user_handle_utxo_lovelace
-      let user_output_value = user_output.value
-      let user_output_has_handle =
+      expect user_output_address == order_destination_address
+      // user output value = min_lovelace + minted handle (user)
+      let user_output_value_has_handle =
         value.quantity_of(
           user_output_value,
           minting_handle_policy_id,
           user_asset_name,
         ) == 1
-
-      expect user_output_has_handle
-      expect value.lovelace_of(user_output_value) >= user_handle_utxo_lovelace
+      expect user_output_value_has_handle
 
       rest_outputs
     }
@@ -361,4 +370,15 @@ pub fn calculate_treasury_fee_and_minter_fee(
       min_minter_fee,
     )
   (treasury_fee, minter_fee)
+}
+
+pub fn is_minter_address_match_with_verification_key_hash(
+  minter_output_address: Address,
+  allowed_minter: VerificationKeyHash,
+) -> Bool {
+  let Address { payment_credential, .. } = minter_output_address
+  when payment_credential is {
+    VerificationKeyCredential(vkh) -> vkh == allowed_minter
+    _ -> False
+  }
 }

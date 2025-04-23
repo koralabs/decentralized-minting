@@ -1,7 +1,7 @@
 use aiken/list
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{
-  InlineDatum, Input, OutputReference, Transaction, find_input,
+  InlineDatum, Input, Output, OutputReference, Transaction, find_input,
 }
 use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
@@ -14,6 +14,7 @@ use decentralized_minting/settings_v1.{
 use validations/minting_data/types.{Proof}
 use validations/minting_data/utils.{
   all_orders_are_satisfied, calculate_treasury_fee_and_minter_fee,
+  is_minter_address_match_with_verification_key_hash,
 }
 
 // Validation:
@@ -131,15 +132,32 @@ pub fn can_mint_handles(
     )
 
   // check treasury output
-  expect treasury_output.address == treasury_address
-  expect treasury_output.datum == InlineDatum(Void)
-  expect value.lovelace_of(treasury_output.value) >= treasury_fee
-  expect treasury_output.reference_script == None
+  let Output {
+    address: treasury_output_address,
+    value: treasury_output_value,
+    datum: treasury_output_datum,
+    reference_script: treasury_output_reference_script,
+  } = treasury_output
+  expect treasury_output_address == treasury_address
+  expect treasury_output_datum == InlineDatum(Void)
+  expect value.lovelace_of(treasury_output_value) >= treasury_fee
+  expect treasury_output_reference_script == None
 
   // check minter output
-  expect minter_output.datum == InlineDatum(Void)
-  expect value.lovelace_of(minter_output.value) >= minter_fee
-  expect minter_output.reference_script == None
+  let Output {
+    address: minter_output_address,
+    value: minter_output_value,
+    datum: minter_output_datum,
+    reference_script: minter_output_reference_script,
+  } = minter_output
+  expect
+    is_minter_address_match_with_verification_key_hash(
+      minter_output_address,
+      allowed_minter,
+    )
+  expect minter_output_datum == InlineDatum(Void)
+  expect value.lovelace_of(minter_output_value) >= minter_fee
+  expect minter_output_reference_script == None
 
   // check minted handles
   expect
