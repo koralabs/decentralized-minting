@@ -54,5 +54,6 @@ export {
   fetchNetworkParameters,
 };
 
+export * from "./common.js";
 export * from "./contract.js";
-export * from "./handle.js";
+export * from "./math.js";

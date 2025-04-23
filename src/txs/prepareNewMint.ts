@@ -8,14 +8,20 @@ import {
   makeValue,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
+import { HANDLE_PRICE_INFO_HANDLE_NAME } from "constants/index.js";
 import { Err, Ok, Result } from "ts-res";
 
-import { fetchMintingData, fetchSettings } from "../configs/index.js";
+import {
+  fetchHandlePriceInfoData,
+  fetchMintingData,
+  fetchSettings,
+} from "../configs/index.js";
 import {
   buildMintingData,
   buildMintingDataMintHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
   Handle,
+  HandlePriceInfo,
   makeVoidData,
   MintingData,
   parseMPTProofJSON,
@@ -24,6 +30,7 @@ import {
   SettingsV1,
 } from "../contracts/index.js";
 import { getBlockfrostV0Client, getNetwork } from "../helpers/index.js";
+import { calculateTreasuryFeeAndMinterFee } from "../utils/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 
 /**
@@ -55,6 +62,7 @@ const prepareNewMintTransaction = async (
       deployedScripts: DeployedScripts;
       settings: Settings;
       settingsV1: SettingsV1;
+      handlePriceInfo: HandlePriceInfo;
     },
     Error
   >
@@ -83,7 +91,7 @@ const prepareNewMintTransaction = async (
   if (!settingsResult.ok)
     return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
   const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
-  const { allowed_minters, minter_fee, treasury_address, treasury_fee } =
+  const { allowed_minters, treasury_address, treasury_fee_percentage } =
     settingsV1;
 
   const mintingDataResult = await fetchMintingData();
@@ -93,6 +101,22 @@ const prepareNewMintTransaction = async (
     );
   const { mintingData, mintingDataAssetTxInput } = mintingDataResult.data;
 
+  // NOTE:
+  // we assume valid handle price asset is
+  // "price@handle_settings" (koralab's)
+  const handlePriceInfoDataResult = await fetchHandlePriceInfoData(
+    HANDLE_PRICE_INFO_HANDLE_NAME
+  );
+  if (!handlePriceInfoDataResult.ok) {
+    return Err(
+      new Error(
+        `Failed to fetch handle price info: ${handlePriceInfoDataResult.error}`
+      )
+    );
+  }
+  const { handlePriceInfo, handlePriceInfoAssetTxInput } =
+    handlePriceInfoDataResult.data;
+
   // check if current db trie hash is same as minting data root hash
   if (
     mintingData.mpt_root_hash.toLowerCase() !=
@@ -100,6 +124,13 @@ const prepareNewMintTransaction = async (
   ) {
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
+
+  // calculate total handle price
+  const totalHandlePrice = handles.reduce((acc, cur) => acc + cur.price, 0n);
+  const { treasuryFee, minterFee } = calculateTreasuryFeeAndMinterFee(
+    totalHandlePrice,
+    treasury_fee_percentage
+  );
 
   // make Proofs for Minting Data V1 Redeemer
   const proofs: Proof[] = [];
@@ -139,9 +170,14 @@ const prepareNewMintTransaction = async (
   // build redeemer for mint v1
   const mintV1MintHandlesRedeemer = buildMintV1MintHandlesRedeemer();
 
+  // NOTE:
+  // we assume that koralab's minter index is 0
+  // meaning we always use Koralab minter
   // build proofs redeemer for minting data v1
-  const mintingDataMintHandlesRedeemer =
-    buildMintingDataMintHandlesRedeemer(proofs);
+  const mintingDataMintHandlesRedeemer = buildMintingDataMintHandlesRedeemer(
+    proofs,
+    0n
+  );
 
   // start building tx
   const txBuilder = makeTxBuilder({
@@ -153,6 +189,9 @@ const prepareNewMintTransaction = async (
 
   // <-- attach settings asset as reference input
   txBuilder.refer(settingsAssetTxInput);
+
+  // <-- attach handle price info asset as reference input
+  txBuilder.refer(handlePriceInfoAssetTxInput);
 
   // <-- attach deploy scripts
   txBuilder.refer(
@@ -188,14 +227,14 @@ const prepareNewMintTransaction = async (
   // <-- pay treasury fee
   txBuilder.payUnsafe(
     treasury_address,
-    makeValue(treasury_fee * BigInt(handles.length)),
+    makeValue(treasuryFee),
     makeInlineTxOutputDatum(makeVoidData())
   );
 
   // <-- pay minter fee
   txBuilder.payUnsafe(
     address,
-    makeValue(minter_fee * BigInt(handles.length)),
+    makeValue(minterFee),
     makeInlineTxOutputDatum(makeVoidData())
   );
 
@@ -208,6 +247,7 @@ const prepareNewMintTransaction = async (
     deployedScripts: fetchedResult.data,
     settings,
     settingsV1,
+    handlePriceInfo,
   });
 };
 

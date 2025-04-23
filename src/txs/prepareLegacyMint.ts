@@ -122,9 +122,14 @@ const prepareLegacyMintTransaction = async (
     mintingDataAssetTxInput.value.assets
   );
 
+  // NOTE:
+  // we assume that koralab's minter index is 0
+  // meaning we always use Koralab minter
   // build proofs redeemer for minting data v1
-  const mintingDataMintHandlesRedeemer =
-    buildMintingDataMintHandlesRedeemer(proofs);
+  const mintingDataMintHandlesRedeemer = buildMintingDataMintHandlesRedeemer(
+    proofs,
+    0n
+  );
 
   // start building tx
   const txBuilder = makeTxBuilder({

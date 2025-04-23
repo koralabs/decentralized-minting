@@ -7,6 +7,7 @@ interface Handle {
   destination: Destination;
   isLegacy: boolean;
   isVirtual: boolean;
+  price: bigint;
 }
 
 export type { Handle };

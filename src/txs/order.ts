@@ -11,7 +11,8 @@ import { decodeUplcProgramV2FromCbor } from "@helios-lang/uplc";
 import { ScriptDetails, ScriptType } from "@koralabs/kora-labs-common";
 import { Err, Ok, Result } from "ts-res";
 
-import { fetchSettings } from "../configs/index.js";
+import { fetchHandlePriceInfoData } from "../configs/index.js";
+import { HANDLE_PRICE_INFO_HANDLE_NAME } from "../constants/index.js";
 import {
   buildOrderCancelRedeemer,
   buildOrderData,
@@ -24,7 +25,7 @@ import {
   mayFail,
   mayFailAsync,
 } from "../helpers/index.js";
-import { fetchDeployedScript, getHandlePrice } from "../utils/index.js";
+import { calculateHandlePrice, fetchDeployedScript } from "../utils/index.js";
 
 /**
  * @interface
@@ -59,11 +60,20 @@ const request = async (
     is_virtual = false,
   } = params;
 
-  // fetch settings
-  const settingsResult = await fetchSettings(network);
-  if (!settingsResult.ok) return Err(new Error(settingsResult.error));
-  const { settingsV1 } = settingsResult.data;
-  const { minter_fee, treasury_fee } = settingsV1;
+  // get handle price
+  const handlePriceInfoDataResult = await fetchHandlePriceInfoData(
+    HANDLE_PRICE_INFO_HANDLE_NAME
+  );
+  if (!handlePriceInfoDataResult.ok) {
+    return Err(
+      new Error(
+        `Failed to fetch handle price info: ${handlePriceInfoDataResult.error}`
+      )
+    );
+  }
+  const { handlePriceInfo } = handlePriceInfoDataResult.data;
+  const handlePrice = calculateHandlePrice(handle, handlePriceInfo);
+
   const isMainnet = network == "mainnet";
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
@@ -96,9 +106,6 @@ const request = async (
     is_virtual: is_virtual ? 1n : 0n,
   };
 
-  // get handle price
-  const handlePrice = getHandlePrice(handle);
-
   // start building tx
   const txBuilder = makeTxBuilder({
     isMainnet,
@@ -107,7 +114,7 @@ const request = async (
   // <-- lock order
   txBuilder.payUnsafe(
     ordersScriptAddress,
-    makeValue(3_000_000n + handlePrice + minter_fee + treasury_fee),
+    makeValue(handlePrice),
     makeInlineTxOutputDatum(buildOrderData(order))
   );
 

@@ -28,6 +28,7 @@
     "package-lock.json",
     "**/plutus.json",
     "**/*-blueprints.ts",
-    ".vscode/**"
+    ".vscode/**",
+    "*-tx.json"
   ]
 }

@@ -7,8 +7,11 @@ import {
 } from "@helios-lang/ledger";
 import { SimpleWallet } from "@helios-lang/tx-utils";
 import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
+import fs from "fs/promises";
+import { Result } from "ts-res";
 
 import { PREFIX_000, PREFIX_100, PREFIX_222 } from "../src/constants/index.js";
+import { BuildTxError, invariant, TxSuccessResult } from "../src/index.js";
 
 const alwaysSucceedMintUplcProgram = (): UplcProgramV2 => {
   return decodeUplcProgramV2FromCbor(
@@ -105,6 +108,26 @@ const getRandomString = (min: number, max: number): string => {
   return result;
 };
 
+const writeSuccessfulTxJson = async (
+  txResult: Result<TxSuccessResult, Error | BuildTxError>
+) => {
+  invariant(txResult.ok);
+  await fs.writeFile(
+    "successful-tx.json",
+    JSON.stringify(txResult.data.dump, null, 2)
+  );
+};
+
+const writeFailedTxJson = async (
+  txResult: Result<TxSuccessResult, Error | BuildTxError>
+) => {
+  invariant(!txResult.ok);
+  await fs.writeFile(
+    "failed-tx.json",
+    JSON.stringify((txResult.error as BuildTxError).failedTxJson, null, 2)
+  );
+};
+
 export {
   alwaysSucceedMintUplcProgram,
   balanceOf,
@@ -116,4 +139,6 @@ export {
   userAssetValue,
   virtualSubHandleAssetClass,
   virtualSubHandleAssetValue,
+  writeFailedTxJson,
+  writeSuccessfulTxJson,
 };
