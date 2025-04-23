@@ -189,10 +189,15 @@ pub fn check_handle_validity_and_get_price(
   // get root handle name and is sub handle
   let (root_handle_name, is_sub_handle, sub_handle_name) =
     parse_handle_name(handle_name)
+  let handle_length = bytearray.length(handle_name)
+  let root_handle_length = bytearray.length(root_handle_name)
+  let sub_handle_length = bytearray.length(sub_handle_name)
 
   if is_sub_handle {
-    expect bytearray.length(handle_name) <= max_sub_handle_length
-    expect bytearray.length(root_handle_name) <= max_handle_length
+    expect handle_length <= max_sub_handle_length
+    expect root_handle_length <= max_handle_length
+    expect root_handle_length > 0
+    expect sub_handle_length > 0
 
     // get root handle settings from reference inputs
     let root_handle_settings =
@@ -210,14 +215,16 @@ pub fn check_handle_validity_and_get_price(
 
     sub_handle_price
   } else {
+    expect handle_length <= max_handle_length
+    expect handle_length > 0
+
     // if not sub handle, it should not be virtual
     expect !is_virtual
-    let handle_length = bytearray.length(handle_name)
-    expect handle_length <= max_handle_length
+
     let (current_price, prev_price) =
       get_handle_price(handle_price_info, handle_length)
-    let price = math.min(current_price, prev_price)
-    price
+    let handle_price = math.min(current_price, prev_price)
+    handle_price
   }
 }
 

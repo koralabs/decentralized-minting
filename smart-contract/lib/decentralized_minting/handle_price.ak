@@ -2,23 +2,22 @@ use aiken/list
 use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/value.{AssetName, PolicyId}
 
-// This is table of handle length and price
-// key is handle length
-// value is price
+// This is the list of handles price
+// There are 4 handle prices (ultraRare, rare, common, basic)
 // NOTE:
 // this handle price info is attached to authorized assets
 // meaning that we assume Pairs are in ascending order
 // e.g.,
 // [
-//   (2, 2_000_000_000), // ultraRare: 2_000 ada
-//   (3, 500_000_000), // rare: 500 ada
-//   (7, 100_000_000), // common: 100 ada
-//   (15, 10_000_000), // basic: 10 ada
+//   2_000_000_000, // ultraRare: 2_000 ada
+//   500_000_000, // rare: 500 ada
+//   100_000_000, // common: 100 ada
+//   10_000_000, // basic: 10 ada
 // ]
 //
 pub type HandlePriceInfo {
-  current_data: Pairs<Int, Int>,
-  prev_data: Pairs<Int, Int>,
+  current_data: List<Int>,
+  prev_data: List<Int>,
   // UNIX timestamp
   updated_at: Int,
 }
@@ -48,25 +47,28 @@ pub fn get_handle_price(
   handle_price_info: HandlePriceInfo,
   handle_length: Int,
 ) -> (Int, Int) {
-  expect handle_length > 0
   let HandlePriceInfo { current_data, prev_data, .. } = handle_price_info
+
   let current_price =
-    get_handle_price_from_price_table(handle_length, current_data)
-  let prev_price = get_handle_price_from_price_table(handle_length, prev_data)
+    get_handle_price_from_price_data(handle_length, current_data)
+  let prev_price = get_handle_price_from_price_data(handle_length, prev_data)
   (current_price, prev_price)
 }
 
-fn get_handle_price_from_price_table(
+fn get_handle_price_from_price_data(
   handle_length: Int,
-  price_table: Pairs<Int, Int>,
+  price_table: List<Int>,
 ) -> Int {
-  when price_table is {
-    [] -> fail @"INVALID_PRICE_TABLE"
-    [Pair(length, price), ..rest] ->
-      if handle_length <= length {
-        price
-      } else {
-        get_handle_price_from_price_table(handle_length, rest)
-      }
+  // parse price data (there are 4 price data)
+  expect [ultra_rare, rare, common, basic] = price_table
+
+  if handle_length <= 2 {
+    ultra_rare
+  } else if handle_length == 3 {
+    rare
+  } else if handle_length == 7 {
+    common
+  } else {
+    basic
   }
 }

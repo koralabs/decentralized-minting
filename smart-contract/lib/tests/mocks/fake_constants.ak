@@ -63,22 +63,12 @@ pub const min_minter_fee: Int = 2_000_000
 
 // price info
 
-pub fn current_handle_price_data() -> Pairs<Int, Int> {
-  [
-    Pair(2, 1_000_000_000),
-    Pair(3, 500_000_000),
-    Pair(7, 100_000_000),
-    Pair(15, 10_000_000),
-  ]
+pub fn current_handle_price_data() -> List<Int> {
+  [1_000_000_000, 500_000_000, 100_000_000, 10_000_000]
 }
 
-pub fn prev_handle_price_data() -> Pairs<Int, Int> {
-  [
-    Pair(2, 1_000_000_000),
-    Pair(3, 500_000_000),
-    Pair(7, 80_000_000),
-    Pair(15, 5_000_000),
-  ]
+pub fn prev_handle_price_data() -> List<Int> {
+  [1_000_000_000, 500_000_000, 80_000_000, 5_000_000]
 }
 
 pub fn pz_script_address() -> Address {

@@ -17,6 +17,7 @@ pub type SettingsV1 {
   // are valid
   // list of (policy_id, asset_name)
   valid_handle_price_assets: List<(PolicyId, AssetName)>,
+  // treasury fee percentage * total handle price will go to this address
   treasury_address: Address,
   // treasury fee percentage (0-100)
   treasury_fee_percentage: Int,
