@@ -298,11 +298,16 @@ fn check_ref_and_user_outputs(
         )
       let user_handle_utxo_lovelace = order_input_lovelace - handle_price
       expect user_handle_utxo_lovelace >= min_user_handle_utxo_lovelace
+      let user_output_value = user_output.value
+      let user_output_has_handle =
+        value.quantity_of(
+          user_output_value,
+          minting_handle_policy_id,
+          user_asset_name,
+        ) == 1
 
-      let expected_user_value =
-        value.from_lovelace(user_handle_utxo_lovelace)
-          |> value.add(minting_handle_policy_id, user_asset_name, 1)
-      expect user_output.value == expected_user_value
+      expect user_output_has_handle
+      expect value.lovelace_of(user_output_value) >= user_handle_utxo_lovelace
 
       rest_outputs
     }
