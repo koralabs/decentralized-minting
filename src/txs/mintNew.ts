@@ -11,14 +11,9 @@ import {
 import { TxBuilder } from "@helios-lang/tx-utils";
 import { Err, Ok, Result } from "ts-res";
 
+import { PREFIX_000, PREFIX_100, PREFIX_222 } from "../constants/index.js";
 import {
-  LEGACY_POLICY_ID,
-  PREFIX_000,
-  PREFIX_100,
-  PREFIX_222,
-} from "../constants/index.js";
-import {
-  buildOrderExecuteRedeemer,
+  buildOrderExecuteAsNewRedeemer,
   decodeOrderDatum,
   Handle,
   makeVoidData,
@@ -29,13 +24,13 @@ import { prepareNewMintTransaction } from "./prepareNewMint.js";
 
 /**
  * @interface
- * @typedef {object} MintParams
+ * @typedef {object} MintNewHandlesParams
  * @property {Address} address Wallet Address to perform mint
  * @property {TxInput[]} ordersTxInputs Orders UTxOs
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
-interface MintParams {
+interface MintNewHandlesParams {
   address: Address;
   ordersTxInputs: TxInput[];
   db: Trie;
@@ -43,11 +38,13 @@ interface MintParams {
 }
 
 /**
- * @description Mint Handles from Order
- * @param {MintParams} params
+ * @description Mint Handles from Order (only new handles)
+ * @param {MintNewHandlesParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
-const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
+const mintNewHandles = async (
+  params: MintNewHandlesParams
+): Promise<Result<TxBuilder, Error>> => {
   const { ordersTxInputs, blockfrostApiKey } = params;
   const network = getNetwork(blockfrostApiKey);
 
@@ -74,6 +71,12 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
     };
   });
 
+  // check every handle is new
+  const areAllNewHandles = orderedHandles.every((handle) => !handle.isLegacy);
+  if (!areAllNewHandles) {
+    return Err(new Error("Must mint only new handles"));
+  }
+
   const preparedTxBuilderResult = await prepareNewMintTransaction({
     ...params,
     handles: orderedHandles,
@@ -96,24 +99,19 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   const mintingHandlesData = [];
   for (const orderTxInput of ordersTxInputs) {
     const decodedOrder = decodeOrderDatum(orderTxInput.datum, network);
-    const { destination, is_legacy, is_virtual, requested_handle } =
-      decodedOrder;
+    const { destination, is_virtual, requested_handle } = decodedOrder;
     const utf8Name = Buffer.from(requested_handle, "hex").toString("utf8");
 
-    const mintingPolicyHash = is_legacy
-      ? makeMintingPolicyHash(LEGACY_POLICY_ID)
-      : newPolicyHash;
-
     const refHandleAssetClass = makeAssetClass(
-      mintingPolicyHash,
+      newPolicyHash,
       `${PREFIX_100}${requested_handle}`
     );
     const userHandleAssetClass = makeAssetClass(
-      mintingPolicyHash,
+      newPolicyHash,
       `${PREFIX_222}${requested_handle}`
     );
     const virtualHandleAssetClass = makeAssetClass(
-      mintingPolicyHash,
+      newPolicyHash,
       `${PREFIX_000}${requested_handle}`
     );
 
@@ -186,13 +184,13 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
 
     if (isVirtual) {
       txBuilder
-        .spendUnsafe(orderTxInput, buildOrderExecuteRedeemer())
+        .spendUnsafe(orderTxInput, buildOrderExecuteAsNewRedeemer())
         // TODO:
         // Add Personalization Datum
         .payUnsafe(settingsV1.pz_script_address, virtualHandleValue);
     } else {
       txBuilder
-        .spendUnsafe(orderTxInput, buildOrderExecuteRedeemer())
+        .spendUnsafe(orderTxInput, buildOrderExecuteAsNewRedeemer())
         // TODO:
         // Add Personalization Datum
         .payUnsafe(settingsV1.pz_script_address, refHandleValue)
@@ -203,5 +201,5 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   return Ok(txBuilder);
 };
 
-export type { MintParams };
-export { mint };
+export type { MintNewHandlesParams };
+export { mintNewHandles };

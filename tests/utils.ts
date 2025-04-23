@@ -7,6 +7,7 @@ import {
 } from "@helios-lang/ledger";
 import { SimpleWallet } from "@helios-lang/tx-utils";
 import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
+import colors from "ansi-colors";
 import fs from "fs/promises";
 import { Result } from "ts-res";
 
@@ -128,11 +129,38 @@ const writeFailedTxJson = async (
   );
 };
 
+const logMemAndCpu = async (
+  txResult: Result<TxSuccessResult, Error | BuildTxError>
+) => {
+  invariant(txResult.ok);
+  const maxMem = 14000000;
+  const maxCpu = 10000000000;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dump = txResult.data.dump as any;
+  const { mem, cpu } = dump.witnesses.redeemers.reduce(
+    ({ mem, cpu }, cur) => ({
+      mem: mem + parseInt(cur.exUnits.mem),
+      cpu: cpu + parseInt(cur.exUnits.cpu),
+    }),
+    { mem: 0, cpu: 0 }
+  );
+  console.log(
+    colors.bold.green(
+      `mem: ${mem} (${((mem / maxMem) * 100).toFixed(3)} %), cpu: ${cpu} (${(
+        (cpu / maxCpu) *
+        100
+      ).toFixed(3)} %)`
+    )
+  );
+};
+
 export {
   alwaysSucceedMintUplcProgram,
   balanceOf,
   extractScriptCborsFromUplcProgram,
   getRandomString,
+  logMemAndCpu,
   referenceAssetClass,
   referenceAssetValue,
   userAssetClass,

@@ -80,7 +80,7 @@ const buildContracts = (params: BuildContractsParams) => {
   );
 
   // "orders.spend"
-  const ordersSpendUplcProgram = getOrdersSpendUplcProgram();
+  const ordersSpendUplcProgram = getOrdersSpendUplcProgram(legacy_policy_id);
   const ordersValidatorHash = makeValidatorHash(ordersSpendUplcProgram.hash());
   const ordersValidatorAddress = makeAddress(isMainnet, ordersValidatorHash);
 

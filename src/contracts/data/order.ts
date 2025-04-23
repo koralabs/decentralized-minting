@@ -73,19 +73,24 @@ const buildOrderData = (order: OrderDatum): UplcData => {
   ]);
 };
 
-const buildOrderExecuteRedeemer = (): UplcData => {
+const buildOrderExecuteAsNewRedeemer = (): UplcData => {
   return makeConstrData(0, []);
 };
 
-const buildOrderCancelRedeemer = (): UplcData => {
+const buildOrderExecuteAsLegacyRedeemer = (): UplcData => {
   return makeConstrData(1, []);
+};
+
+const buildOrderCancelRedeemer = (): UplcData => {
+  return makeConstrData(2, []);
 };
 
 export {
   buildDestinationData,
   buildOrderCancelRedeemer,
   buildOrderData,
-  buildOrderExecuteRedeemer,
+  buildOrderExecuteAsLegacyRedeemer,
+  buildOrderExecuteAsNewRedeemer,
   decodeDestinationFromData,
   decodeOrderDatum,
 };

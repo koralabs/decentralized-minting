@@ -19,7 +19,8 @@
     "cbors",
     "utxo",
     "utxos",
-    "blockfrost"
+    "blockfrost",
+    "handleable"
   ],
   "ignorePaths": [
     "node_modules",

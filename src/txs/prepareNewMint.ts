@@ -49,7 +49,7 @@ interface PrepareNewMintParams {
 }
 
 /**
- * @description Mint Handles from Order
+ * @description Mint New Handles from Order
  * @param {PrepareNewMintParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
