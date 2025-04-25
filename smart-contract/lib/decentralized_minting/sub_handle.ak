@@ -63,7 +63,7 @@ pub fn get_root_handle_settings(
 //
 pub fn get_sub_handle_price(
   root_handle_settings: OwnerSettings,
-  sub_handle_name: ByteArray,
+  sub_handle_length: Int,
   is_virtual: Bool,
 ) -> Int {
   let (nft_sub_handle_settings, virtual_sub_handle_settings, _, _, _, _, _, _) =
@@ -77,22 +77,40 @@ pub fn get_sub_handle_price(
     }
 
   let (_, _, tier_pricing, _, _) = sub_handle_settings
-  let sub_handle_length = bytearray.length(sub_handle_name)
   get_sub_handle_price_from_tier_pricing(tier_pricing, sub_handle_length)
 }
 
-fn get_sub_handle_price_from_tier_pricing(
+pub fn get_sub_handle_price_from_tier_pricing(
   tier_pricing: List<(Int, Int)>,
   sub_handle_length: Int,
 ) -> Int {
+  let sub_handle_price =
+    do_get_sub_handle_price_from_tier_pricing(
+      tier_pricing,
+      sub_handle_length,
+      0,
+    )
+  expect sub_handle_price > 0
+  sub_handle_price
+}
+
+fn do_get_sub_handle_price_from_tier_pricing(
+  tier_pricing: List<(Int, Int)>,
+  sub_handle_length: Int,
+  prev_tier_price: Int,
+) -> Int {
   when tier_pricing is {
-    [] -> fail @"INVALID_TIER_PRICING"
+    [] -> prev_tier_price
     [pricing, ..rest] -> {
       let (length, price) = pricing
-      if sub_handle_length <= length {
-        price
+      if sub_handle_length < length {
+        prev_tier_price
       } else {
-        get_sub_handle_price_from_tier_pricing(rest, sub_handle_length)
+        do_get_sub_handle_price_from_tier_pricing(
+          rest,
+          sub_handle_length,
+          price,
+        )
       }
     }
   }

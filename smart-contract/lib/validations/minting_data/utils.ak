@@ -210,7 +210,7 @@ pub fn check_handle_validity_and_get_price(
 
     // get sub handle price
     let sub_handle_price =
-      get_sub_handle_price(root_handle_settings, sub_handle_name, is_virtual)
+      get_sub_handle_price(root_handle_settings, sub_handle_length, is_virtual)
 
     sub_handle_price
   } else {
