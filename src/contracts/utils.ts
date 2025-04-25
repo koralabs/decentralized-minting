@@ -58,20 +58,6 @@ const makeMintingDataUplcProgramParameterDatum = (
   );
 };
 
-const makeOrdersUplcProgramParameter = (
-  legacy_policy_id: string
-): UplcValue[] => {
-  return [makeUplcDataValue(makeByteArrayData(legacy_policy_id))];
-};
-
-const makeOrdersUplcProgramParameterDatum = (
-  legacy_policy_id: string
-): InlineTxOutputDatum => {
-  return makeInlineTxOutputDatum(
-    makeListData([makeByteArrayData(legacy_policy_id)])
-  );
-};
-
 export {
   makeMintingDataUplcProgramParameter,
   makeMintingDataUplcProgramParameterDatum,
@@ -79,6 +65,4 @@ export {
   makeMintProxyUplcProgramParameterDatum,
   makeMintV1UplcProgramParameter,
   makeMintV1UplcProgramParameterDatum,
-  makeOrdersUplcProgramParameter,
-  makeOrdersUplcProgramParameterDatum,
 };

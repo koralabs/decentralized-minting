@@ -25,7 +25,10 @@ import {
   mayFail,
   mayFailAsync,
 } from "../helpers/index.js";
-import { calculateHandlePrice, fetchDeployedScript } from "../utils/index.js";
+import {
+  calculateHandlePriceFromHandlePriceInfo,
+  fetchDeployedScript,
+} from "../utils/index.js";
 
 /**
  * @interface
@@ -33,15 +36,11 @@ import { calculateHandlePrice, fetchDeployedScript } from "../utils/index.js";
  * @property {NetworkName} network Network
  * @property {Address} address User's Wallet Address to perform order
  * @property {string} handle Handle Name to order (UTF8 format)
- * @property {boolean | undefined} is_legacy Whether the handle is legacy. Default is false
- * @property {boolean | undefined} is_virtual Whether the handle is virtual. Default is false
  */
 interface RequestParams {
   network: NetworkName;
   address: Address;
   handle: string;
-  is_legacy?: boolean;
-  is_virtual?: boolean;
 }
 
 /**
@@ -52,13 +51,7 @@ interface RequestParams {
 const request = async (
   params: RequestParams
 ): Promise<Result<TxBuilder, Error>> => {
-  const {
-    network,
-    address,
-    handle,
-    is_legacy = false,
-    is_virtual = false,
-  } = params;
+  const { network, address, handle } = params;
 
   // get handle price
   const handlePriceInfoDataResult = await fetchHandlePriceInfoData(
@@ -72,7 +65,10 @@ const request = async (
     );
   }
   const { handlePriceInfo } = handlePriceInfoDataResult.data;
-  const handlePrice = calculateHandlePrice(handle, handlePriceInfo);
+  const handlePrice = calculateHandlePriceFromHandlePriceInfo(
+    handle,
+    handlePriceInfo
+  );
 
   const isMainnet = network == "mainnet";
   if (address.era == "Byron")
@@ -102,8 +98,6 @@ const request = async (
     destination: {
       address,
     },
-    is_legacy: is_legacy ? 1n : 0n,
-    is_virtual: is_virtual ? 1n : 0n,
   };
 
   // start building tx

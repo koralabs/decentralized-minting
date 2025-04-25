@@ -10,8 +10,8 @@ import {
 } from "@helios-lang/uplc";
 
 import { invariant } from "../../helpers/index.js";
-import { MintingData } from "../types/index.js";
-import { Proof } from "../types/index.js";
+import { MintingData, MPTProof } from "../types/index.js";
+import { LegacyHandleProof } from "../types/index.js";
 import { buildMPTProofData } from "./mpt.js";
 
 const buildMintingData = (mintingData: MintingData): UplcData => {
@@ -36,31 +36,41 @@ const decodeMintingDataDatum = (
   return { mpt_root_hash };
 };
 
-const buildProofData = (proof: Proof): UplcData => {
-  const { mpt_proof, root_handle_settings_index } = proof;
+const buildLegacyHandleProofData = (proof: LegacyHandleProof): UplcData => {
+  const { mpt_proof, handle_name, is_virtual } = proof;
   return makeConstrData(0, [
     buildMPTProofData(mpt_proof),
-    makeIntData(root_handle_settings_index),
+    makeByteArrayData(handle_name),
+    makeIntData(is_virtual),
   ]);
 };
 
-const buildMintingDataMintHandlesRedeemer = (
-  proofs: Proof[],
+const buildMintingDataMintNewHandlesRedeemer = (
+  proofs: MPTProof[],
   minter_index: bigint
 ): UplcData => {
   return makeConstrData(0, [
-    makeListData(proofs.map(buildProofData)),
+    makeListData(proofs.map(buildMPTProofData)),
     makeIntData(minter_index),
   ]);
 };
 
+const buildMintingDataMintLegacyHandlesRedeemer = (
+  proofs: LegacyHandleProof[]
+): UplcData => {
+  return makeConstrData(1, [
+    makeListData(proofs.map(buildLegacyHandleProofData)),
+  ]);
+};
 const buildMintingDataUpdateMPTRedeemer = (): UplcData => {
-  return makeConstrData(1, []);
+  return makeConstrData(2, []);
 };
 
 export {
+  buildLegacyHandleProofData,
   buildMintingData,
-  buildMintingDataMintHandlesRedeemer,
+  buildMintingDataMintLegacyHandlesRedeemer,
+  buildMintingDataMintNewHandlesRedeemer,
   buildMintingDataUpdateMPTRedeemer,
   decodeMintingDataDatum,
 };

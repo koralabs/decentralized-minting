@@ -17,15 +17,16 @@ import {
   fetchSettings,
 } from "../configs/index.js";
 import {
+  buildHandlePriceInfoData,
   buildMintingData,
-  buildMintingDataMintHandlesRedeemer,
+  buildMintingDataMintNewHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
-  Handle,
   HandlePriceInfo,
   makeVoidData,
   MintingData,
+  MPTProof,
+  NewHandle,
   parseMPTProofJSON,
-  Proof,
   Settings,
   SettingsV1,
 } from "../contracts/index.js";
@@ -37,13 +38,13 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
  * @interface
  * @typedef {object} PrepareNewMintParams
  * @property {Address} address Wallet Address to perform mint
- * @property {Handle[]} handles New Handles to mint
+ * @property {NewHandle[]} handles New Handles to mint
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareNewMintParams {
   address: Address;
-  handles: Handle[];
+  handles: NewHandle[];
   db: Trie;
   blockfrostApiKey: string;
 }
@@ -133,7 +134,7 @@ const prepareNewMintTransaction = async (
   );
 
   // make Proofs for Minting Data V1 Redeemer
-  const proofs: Proof[] = [];
+  const proofs: MPTProof[] = [];
   for (const handle of handles) {
     const { utf8Name } = handle;
 
@@ -142,13 +143,7 @@ const prepareNewMintTransaction = async (
       // Have to remove handles if transaction fails
       await db.insert(utf8Name, "");
       const mpfProof = await db.prove(utf8Name);
-      proofs.push({
-        mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        // NOTE:
-        // for now root handle settings index is -1
-        // because we don't support sub handle minting yet
-        root_handle_settings_index: -1n,
-      });
+      proofs.push(parseMPTProofJSON(mpfProof.toJSON()));
     } catch (e) {
       console.warn("Handle already exists", utf8Name, e);
       return Err(new Error(`Handle "${utf8Name}" already exists`));
@@ -167,6 +162,12 @@ const prepareNewMintTransaction = async (
     mintingDataAssetTxInput.value.assets
   );
 
+  // handle price info asset value
+  const handlePriceInfoValue = makeValue(
+    handlePriceInfoAssetTxInput.value.lovelace,
+    handlePriceInfoAssetTxInput.value.assets
+  );
+
   // build redeemer for mint v1
   const mintV1MintHandlesRedeemer = buildMintV1MintHandlesRedeemer();
 
@@ -174,10 +175,8 @@ const prepareNewMintTransaction = async (
   // we assume that koralab's minter index is 0
   // meaning we always use Koralab minter
   // build proofs redeemer for minting data v1
-  const mintingDataMintHandlesRedeemer = buildMintingDataMintHandlesRedeemer(
-    proofs,
-    0n
-  );
+  const mintingDataMintNewHandlesRedeemer =
+    buildMintingDataMintNewHandlesRedeemer(proofs, 0n);
 
   // start building tx
   const txBuilder = makeTxBuilder({
@@ -190,9 +189,6 @@ const prepareNewMintTransaction = async (
   // <-- attach settings asset as reference input
   txBuilder.refer(settingsAssetTxInput);
 
-  // <-- attach handle price info asset as reference input
-  txBuilder.refer(handlePriceInfoAssetTxInput);
-
   // <-- attach deploy scripts
   txBuilder.refer(
     mintProxyScriptTxInput,
@@ -204,7 +200,7 @@ const prepareNewMintTransaction = async (
   // <-- spend minting data utxo
   txBuilder.spendUnsafe(
     mintingDataAssetTxInput,
-    mintingDataMintHandlesRedeemer
+    mintingDataMintNewHandlesRedeemer
   );
 
   // <-- lock minting data value with new root hash
@@ -212,6 +208,16 @@ const prepareNewMintTransaction = async (
     mintingDataAssetTxInput.address,
     mintingDataValue,
     makeInlineTxOutputDatum(buildMintingData(newMintingData))
+  );
+
+  // <-- spend handle price info utxo
+  txBuilder.spendUnsafe(handlePriceInfoAssetTxInput);
+
+  // <-- lock handle price info value with new root hash
+  txBuilder.payUnsafe(
+    handlePriceInfoAssetTxInput.address,
+    handlePriceInfoValue,
+    makeInlineTxOutputDatum(buildHandlePriceInfoData(handlePriceInfo))
   );
 
   // <-- withdraw from mint v1 withdraw validator (script from reference input)

@@ -3,10 +3,8 @@ import { NetworkName } from "@helios-lang/tx-utils";
 import {
   expectByteArrayData,
   expectConstrData,
-  expectIntData,
   makeByteArrayData,
   makeConstrData,
-  makeIntData,
   UplcData,
 } from "@helios-lang/uplc";
 
@@ -39,7 +37,7 @@ const decodeOrderDatum = (
     "OrderDatum must be inline datum"
   );
   const datumData = datum.data;
-  const orderConstrData = expectConstrData(datumData, 0, 5);
+  const orderConstrData = expectConstrData(datumData, 0, 3);
 
   const owner = orderConstrData.fields[0];
   const requested_handle = expectByteArrayData(
@@ -50,15 +48,10 @@ const decodeOrderDatum = (
     network
   );
 
-  const is_legacy = expectIntData(orderConstrData.fields[3]).value;
-  const is_virtual = expectIntData(orderConstrData.fields[4]).value;
-
   return {
     owner,
     requested_handle,
     destination,
-    is_legacy,
-    is_virtual,
   };
 };
 
@@ -68,29 +61,22 @@ const buildOrderData = (order: OrderDatum): UplcData => {
     owner,
     makeByteArrayData(requested_handle),
     buildDestinationData(destination),
-    makeIntData(order.is_legacy),
-    makeIntData(order.is_virtual),
   ]);
 };
 
-const buildOrderExecuteAsNewRedeemer = (): UplcData => {
+const buildOrderExecuteRedeemer = (): UplcData => {
   return makeConstrData(0, []);
 };
 
-const buildOrderExecuteAsLegacyRedeemer = (): UplcData => {
-  return makeConstrData(1, []);
-};
-
 const buildOrderCancelRedeemer = (): UplcData => {
-  return makeConstrData(2, []);
+  return makeConstrData(1, []);
 };
 
 export {
   buildDestinationData,
   buildOrderCancelRedeemer,
   buildOrderData,
-  buildOrderExecuteAsLegacyRedeemer,
-  buildOrderExecuteAsNewRedeemer,
+  buildOrderExecuteRedeemer,
   decodeDestinationFromData,
   decodeOrderDatum,
 };

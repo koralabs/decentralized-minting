@@ -2,45 +2,34 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import {
   Address,
   makeInlineTxOutputDatum,
-  makePubKeyHash,
   makeValue,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
-import { HANDLE_PRICE_INFO_HANDLE_NAME } from "constants/index.js";
 import { Err, Ok, Result } from "ts-res";
 
-import {
-  fetchHandlePriceInfoData,
-  fetchMintingData,
-  fetchSettings,
-} from "../configs/index.js";
+import { fetchMintingData } from "../configs/index.js";
 import {
   buildMintingData,
-  buildMintingDataMintHandlesRedeemer,
-  Handle,
-  HandlePriceInfo,
-  makeVoidData,
+  buildMintingDataMintLegacyHandlesRedeemer,
+  LegacyHandle,
+  LegacyHandleProof,
   MintingData,
   parseMPTProofJSON,
-  Proof,
-  Settings,
-  SettingsV1,
 } from "../contracts/index.js";
 import { getBlockfrostV0Client, getNetwork } from "../helpers/index.js";
-import { calculateTreasuryFeeAndMinterFee } from "../utils/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 
 /**
  * @interface
  * @typedef {object} PrepareLegacyMintParams
  * @property {Address} address Wallet Address to perform mint
- * @property {Handle[]} handles Legacy Handles to mint
+ * @property {LegacyHandle[]} handles Legacy Handles to mint
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareLegacyMintParams {
   address: Address;
-  handles: Handle[];
+  handles: LegacyHandle[];
   db: Trie;
   blockfrostApiKey: string;
 }
@@ -57,9 +46,6 @@ const prepareLegacyMintTransaction = async (
     {
       txBuilder: TxBuilder;
       deployedScripts: DeployedScripts;
-      settings: Settings;
-      settingsV1: SettingsV1;
-      handlePriceInfo: HandlePriceInfo;
     },
     Error
   >
@@ -75,15 +61,7 @@ const prepareLegacyMintTransaction = async (
   const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
   if (!fetchedResult.ok)
     return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
-  const { mintingDataScriptTxInput, ordersScriptTxInput } = fetchedResult.data;
-
-  // fetch settings
-  const settingsResult = await fetchSettings(network);
-  if (!settingsResult.ok)
-    return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
-  const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
-  const { allowed_minters, treasury_address, treasury_fee_percentage } =
-    settingsV1;
+  const { mintingDataScriptTxInput } = fetchedResult.data;
 
   const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
@@ -91,22 +69,6 @@ const prepareLegacyMintTransaction = async (
       new Error(`Failed to fetch minting data: ${mintingDataResult.error}`)
     );
   const { mintingData, mintingDataAssetTxInput } = mintingDataResult.data;
-
-  // NOTE:
-  // we assume valid handle price asset is
-  // "price@handle_settings" (koralab's)
-  const handlePriceInfoDataResult = await fetchHandlePriceInfoData(
-    HANDLE_PRICE_INFO_HANDLE_NAME
-  );
-  if (!handlePriceInfoDataResult.ok) {
-    return Err(
-      new Error(
-        `Failed to fetch handle price info: ${handlePriceInfoDataResult.error}`
-      )
-    );
-  }
-  const { handlePriceInfo, handlePriceInfoAssetTxInput } =
-    handlePriceInfoDataResult.data;
 
   // check if current db trie hash is same as minting data root hash
   if (
@@ -116,17 +78,10 @@ const prepareLegacyMintTransaction = async (
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
 
-  // calculate total handle price
-  const totalHandlePrice = handles.reduce((acc, cur) => acc + cur.price, 0n);
-  const { treasuryFee, minterFee } = calculateTreasuryFeeAndMinterFee(
-    totalHandlePrice,
-    treasury_fee_percentage
-  );
-
   // make Proofs for Minting Data V1 Redeemer
-  const proofs: Proof[] = [];
+  const proofs: LegacyHandleProof[] = [];
   for (const handle of handles) {
-    const { utf8Name } = handle;
+    const { utf8Name, hexName, isVirtual } = handle;
 
     try {
       // NOTE:
@@ -135,10 +90,8 @@ const prepareLegacyMintTransaction = async (
       const mpfProof = await db.prove(utf8Name);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        // NOTE:
-        // for now root handle settings index is -1
-        // because we don't support sub handle minting yet
-        root_handle_settings_index: -1n,
+        handle_name: hexName,
+        is_virtual: isVirtual ? 1n : 0n,
       });
     } catch (e) {
       console.warn("Handle already exists", utf8Name, e);
@@ -162,32 +115,21 @@ const prepareLegacyMintTransaction = async (
   // we assume that koralab's minter index is 0
   // meaning we always use Koralab minter
   // build proofs redeemer for minting data v1
-  const mintingDataMintHandlesRedeemer = buildMintingDataMintHandlesRedeemer(
-    proofs,
-    0n
-  );
+  const mintingDataMintLegacyHandlesRedeemer =
+    buildMintingDataMintLegacyHandlesRedeemer(proofs);
 
   // start building tx
   const txBuilder = makeTxBuilder({
     isMainnet,
   });
 
-  // <-- add required signer
-  txBuilder.addSigners(makePubKeyHash(allowed_minters[0]));
-
-  // <-- attach settings asset as reference input
-  txBuilder.refer(settingsAssetTxInput);
-
-  // <-- attach handle price info asset as reference input
-  txBuilder.refer(handlePriceInfoAssetTxInput);
-
   // <-- attach deploy scripts
-  txBuilder.refer(mintingDataScriptTxInput, ordersScriptTxInput);
+  txBuilder.refer(mintingDataScriptTxInput);
 
   // <-- spend minting data utxo
   txBuilder.spendUnsafe(
     mintingDataAssetTxInput,
-    mintingDataMintHandlesRedeemer
+    mintingDataMintLegacyHandlesRedeemer
   );
 
   // <-- lock minting data value with new root hash
@@ -197,20 +139,6 @@ const prepareLegacyMintTransaction = async (
     makeInlineTxOutputDatum(buildMintingData(newMintingData))
   );
 
-  // <-- pay treasury fee
-  txBuilder.payUnsafe(
-    treasury_address,
-    makeValue(treasuryFee),
-    makeInlineTxOutputDatum(makeVoidData())
-  );
-
-  // <-- pay minter fee
-  txBuilder.payUnsafe(
-    address,
-    makeValue(minterFee),
-    makeInlineTxOutputDatum(makeVoidData())
-  );
-
   // NOTE:
   // After call this function
   // using txBuilder (return value), they can continue with minting assets (e.g. ref and user asset)
@@ -218,9 +146,6 @@ const prepareLegacyMintTransaction = async (
   return Ok({
     txBuilder,
     deployedScripts: fetchedResult.data,
-    settings,
-    settingsV1,
-    handlePriceInfo,
   });
 };
 

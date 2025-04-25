@@ -11,15 +11,15 @@ import {
 import { TxBuilder } from "@helios-lang/tx-utils";
 import { Err, Ok, Result } from "ts-res";
 
-import { PREFIX_000, PREFIX_100, PREFIX_222 } from "../constants/index.js";
+import { PREFIX_100, PREFIX_222 } from "../constants/index.js";
 import {
-  buildOrderExecuteAsNewRedeemer,
+  buildOrderExecuteRedeemer,
   decodeOrderDatum,
-  Handle,
   makeVoidData,
+  NewHandle,
 } from "../contracts/index.js";
 import { getNetwork, invariant } from "../helpers/index.js";
-import { calculateHandlePrice } from "../utils/index.js";
+import { calculateHandlePriceFromHandlePriceInfo } from "../utils/index.js";
 import { prepareNewMintTransaction } from "./prepareNewMint.js";
 
 /**
@@ -57,7 +57,7 @@ const mintNewHandles = async (
   if (ordersTxInputs.length == 0) return Err(new Error("No Order requested"));
   console.log(`${ordersTxInputs.length} Handles are ordered`);
 
-  const orderedHandles: Handle[] = ordersTxInputs.map((order) => {
+  const orderedHandles: NewHandle[] = ordersTxInputs.map((order) => {
     const decodedOrder = decodeOrderDatum(order.datum, network);
     return {
       utf8Name: Buffer.from(decodedOrder.requested_handle, "hex").toString(
@@ -65,17 +65,9 @@ const mintNewHandles = async (
       ),
       hexName: decodedOrder.requested_handle,
       destination: decodedOrder.destination,
-      isLegacy: decodedOrder.is_legacy === 1n,
-      isVirtual: decodedOrder.is_virtual === 1n,
       price: order.value.lovelace,
     };
   });
-
-  // check every handle is new
-  const areAllNewHandles = orderedHandles.every((handle) => !handle.isLegacy);
-  if (!areAllNewHandles) {
-    return Err(new Error("Must mint only new handles"));
-  }
 
   const preparedTxBuilderResult = await prepareNewMintTransaction({
     ...params,
@@ -99,7 +91,7 @@ const mintNewHandles = async (
   const mintingHandlesData = [];
   for (const orderTxInput of ordersTxInputs) {
     const decodedOrder = decodeOrderDatum(orderTxInput.datum, network);
-    const { destination, is_virtual, requested_handle } = decodedOrder;
+    const { destination, requested_handle } = decodedOrder;
     const utf8Name = Buffer.from(requested_handle, "hex").toString("utf8");
 
     const refHandleAssetClass = makeAssetClass(
@@ -110,13 +102,12 @@ const mintNewHandles = async (
       newPolicyHash,
       `${PREFIX_222}${requested_handle}`
     );
-    const virtualHandleAssetClass = makeAssetClass(
-      newPolicyHash,
-      `${PREFIX_000}${requested_handle}`
-    );
 
     const lovelace = orderTxInput.value.lovelace;
-    const handlePrice = calculateHandlePrice(utf8Name, handlePriceInfo);
+    const handlePrice = calculateHandlePriceFromHandlePriceInfo(
+      utf8Name,
+      handlePriceInfo
+    );
 
     // check order input lovelace is bigger than handle price
     invariant(lovelace >= handlePrice, "Order Input lovelace insufficient");
@@ -129,10 +120,6 @@ const mintNewHandles = async (
       1n,
       makeAssets([[userHandleAssetClass, 1n]])
     );
-    const virtualHandleValue = makeValue(
-      1n,
-      makeAssets([[virtualHandleAssetClass, 1n]])
-    );
     const destinationAddress = destination.address;
 
     mintingHandlesData.push({
@@ -140,11 +127,8 @@ const mintNewHandles = async (
       destinationAddress,
       refHandleValue,
       userHandleValue,
-      virtualHandleValue,
       refHandleAssetClass,
       userHandleAssetClass,
-      virtualHandleAssetClass,
-      isVirtual: is_virtual === 1n ? true : false,
     });
   }
 
@@ -152,20 +136,11 @@ const mintNewHandles = async (
   // and send minted handle to destination with datum
   const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
   mintingHandlesData.forEach((mintingHandle) => {
-    const {
-      isVirtual,
-      refHandleAssetClass,
-      userHandleAssetClass,
-      virtualHandleAssetClass,
-    } = mintingHandle;
-    if (isVirtual) {
-      mintingHandlesTokensValue.push([virtualHandleAssetClass.tokenName, 1n]);
-    } else {
-      mintingHandlesTokensValue.push(
-        [refHandleAssetClass.tokenName, 1n],
-        [userHandleAssetClass.tokenName, 1n]
-      );
-    }
+    const { refHandleAssetClass, userHandleAssetClass } = mintingHandle;
+    mintingHandlesTokensValue.push(
+      [refHandleAssetClass.tokenName, 1n],
+      [userHandleAssetClass.tokenName, 1n]
+    );
   });
   txBuilder.mintPolicyTokensUnsafe(
     newPolicyHash,
@@ -175,27 +150,17 @@ const mintNewHandles = async (
   for (const mintingHandle of mintingHandlesData) {
     const {
       orderTxInput,
-      isVirtual,
       refHandleValue,
       userHandleValue,
-      virtualHandleValue,
       destinationAddress,
     } = mintingHandle;
 
-    if (isVirtual) {
-      txBuilder
-        .spendUnsafe(orderTxInput, buildOrderExecuteAsNewRedeemer())
-        // TODO:
-        // Add Personalization Datum
-        .payUnsafe(settingsV1.pz_script_address, virtualHandleValue);
-    } else {
-      txBuilder
-        .spendUnsafe(orderTxInput, buildOrderExecuteAsNewRedeemer())
-        // TODO:
-        // Add Personalization Datum
-        .payUnsafe(settingsV1.pz_script_address, refHandleValue)
-        .payUnsafe(destinationAddress, userHandleValue);
-    }
+    txBuilder
+      .spendUnsafe(orderTxInput, buildOrderExecuteRedeemer())
+      // TODO:
+      // Add Personalization Datum
+      .payUnsafe(settingsV1.pz_script_address, refHandleValue)
+      .payUnsafe(destinationAddress, userHandleValue);
   }
 
   return Ok(txBuilder);

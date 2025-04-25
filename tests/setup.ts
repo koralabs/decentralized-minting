@@ -122,16 +122,17 @@ const setup = async () => {
     ])
   );
   emulator.tick(200);
+
   // admin wallet will keep settings asset
   const adminWallet = emulator.createWallet(ACCOUNT_LOVELACE);
   emulator.tick(200);
 
   // allowed minters wallets
-  const allowedMintersWallet: SimpleWallet =
+  const allowedMinterWallet: SimpleWallet =
     emulator.createWallet(ACCOUNT_LOVELACE);
   emulator.tick(200);
-  const allowedMintersPubKeyHash: string =
-    allowedMintersWallet.spendingPubKeyHash.toHex();
+  const allowedMinterPubKeyHash: string =
+    allowedMinterWallet.spendingPubKeyHash.toHex();
 
   // pz script wallet
   const pzWallet = emulator.createWallet(ACCOUNT_LOVELACE);
@@ -172,7 +173,7 @@ const setup = async () => {
   // ============ prepare settings data ============
   const settingsV1: SettingsV1 = {
     policy_id: handlePolicyHash.toHex(),
-    allowed_minters: [allowedMintersPubKeyHash],
+    allowed_minters: [allowedMinterPubKeyHash],
     valid_handle_price_assets: [handlePriceAssetClass.toString()],
     treasury_address: treasuryWallet.address,
     treasury_fee_percentage: 90n,
@@ -214,7 +215,7 @@ const setup = async () => {
     makeInlineTxOutputDatum(buildMintingData(mintingData))
   );
   prepareAssetsTxBuilder.payUnsafe(
-    adminWallet.address,
+    allowedMinterWallet.address,
     makeValue(MIN_LOVELACE, makeAssets([[handlePriceAssetClass, 1n]])),
     makeInlineTxOutputDatum(buildHandlePriceInfoData(handlePriceInfo))
   );
@@ -390,7 +391,7 @@ const setup = async () => {
     emulator,
     db,
     contractsConfig,
-    allowedMintersPubKeyHashes: [allowedMintersPubKeyHash],
+    allowedMintersPubKeyHashes: [allowedMinterPubKeyHash],
     validHandlePriceAssetClasses: [handlePriceAssetClass],
     legacyMintUplcProgram,
     legacyPolicyId,
@@ -399,13 +400,14 @@ const setup = async () => {
       mockedFetchAllDeployedScripts,
       mockedFetchSettings,
       mockedFetchMintingData,
+      mockedFetchHandlePriceInfoData,
       mockedGetBlockfrostV0Client,
       mockedGetNetwork,
     },
     wallets: {
       fundWallet,
       adminWallet,
-      allowedMintersWallets: [allowedMintersWallet],
+      allowedMintersWallets: [allowedMinterWallet],
       pzWallet,
       treasuryWallet,
       usersWallets,

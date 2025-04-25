@@ -4,9 +4,12 @@ interface MintingData {
   mpt_root_hash: string;
 }
 
-type Proof = {
+type LegacyHandleProof = {
   mpt_proof: MPTProof;
-  root_handle_settings_index: bigint;
+  // handle name as hex format without asset name label
+  handle_name: string;
+  // whether it's virtual handle or not (1 or 0)
+  is_virtual: bigint;
 };
 
-export type { MintingData, Proof };
+export type { LegacyHandleProof, MintingData };

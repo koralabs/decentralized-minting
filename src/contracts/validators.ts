@@ -7,7 +7,6 @@ import {
   makeMintingDataUplcProgramParameter,
   makeMintProxyUplcProgramParameter,
   makeMintV1UplcProgramParameter,
-  makeOrdersUplcProgramParameter,
 } from "./utils.js";
 
 const getMintProxyMintUplcProgram = (mint_version: bigint): UplcProgramV2 => {
@@ -84,7 +83,7 @@ const getMintingDataSpendUplcProgram = (
     );
 };
 
-const getOrdersSpendUplcProgram = (legacy_policy_id: string): UplcProgramV2 => {
+const getOrdersSpendUplcProgram = (): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
     (validator) => validator.title == "orders.spend"
   );
@@ -95,13 +94,11 @@ const getOrdersSpendUplcProgram = (legacy_policy_id: string): UplcProgramV2 => {
     !!optimizedFoundValidator && !!unOptimizedFoundValidator,
     "Orders Spend Validator not found"
   );
-  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
-    .apply(makeOrdersUplcProgramParameter(legacy_policy_id))
-    .withAlt(
-      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
-        makeOrdersUplcProgramParameter(legacy_policy_id)
-      )
-    );
+  return decodeUplcProgramV2FromCbor(
+    optimizedFoundValidator.compiledCode
+  ).withAlt(
+    decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode)
+  );
 };
 
 export {
