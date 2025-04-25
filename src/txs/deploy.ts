@@ -9,6 +9,7 @@ import {
   buildContracts,
   makeMintingDataUplcProgramParameterDatum,
   makeMintProxyUplcProgramParameterDatum,
+  makeMintV1UplcProgramParameterDatum,
 } from "../contracts/index.js";
 import { convertError, invariant } from "../helpers/index.js";
 import { fetchDeployedScript } from "../utils/contract.js";
@@ -19,14 +20,14 @@ import { fetchDeployedScript } from "../utils/contract.js";
  * @property {NetworkName} network Network
  * @property {bigint} mintVersion Mint Version - Parameter in Mint Proxy validator
  * @property {string} legacyPolicyId Legacy Handle's Policy ID
- * @property {string} godVerificationKeyHash God Verification Key  Hash - Parameter in Minting Data V1 Validator
+ * @property {string} adminVerificationKeyHash Admin Verification Key  Hash - Parameter in Minting Data V1 Validator
  * @property {string} contractName Contract Name to Deploy
  */
 interface DeployParams {
   network: NetworkName;
   mintVersion: bigint;
   legacyPolicyId: string;
-  godVerificationKeyHash: string;
+  adminVerificationKeyHash: string;
   contractName: string;
 }
 
@@ -50,7 +51,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
     network,
     mintVersion,
     legacyPolicyId,
-    godVerificationKeyHash,
+    adminVerificationKeyHash,
     contractName,
   } = params;
 
@@ -58,7 +59,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
     network,
     mint_version: mintVersion,
     legacy_policy_id: legacyPolicyId,
-    god_verification_key_hash: godVerificationKeyHash,
+    admin_verification_key_hash: adminVerificationKeyHash,
   });
   const {
     mintProxy: mintProxyConfig,
@@ -79,14 +80,6 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         validatorHash: mintProxyConfig.mintProxyPolicyHash.toHex(),
         policyId: mintProxyConfig.mintProxyPolicyHash.toHex(),
       };
-    case "mint_v1.withdraw":
-      return {
-        ...extractScriptCborsFromUplcProgram(
-          mintV1Config.mintV1WithdrawUplcProgram
-        ),
-        validatorHash: mintV1Config.mintV1ValiatorHash.toHex(),
-        scriptStakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
-      };
     case "minting_data.spend":
       return {
         ...extractScriptCborsFromUplcProgram(
@@ -95,11 +88,24 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         datumCbor: bytesToHex(
           makeMintingDataUplcProgramParameterDatum(
             legacyPolicyId,
-            godVerificationKeyHash
+            adminVerificationKeyHash
           ).data.toCbor()
         ),
         validatorHash: mintingDataConfig.mintingDataValidatorHash.toHex(),
         scriptAddress: mintingDataConfig.mintingDataValidatorAddress.toBech32(),
+      };
+    case "mint_v1.withdraw":
+      return {
+        ...extractScriptCborsFromUplcProgram(
+          mintV1Config.mintV1WithdrawUplcProgram
+        ),
+        datumCbor: bytesToHex(
+          makeMintV1UplcProgramParameterDatum(
+            mintingDataConfig.mintingDataValidatorHash.toHex()
+          ).data.toCbor()
+        ),
+        validatorHash: mintV1Config.mintV1ValidatorHash.toHex(),
+        scriptStakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
       };
     case "orders.spend":
       return {
@@ -130,10 +136,10 @@ const extractScriptCborsFromUplcProgram = (
 interface DeployedScripts {
   mintProxyScriptDetails: ScriptDetails;
   mintProxyScriptTxInput: TxInput;
-  mintV1ScriptDetails: ScriptDetails;
-  mintV1ScriptTxInput: TxInput;
   mintingDataScriptDetails: ScriptDetails;
   mintingDataScriptTxInput: TxInput;
+  mintV1ScriptDetails: ScriptDetails;
+  mintV1ScriptTxInput: TxInput;
   ordersScriptDetails: ScriptDetails;
   ordersScriptTxInput: TxInput;
 }
@@ -142,6 +148,7 @@ const fetchAllDeployedScripts = async (
   blockfrostV0Client: BlockfrostV0Client
 ): Promise<Result<DeployedScripts, string>> => {
   try {
+    // "mint_proxy.mint"
     const mintProxyScriptDetails = await fetchDeployedScript(
       ScriptType.DEMI_MINT_PROXY
     );
@@ -159,21 +166,7 @@ const fetchAllDeployedScripts = async (
         decodeUplcProgramV2FromCbor(mintProxyScriptDetails.unoptimizedCbor)
       );
 
-    const mintV1ScriptDetails = await fetchDeployedScript(ScriptType.DEMI_MINT);
-    invariant(
-      mintV1ScriptDetails.refScriptUtxo,
-      "Mint V1 has no Ref script UTxO"
-    );
-    const mintV1ScriptTxInput = await blockfrostV0Client.getUtxo(
-      makeTxOutputId(mintV1ScriptDetails.refScriptUtxo)
-    );
-    if (mintV1ScriptDetails.unoptimizedCbor)
-      mintV1ScriptTxInput.output.refScript = (
-        mintV1ScriptTxInput.output.refScript as UplcProgramV2
-      )?.withAlt(
-        decodeUplcProgramV2FromCbor(mintV1ScriptDetails.unoptimizedCbor)
-      );
-
+    // "minting_data.spend"
     const mintingDataScriptDetails = await fetchDeployedScript(
       ScriptType.DEMI_MINTING_DATA
     );
@@ -191,6 +184,23 @@ const fetchAllDeployedScripts = async (
         decodeUplcProgramV2FromCbor(mintingDataScriptDetails.unoptimizedCbor)
       );
 
+    // "mint_v1.withdraw"
+    const mintV1ScriptDetails = await fetchDeployedScript(ScriptType.DEMI_MINT);
+    invariant(
+      mintV1ScriptDetails.refScriptUtxo,
+      "Mint V1 has no Ref script UTxO"
+    );
+    const mintV1ScriptTxInput = await blockfrostV0Client.getUtxo(
+      makeTxOutputId(mintV1ScriptDetails.refScriptUtxo)
+    );
+    if (mintV1ScriptDetails.unoptimizedCbor)
+      mintV1ScriptTxInput.output.refScript = (
+        mintV1ScriptTxInput.output.refScript as UplcProgramV2
+      )?.withAlt(
+        decodeUplcProgramV2FromCbor(mintV1ScriptDetails.unoptimizedCbor)
+      );
+
+    // "orders.spend"
     const ordersScriptDetails = await fetchDeployedScript(
       ScriptType.DEMI_ORDERS
     );
@@ -211,10 +221,10 @@ const fetchAllDeployedScripts = async (
     return Ok({
       mintProxyScriptDetails,
       mintProxyScriptTxInput,
-      mintV1ScriptDetails,
-      mintV1ScriptTxInput,
       mintingDataScriptDetails,
       mintingDataScriptTxInput,
+      mintV1ScriptDetails,
+      mintV1ScriptTxInput,
       ordersScriptDetails,
       ordersScriptTxInput,
     });

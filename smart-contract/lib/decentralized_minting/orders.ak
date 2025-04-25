@@ -13,9 +13,9 @@ pub type Destination {
 // Using this information, validator can calculate handle's price
 
 pub type OrderDatum {
-  // the keyhash of the wallet that placed the order that is used for cancelling the order
+  // the key hash of the wallet that placed the order that is used for cancelling the order
   owner: Data,
-  // without asset label
+  // without asset name label
   requested_handle: ByteArray,
   // the payment credential in the address that the Handle should be sent to
   destination: Destination,

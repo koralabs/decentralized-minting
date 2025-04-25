@@ -21,13 +21,32 @@ const buildSettingsV1Data = (settings: SettingsV1): UplcData => {
     makeListData(
       settings.allowed_minters.map((item) => makeByteArrayData(item))
     ),
+    buildValidHandlePriceAssetsData(settings.valid_handle_price_assets),
     buildAddressData(settings.treasury_address as ShelleyAddress),
-    makeIntData(settings.treasury_fee),
-    makeIntData(settings.minter_fee),
+    makeIntData(settings.treasury_fee_percentage),
     buildAddressData(settings.pz_script_address as ShelleyAddress),
     makeByteArrayData(settings.order_script_hash),
     makeByteArrayData(settings.minting_data_script_hash),
   ]);
+};
+
+/**
+ * Builds the valid handle price assets data for the settings v1.
+ * @param valid_handle_price_assets - The valid handle price assets as string `{policy_id}.{asset_name}`
+ * @returns The valid handle price assets data.
+ */
+const buildValidHandlePriceAssetsData = (
+  valid_handle_price_assets: string[]
+): UplcData => {
+  return makeListData(
+    valid_handle_price_assets.map((asset_id) => {
+      const [policy_id, asset_name] = asset_id.split(".");
+      return makeListData([
+        makeByteArrayData(policy_id),
+        makeByteArrayData(asset_name),
+      ]);
+    })
+  );
 };
 
 const decodeSettingsV1Data = (
@@ -38,9 +57,10 @@ const decodeSettingsV1Data = (
 
   const policy_id = expectByteArrayData(
     settingsV1ConstrData.fields[0],
-    "policy_id must be ByteArra"
+    "policy_id must be ByteArray"
   ).toHex();
 
+  // allowed_minters
   const allowedMintersListData = expectListData(
     settingsV1ConstrData.fields[1],
     "allowed_minters must be List"
@@ -49,21 +69,24 @@ const decodeSettingsV1Data = (
     expectByteArrayData(item, "allowed_minters item must be ByteArray").toHex()
   );
 
+  // valid_handle_price_assets
+  const valid_handle_price_assets = decodeValidHandlePriceAssetsData(
+    settingsV1ConstrData.fields[2]
+  );
+
+  // treasury_address
   const treasury_address = decodeAddressFromData(
-    settingsV1ConstrData.fields[2],
+    settingsV1ConstrData.fields[3],
     network
   );
 
-  const treasury_fee = expectIntData(
-    settingsV1ConstrData.fields[3],
-    "treasury_fee must be Int"
-  ).value;
-
-  const minter_fee = expectIntData(
+  // treasury_fee_percentage
+  const treasury_fee_percentage = expectIntData(
     settingsV1ConstrData.fields[4],
-    "minter_fee must be Int"
+    "treasury_fee_percentage must be Int"
   ).value;
 
+  // pz_script_address
   const pz_script_address = decodeAddressFromData(
     settingsV1ConstrData.fields[5],
     network
@@ -80,13 +103,32 @@ const decodeSettingsV1Data = (
   return {
     policy_id,
     allowed_minters,
+    valid_handle_price_assets,
     treasury_address,
-    treasury_fee,
-    minter_fee,
+    treasury_fee_percentage,
     pz_script_address,
     order_script_hash,
     minting_data_script_hash,
   };
+};
+
+const decodeValidHandlePriceAssetsData = (data: UplcData): string[] => {
+  const validHandlePriceAssetsListData = expectListData(
+    data,
+    "valid_handle_price_assets must be List"
+  );
+  return validHandlePriceAssetsListData.items.map((assetData) => {
+    const assetIdListData = expectListData(assetData, "asset_id must be List");
+    const policyId = expectByteArrayData(
+      assetIdListData.items[0],
+      "policy_id must be ByteArray"
+    ).toHex();
+    const assetName = expectByteArrayData(
+      assetIdListData.items[1],
+      "asset_name must be ByteArray"
+    ).toHex();
+    return `${policyId}.${assetName}`;
+  });
 };
 
 export { buildSettingsV1Data, decodeSettingsV1Data };

@@ -6,6 +6,7 @@ import unOptimizedBlueprint from "./unoptimized-blueprint.js";
 import {
   makeMintingDataUplcProgramParameter,
   makeMintProxyUplcProgramParameter,
+  makeMintV1UplcProgramParameter,
 } from "./utils.js";
 
 const getMintProxyMintUplcProgram = (mint_version: bigint): UplcProgramV2 => {
@@ -28,7 +29,9 @@ const getMintProxyMintUplcProgram = (mint_version: bigint): UplcProgramV2 => {
     );
 };
 
-const getMintV1WithdrawUplcProgram = (): UplcProgramV2 => {
+const getMintV1WithdrawUplcProgram = (
+  minting_data_script_hash: string
+): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
     (validator) => validator.title == "mint_v1.withdraw"
   );
@@ -39,17 +42,19 @@ const getMintV1WithdrawUplcProgram = (): UplcProgramV2 => {
     !!optimizedFoundValidator && unOptimizedFoundValidator,
     "Mint V1 Withdraw Validator not found"
   );
-  return decodeUplcProgramV2FromCbor(
-    optimizedFoundValidator.compiledCode
-  ).withAlt(
-    decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode)
-  );
+  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
+    .apply(makeMintV1UplcProgramParameter(minting_data_script_hash))
+    .withAlt(
+      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
+        makeMintV1UplcProgramParameter(minting_data_script_hash)
+      )
+    );
 };
 
 // this is `minting_data_script_hash`
 const getMintingDataSpendUplcProgram = (
   legacy_policy_id: string,
-  god_verification_key_hash: string
+  admin_verification_key_hash: string
 ): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
     (validator) => validator.title == "minting_data.spend"
@@ -65,14 +70,14 @@ const getMintingDataSpendUplcProgram = (
     .apply(
       makeMintingDataUplcProgramParameter(
         legacy_policy_id,
-        god_verification_key_hash
+        admin_verification_key_hash
       )
     )
     .withAlt(
       decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
         makeMintingDataUplcProgramParameter(
           legacy_policy_id,
-          god_verification_key_hash
+          admin_verification_key_hash
         )
       )
     );

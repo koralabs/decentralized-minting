@@ -10,8 +10,6 @@ import {
   UplcValue,
 } from "@helios-lang/uplc";
 
-import { Handle } from "./types/minting_data.js";
-
 const makeMintProxyUplcProgramParameter = (
   mint_version: bigint
 ): UplcValue[] => {
@@ -24,61 +22,47 @@ const makeMintProxyUplcProgramParameterDatum = (
   return makeInlineTxOutputDatum(makeListData([makeIntData(mint_version)]));
 };
 
+const makeMintV1UplcProgramParameter = (
+  minting_data_script_hash: string
+): UplcValue[] => {
+  return [makeUplcDataValue(makeByteArrayData(minting_data_script_hash))];
+};
+
+const makeMintV1UplcProgramParameterDatum = (
+  minting_data_script_hash: string
+): InlineTxOutputDatum => {
+  return makeInlineTxOutputDatum(
+    makeListData([makeByteArrayData(minting_data_script_hash)])
+  );
+};
+
 const makeMintingDataUplcProgramParameter = (
   legacy_policy_id: string,
-  god_verification_key_hash: string
+  admin_verification_key_hash: string
 ): UplcValue[] => {
   return [
     makeUplcDataValue(makeByteArrayData(legacy_policy_id)),
-    makeUplcDataValue(makeByteArrayData(god_verification_key_hash)),
+    makeUplcDataValue(makeByteArrayData(admin_verification_key_hash)),
   ];
 };
 
 const makeMintingDataUplcProgramParameterDatum = (
   legacy_policy_id: string,
-  god_verification_key_hash: string
+  admin_verification_key_hash: string
 ): InlineTxOutputDatum => {
   return makeInlineTxOutputDatum(
     makeListData([
       makeByteArrayData(legacy_policy_id),
-      makeByteArrayData(god_verification_key_hash),
+      makeByteArrayData(admin_verification_key_hash),
     ])
   );
 };
 
-const getHandleName = (handle: Handle): string => {
-  if (typeof handle === "string") return handle;
-  return handle.handle_name;
-};
-
-const getUTF8HandleName = (handle: Handle): string => {
-  if (typeof handle === "string")
-    return Buffer.from(handle, "hex").toString("utf8");
-  return Buffer.from(handle.handle_name, "hex").toString("utf8");
-};
-
-const getIsVirtual = (handle: Handle): boolean => {
-  if (typeof handle === "string") return false;
-  return handle.is_virtual;
-};
-
-const parseHandle = (
-  handle: Handle
-): { handleName: string; handleUTF8Name: string; isVirtual: boolean } => {
-  return {
-    handleName: getHandleName(handle),
-    handleUTF8Name: getUTF8HandleName(handle),
-    isVirtual: getIsVirtual(handle),
-  };
-};
-
 export {
-  getHandleName,
-  getIsVirtual,
-  getUTF8HandleName,
   makeMintingDataUplcProgramParameter,
   makeMintingDataUplcProgramParameterDatum,
   makeMintProxyUplcProgramParameter,
   makeMintProxyUplcProgramParameterDatum,
-  parseHandle,
+  makeMintV1UplcProgramParameter,
+  makeMintV1UplcProgramParameterDatum,
 };

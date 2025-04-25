@@ -3,7 +3,7 @@ import { UplcData } from "@helios-lang/uplc";
 
 interface OrderDatum {
   owner: UplcData;
-  requested_handle: string; // hex string
+  requested_handle: string; // hex string without asset label
   destination: Destination;
 }
 

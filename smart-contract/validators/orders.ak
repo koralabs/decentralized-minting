@@ -5,7 +5,7 @@ use decentralized_minting/settings.{Settings, find_settings}
 use sundae/multisig
 
 validator {
-  pub fn spend(
+  fn spend(
     datum: OrderDatum,
     redeemer: OrderRedeemer,
     ctx: ScriptContext,
@@ -23,6 +23,10 @@ validator {
     expect Spend(_) = purpose
 
     when redeemer is {
+      Execute -> {
+        let Settings { mint_governor, .. } = find_settings(reference_inputs)
+        is_withdrawal_script_executed(withdrawals, mint_governor)
+      }
       Cancel -> {
         expect owner: multisig.MultisigScript = datum.owner
         // Defer to sundae.multisig
@@ -32,10 +36,6 @@ validator {
           validity_range,
           withdrawals,
         )
-      }
-      Execute -> {
-        let Settings { mint_governor, .. } = find_settings(reference_inputs)
-        is_withdrawal_script_executed(withdrawals, mint_governor)
       }
     }
   }

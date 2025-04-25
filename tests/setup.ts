@@ -27,17 +27,19 @@ import { test, vi } from "vitest";
 
 import {
   buildContracts,
+  buildHandlePriceInfoData,
   buildMintingData,
   buildSettingsData,
   buildSettingsV1Data,
   DeployedScripts,
+  HandlePriceInfo,
   init,
   MintingData,
   Settings,
   SettingsV1,
 } from "../src/index.js";
 import {
-  alwaysSuceedMintUplcProgram,
+  alwaysSucceedMintUplcProgram,
   extractScriptCborsFromUplcProgram,
 } from "./utils.js";
 
@@ -55,8 +57,9 @@ const mintingDataAssetClass = makeAssetClass(
   "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14068616e646c655f726f6f744068616e646c655f73657474696e6773"
 );
 
-const treasuryFee = 2_000_000n;
-const minterFee = 2_000_000n;
+const handlePriceAssetClass = makeAssetClass(
+  "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14070726963654068616e646c655f73657474696e6773"
+);
 
 const deployScript = async (
   scriptType: ScriptType,
@@ -102,7 +105,7 @@ const setup = async () => {
   const emulator = makeEmulator();
 
   // legacy handles policy id
-  const legacyMintUplcProgram = alwaysSuceedMintUplcProgram();
+  const legacyMintUplcProgram = alwaysSucceedMintUplcProgram();
   // policy id: f060f0ef7fa4c3c6d3a4f831c639038db0f625c548a711f2b276a282
   const legacyPolicyId = makeMintingPolicyHash(
     legacyMintUplcProgram.hash()
@@ -115,30 +118,30 @@ const setup = async () => {
     makeAssets([
       [settingsAssetClass, 1n],
       [mintingDataAssetClass, 1n],
+      [handlePriceAssetClass, 1n],
     ])
   );
   emulator.tick(200);
+
   // admin wallet will keep settings asset
   const adminWallet = emulator.createWallet(ACCOUNT_LOVELACE);
   emulator.tick(200);
+
   // allowed minters wallets
-  const allowedMintersWallets: SimpleWallet[] = [];
-  for (let i = 0; i < 2; i++) {
-    allowedMintersWallets.push(emulator.createWallet(ACCOUNT_LOVELACE));
-    emulator.tick(200);
-  }
-  const allowedMintersPubKeyHashes: string[] = allowedMintersWallets.map(
-    (wallet) => wallet.spendingPubKeyHash.toHex()
-  );
-  // god wallet will be used to fix mpt root hash
-  const godWallet = emulator.createWallet(ACCOUNT_LOVELACE);
+  const allowedMinterWallet: SimpleWallet =
+    emulator.createWallet(ACCOUNT_LOVELACE);
   emulator.tick(200);
+  const allowedMinterPubKeyHash: string =
+    allowedMinterWallet.spendingPubKeyHash.toHex();
+
   // pz script wallet
   const pzWallet = emulator.createWallet(ACCOUNT_LOVELACE);
   emulator.tick(200);
+
   // treasury wallet
   const treasuryWallet = emulator.createWallet(ACCOUNT_LOVELACE);
   emulator.tick(200);
+
   // users wallet
   const usersWallets: SimpleWallet[] = [];
   for (let i = 0; i < 5; i++) {
@@ -152,12 +155,12 @@ const setup = async () => {
 
   // ============ build contracts ============
   const mintVersion = 0n;
-  const godPubKeyHash = godWallet.spendingPubKeyHash.toHex();
+  const adminPubKeyHash = adminWallet.spendingPubKeyHash.toHex();
   const contractsConfig = buildContracts({
     network,
     mint_version: mintVersion,
     legacy_policy_id: legacyPolicyId,
-    god_verification_key_hash: godPubKeyHash,
+    admin_verification_key_hash: adminPubKeyHash,
   });
   const {
     handlePolicyHash,
@@ -170,17 +173,17 @@ const setup = async () => {
   // ============ prepare settings data ============
   const settingsV1: SettingsV1 = {
     policy_id: handlePolicyHash.toHex(),
-    allowed_minters: allowedMintersPubKeyHashes,
+    allowed_minters: [allowedMinterPubKeyHash],
+    valid_handle_price_assets: [handlePriceAssetClass.toString()],
     treasury_address: treasuryWallet.address,
-    treasury_fee: treasuryFee,
-    minter_fee: minterFee,
+    treasury_fee_percentage: 90n,
     pz_script_address: pzWallet.address,
     order_script_hash: ordersConfig.ordersValidatorHash.toHex(),
     minting_data_script_hash:
       mintingDataConfig.mintingDataValidatorHash.toHex(),
   };
   const settings: Settings = {
-    mint_governor: mintV1Config.mintV1ValiatorHash.toHex(),
+    mint_governor: mintV1Config.mintV1ValidatorHash.toHex(),
     mint_version: mintVersion,
     data: buildSettingsV1Data(settingsV1),
   };
@@ -190,7 +193,14 @@ const setup = async () => {
     mpt_root_hash: db.hash?.toString("hex") || Buffer.alloc(32).toString("hex"),
   };
 
-  // ============ prepare settings and minting data asset ============
+  // ============ prepare handle price info ============
+  const handlePriceInfo: HandlePriceInfo = {
+    current_data: [1_000_000_000n, 500_000_000n, 100_000_000n, 10_000_000n],
+    prev_data: [1_000_000_000n, 500_000_000n, 80_000_000n, 5_000_000n],
+    updated_at: BigInt(Date.now()),
+  };
+
+  // ============ prepare settings and minting data asset and handle price asset ============
   const prepareAssetsTxBuilder = makeTxBuilder({ isMainnet });
   const fundWalletUTxOs = await fundWallet.utxos;
   prepareAssetsTxBuilder.spendUnsafe(fundWalletUTxOs);
@@ -204,6 +214,11 @@ const setup = async () => {
     makeValue(MIN_LOVELACE, makeAssets([[mintingDataAssetClass, 1n]])),
     makeInlineTxOutputDatum(buildMintingData(mintingData))
   );
+  prepareAssetsTxBuilder.payUnsafe(
+    allowedMinterWallet.address,
+    makeValue(MIN_LOVELACE, makeAssets([[handlePriceAssetClass, 1n]])),
+    makeInlineTxOutputDatum(buildHandlePriceInfoData(handlePriceInfo))
+  );
   const prepareAssetsTx = await prepareAssetsTxBuilder.build({
     changeAddress: fundWallet.address,
   });
@@ -215,6 +230,9 @@ const setup = async () => {
   );
   const mintingDataAssetTxInput = await emulator.getUtxo(
     makeTxOutputId(prepareAssetsTxId, 1)
+  );
+  const handlePriceInfoAssetTxInput = await emulator.getUtxo(
+    makeTxOutputId(prepareAssetsTxId, 2)
   );
 
   // ============ Deploy Scripts ============
@@ -266,6 +284,7 @@ const setup = async () => {
     mockedFetchAllDeployedScripts,
     mockedFetchSettings,
     mockedFetchMintingData,
+    mockedFetchHandlePriceInfoData,
     mockedGetBlockfrostV0Client,
     mockedGetNetwork,
   } = vi.hoisted(() => {
@@ -274,6 +293,7 @@ const setup = async () => {
       mockedFetchAllDeployedScripts: vi.fn(),
       mockedFetchSettings: vi.fn(),
       mockedFetchMintingData: vi.fn(),
+      mockedFetchHandlePriceInfoData: vi.fn(),
       mockedGetBlockfrostV0Client: vi.fn(),
       mockedGetNetwork: vi.fn(),
     };
@@ -298,7 +318,9 @@ const setup = async () => {
   // mock fetchDeployedScript
   // only use in orders
   vi.mock("../src/utils/contract.ts", () => {
-    return { fetchDeployedScript: mockedFetchDeployedScript };
+    return {
+      fetchDeployedScript: mockedFetchDeployedScript,
+    };
   });
   mockedFetchDeployedScript.mockReturnValue(
     new Promise((resolve) =>
@@ -333,13 +355,19 @@ const setup = async () => {
     )
   );
 
-  // mock fetchSettings and fetchMintingData
+  // mock fetchSettings and fetchMintingData and fetchHandlePriceInfoData
   vi.mock("../src/configs/index.js", () => {
     return {
-      fetchMintingData: mockedFetchMintingData,
       fetchSettings: mockedFetchSettings,
+      fetchMintingData: mockedFetchMintingData,
+      fetchHandlePriceInfoData: mockedFetchHandlePriceInfoData,
     };
   });
+  mockedFetchSettings.mockReturnValue(
+    new Promise((resolve) =>
+      resolve(Ok({ settings, settingsV1: settingsV1, settingsAssetTxInput }))
+    )
+  );
   mockedFetchMintingData.mockReturnValue(
     new Promise((resolve) =>
       resolve(
@@ -350,9 +378,9 @@ const setup = async () => {
       )
     )
   );
-  mockedFetchSettings.mockReturnValue(
+  mockedFetchHandlePriceInfoData.mockReturnValue(
     new Promise((resolve) =>
-      resolve(Ok({ settings, settingsV1: settingsV1, settingsAssetTxInput }))
+      resolve(Ok({ handlePriceInfo, handlePriceInfoAssetTxInput }))
     )
   );
 
@@ -363,7 +391,8 @@ const setup = async () => {
     emulator,
     db,
     contractsConfig,
-    allowedMintersPubKeyHashes,
+    allowedMintersPubKeyHashes: [allowedMinterPubKeyHash],
+    validHandlePriceAssetClasses: [handlePriceAssetClass],
     legacyMintUplcProgram,
     legacyPolicyId,
     mockedFunctions: {
@@ -371,14 +400,14 @@ const setup = async () => {
       mockedFetchAllDeployedScripts,
       mockedFetchSettings,
       mockedFetchMintingData,
+      mockedFetchHandlePriceInfoData,
       mockedGetBlockfrostV0Client,
       mockedGetNetwork,
     },
     wallets: {
       fundWallet,
       adminWallet,
-      allowedMintersWallets,
-      godWallet,
+      allowedMintersWallets: [allowedMinterWallet],
       pzWallet,
       treasuryWallet,
       usersWallets,

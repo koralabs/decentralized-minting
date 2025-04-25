@@ -12,4 +12,8 @@ const fetchDeployedScript = async (
   return script;
 };
 
+// TODO:
+// Add fetchRootHandleSettings function
+// This function will fetch the root handle settings
+
 export { fetchDeployedScript };

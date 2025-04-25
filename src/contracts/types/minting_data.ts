@@ -4,21 +4,12 @@ interface MintingData {
   mpt_root_hash: string;
 }
 
-// NOTE:
-// handle_name is in hex format (ByteArray - without asset name label)
-//
-type Handle =
-  | {
-      handle_name: string;
-      is_virtual: boolean;
-    }
-  | string;
-
-type Proof = {
+type LegacyHandleProof = {
   mpt_proof: MPTProof;
+  // handle name as hex format without asset name label
   handle_name: string;
-  is_virtual: boolean;
-  amount: bigint;
+  // whether it's virtual handle or not (1 or 0)
+  is_virtual: bigint;
 };
 
-export type { Handle, MintingData, Proof };
+export type { LegacyHandleProof, MintingData };

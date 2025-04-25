@@ -2,23 +2,19 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import {
   Address,
   makeInlineTxOutputDatum,
-  makePubKeyHash,
   makeValue,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
 import { Err, Ok, Result } from "ts-res";
 
-import { fetchMintingData, fetchSettings } from "../configs/index.js";
+import { fetchMintingData } from "../configs/index.js";
 import {
   buildMintingData,
-  buildMintingDataMintOrBurnLegacyHandlesRedeemer,
-  Handle,
+  buildMintingDataMintLegacyHandlesRedeemer,
+  LegacyHandle,
+  LegacyHandleProof,
   MintingData,
-  parseHandle,
   parseMPTProofJSON,
-  Proof,
-  Settings,
-  SettingsV1,
 } from "../contracts/index.js";
 import { getBlockfrostV0Client, getNetwork } from "../helpers/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
@@ -27,19 +23,19 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
  * @interface
  * @typedef {object} PrepareLegacyMintParams
  * @property {Address} address Wallet Address to perform mint
- * @property {Handle[]} handles Legacy Handles to mint (legacy_handle, legacy_sub_handle, legacy_virtual_sub_handle)
+ * @property {LegacyHandle[]} handles Legacy Handles to mint
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareLegacyMintParams {
   address: Address;
-  handles: Handle[];
+  handles: LegacyHandle[];
   db: Trie;
   blockfrostApiKey: string;
 }
 
 /**
- * @description Mint Handles from Order
+ * @description Mint Legacy Handles from Order
  * @param {PrepareLegacyMintParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
@@ -50,8 +46,6 @@ const prepareLegacyMintTransaction = async (
     {
       txBuilder: TxBuilder;
       deployedScripts: DeployedScripts;
-      settings: Settings;
-      settingsV1: SettingsV1;
     },
     Error
   >
@@ -66,22 +60,9 @@ const prepareLegacyMintTransaction = async (
   // fetch deployed scripts
   const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
   if (!fetchedResult.ok)
-    return Err(new Error(`Faied to fetch scripts: ${fetchedResult.error}`));
+    return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const { mintingDataScriptTxInput } = fetchedResult.data;
 
-  // fetch settings
-  const settingsResult = await fetchSettings(network);
-  if (!settingsResult.ok)
-    return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
-  const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
-  const { allowed_minters } = settingsV1;
-
-  // fetch minting data
-  // THIS IS WHERE THE MINTING DATA HANDLE NEEDS TO LIVE
-  // const mintingDataAddress = makeAddress(
-  //   isMainnet,
-  //   makeValidatorHash(mintingDataScriptDetails.validatorHash)
-  // );
   const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
     return Err(
@@ -98,24 +79,23 @@ const prepareLegacyMintTransaction = async (
   }
 
   // make Proofs for Minting Data V1 Redeemer
-  const proofs: Proof[] = [];
+  const proofs: LegacyHandleProof[] = [];
   for (const handle of handles) {
-    const { handleName, handleUTF8Name, isVirtual } = parseHandle(handle);
+    const { utf8Name, hexName, isVirtual } = handle;
 
     try {
       // NOTE:
       // Have to remove handles if transaction fails
-      await db.insert(handleUTF8Name, "");
-      const mpfProof = await db.prove(handleUTF8Name);
+      await db.insert(utf8Name, "");
+      const mpfProof = await db.prove(utf8Name);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        handle_name: handleName,
-        is_virtual: isVirtual,
-        amount: 1n,
+        handle_name: hexName,
+        is_virtual: isVirtual ? 1n : 0n,
       });
     } catch (e) {
-      console.warn("Handle already exists", handleUTF8Name, e);
-      return Err(new Error(`Handle "${handleUTF8Name}" already exists`));
+      console.warn("Handle already exists", utf8Name, e);
+      return Err(new Error(`Handle "${utf8Name}" already exists`));
     }
   }
 
@@ -131,26 +111,26 @@ const prepareLegacyMintTransaction = async (
     mintingDataAssetTxInput.value.assets
   );
 
+  // NOTE:
+  // we assume that koralab's minter index is 0
+  // meaning we always use Koralab minter
   // build proofs redeemer for minting data v1
-  const mintingDataMintOrBurnRedeemer =
-    buildMintingDataMintOrBurnLegacyHandlesRedeemer(proofs);
+  const mintingDataMintLegacyHandlesRedeemer =
+    buildMintingDataMintLegacyHandlesRedeemer(proofs);
 
   // start building tx
   const txBuilder = makeTxBuilder({
     isMainnet,
   });
 
-  // <-- add required signer
-  txBuilder.addSigners(makePubKeyHash(allowed_minters[0]));
-
-  // <-- attach settings asset as reference input
-  txBuilder.refer(settingsAssetTxInput);
-
-  // <-- attach minting data spending script
+  // <-- attach deploy scripts
   txBuilder.refer(mintingDataScriptTxInput);
 
   // <-- spend minting data utxo
-  txBuilder.spendUnsafe(mintingDataAssetTxInput, mintingDataMintOrBurnRedeemer);
+  txBuilder.spendUnsafe(
+    mintingDataAssetTxInput,
+    mintingDataMintLegacyHandlesRedeemer
+  );
 
   // <-- lock minting data value with new root hash
   txBuilder.payUnsafe(
@@ -161,15 +141,11 @@ const prepareLegacyMintTransaction = async (
 
   // NOTE:
   // After call this function
-  // using txBuilder (return value), they can continue with minting assets
-  // e.g. ref and user asset if legacy handle
-  // prefix_000 asset if virtual sub handle
+  // using txBuilder (return value), they can continue with minting assets (e.g. ref and user asset)
 
   return Ok({
     txBuilder,
     deployedScripts: fetchedResult.data,
-    settings,
-    settingsV1,
   });
 };
 

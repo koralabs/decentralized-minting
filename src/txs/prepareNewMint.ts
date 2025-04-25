@@ -8,43 +8,49 @@ import {
   makeValue,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
+import { HANDLE_PRICE_INFO_HANDLE_NAME } from "constants/index.js";
 import { Err, Ok, Result } from "ts-res";
 
-import { fetchMintingData, fetchSettings } from "../configs/index.js";
 import {
+  fetchHandlePriceInfoData,
+  fetchMintingData,
+  fetchSettings,
+} from "../configs/index.js";
+import {
+  buildHandlePriceInfoData,
   buildMintingData,
-  buildMintingDataMintOrBurnNewHandlesRedeemer,
+  buildMintingDataMintNewHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
-  getIsVirtual,
-  Handle,
+  HandlePriceInfo,
   makeVoidData,
   MintingData,
-  parseHandle,
+  MPTProof,
+  NewHandle,
   parseMPTProofJSON,
-  Proof,
   Settings,
   SettingsV1,
 } from "../contracts/index.js";
 import { getBlockfrostV0Client, getNetwork } from "../helpers/index.js";
+import { calculateTreasuryFeeAndMinterFee } from "../utils/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 
 /**
  * @interface
  * @typedef {object} PrepareNewMintParams
  * @property {Address} address Wallet Address to perform mint
- * @property {Handle[]} handles New Handles to mint
+ * @property {NewHandle[]} handles New Handles to mint
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareNewMintParams {
   address: Address;
-  handles: Handle[];
+  handles: NewHandle[];
   db: Trie;
   blockfrostApiKey: string;
 }
 
 /**
- * @description Mint Handles from Order
+ * @description Mint New Handles from Order
  * @param {PrepareNewMintParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
@@ -57,6 +63,7 @@ const prepareNewMintTransaction = async (
       deployedScripts: DeployedScripts;
       settings: Settings;
       settingsV1: SettingsV1;
+      handlePriceInfo: HandlePriceInfo;
     },
     Error
   >
@@ -68,21 +75,15 @@ const prepareNewMintTransaction = async (
     return Err(new Error("Byron Address not supported"));
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
 
-  // check every handle is not virtual handle
-  for (const handle of handles) {
-    if (getIsVirtual(handle))
-      return Err(new Error("Virtual Sub Handles not supported"));
-  }
-
   // fetch deployed scripts
   const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
   if (!fetchedResult.ok)
-    return Err(new Error(`Faied to fetch scripts: ${fetchedResult.error}`));
+    return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const {
     mintProxyScriptTxInput,
+    mintingDataScriptTxInput,
     mintV1ScriptDetails,
     mintV1ScriptTxInput,
-    mintingDataScriptTxInput,
     ordersScriptTxInput,
   } = fetchedResult.data;
 
@@ -91,20 +92,31 @@ const prepareNewMintTransaction = async (
   if (!settingsResult.ok)
     return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
   const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
-  const { allowed_minters, minter_fee, treasury_address, treasury_fee } =
+  const { allowed_minters, treasury_address, treasury_fee_percentage } =
     settingsV1;
 
-  // fetch minting data
-  // const mintingDataAddress = makeAddress(
-  //   isMainnet,
-  //   makeValidatorHash(mintingDataScriptDetails.validatorHash)
-  // );
   const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
     return Err(
       new Error(`Failed to fetch minting data: ${mintingDataResult.error}`)
     );
   const { mintingData, mintingDataAssetTxInput } = mintingDataResult.data;
+
+  // NOTE:
+  // we assume valid handle price asset is
+  // "price@handle_settings" (koralab's)
+  const handlePriceInfoDataResult = await fetchHandlePriceInfoData(
+    HANDLE_PRICE_INFO_HANDLE_NAME
+  );
+  if (!handlePriceInfoDataResult.ok) {
+    return Err(
+      new Error(
+        `Failed to fetch handle price info: ${handlePriceInfoDataResult.error}`
+      )
+    );
+  }
+  const { handlePriceInfo, handlePriceInfoAssetTxInput } =
+    handlePriceInfoDataResult.data;
 
   // check if current db trie hash is same as minting data root hash
   if (
@@ -114,25 +126,27 @@ const prepareNewMintTransaction = async (
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
 
+  // calculate total handle price
+  const totalHandlePrice = handles.reduce((acc, cur) => acc + cur.price, 0n);
+  const { treasuryFee, minterFee } = calculateTreasuryFeeAndMinterFee(
+    totalHandlePrice,
+    treasury_fee_percentage
+  );
+
   // make Proofs for Minting Data V1 Redeemer
-  const proofs: Proof[] = [];
+  const proofs: MPTProof[] = [];
   for (const handle of handles) {
-    const { handleName, handleUTF8Name, isVirtual } = parseHandle(handle);
+    const { utf8Name } = handle;
 
     try {
       // NOTE:
       // Have to remove handles if transaction fails
-      await db.insert(handleUTF8Name, "");
-      const mpfProof = await db.prove(handleUTF8Name);
-      proofs.push({
-        mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
-        handle_name: handleName,
-        is_virtual: isVirtual,
-        amount: 1n,
-      });
+      await db.insert(utf8Name, "");
+      const mpfProof = await db.prove(utf8Name);
+      proofs.push(parseMPTProofJSON(mpfProof.toJSON()));
     } catch (e) {
-      console.warn("Handle already exists", handleUTF8Name, e);
-      return Err(new Error(`Handle "${handleUTF8Name}" already exists`));
+      console.warn("Handle already exists", utf8Name, e);
+      return Err(new Error(`Handle "${utf8Name}" already exists`));
     }
   }
 
@@ -148,12 +162,21 @@ const prepareNewMintTransaction = async (
     mintingDataAssetTxInput.value.assets
   );
 
+  // handle price info asset value
+  const handlePriceInfoValue = makeValue(
+    handlePriceInfoAssetTxInput.value.lovelace,
+    handlePriceInfoAssetTxInput.value.assets
+  );
+
   // build redeemer for mint v1
   const mintV1MintHandlesRedeemer = buildMintV1MintHandlesRedeemer();
 
+  // NOTE:
+  // we assume that koralab's minter index is 0
+  // meaning we always use Koralab minter
   // build proofs redeemer for minting data v1
-  const mintingDataMintOrBurnRedeemer =
-    buildMintingDataMintOrBurnNewHandlesRedeemer(proofs);
+  const mintingDataMintNewHandlesRedeemer =
+    buildMintingDataMintNewHandlesRedeemer(proofs, 0n);
 
   // start building tx
   const txBuilder = makeTxBuilder({
@@ -175,13 +198,26 @@ const prepareNewMintTransaction = async (
   );
 
   // <-- spend minting data utxo
-  txBuilder.spendUnsafe(mintingDataAssetTxInput, mintingDataMintOrBurnRedeemer);
+  txBuilder.spendUnsafe(
+    mintingDataAssetTxInput,
+    mintingDataMintNewHandlesRedeemer
+  );
 
   // <-- lock minting data value with new root hash
   txBuilder.payUnsafe(
     mintingDataAssetTxInput.address,
     mintingDataValue,
     makeInlineTxOutputDatum(buildMintingData(newMintingData))
+  );
+
+  // <-- spend handle price info utxo
+  txBuilder.spendUnsafe(handlePriceInfoAssetTxInput);
+
+  // <-- lock handle price info value with new root hash
+  txBuilder.payUnsafe(
+    handlePriceInfoAssetTxInput.address,
+    handlePriceInfoValue,
+    makeInlineTxOutputDatum(buildHandlePriceInfoData(handlePriceInfo))
   );
 
   // <-- withdraw from mint v1 withdraw validator (script from reference input)
@@ -197,14 +233,14 @@ const prepareNewMintTransaction = async (
   // <-- pay treasury fee
   txBuilder.payUnsafe(
     treasury_address,
-    makeValue(treasury_fee * BigInt(handles.length)),
+    makeValue(treasuryFee),
     makeInlineTxOutputDatum(makeVoidData())
   );
 
   // <-- pay minter fee
   txBuilder.payUnsafe(
     address,
-    makeValue(minter_fee * BigInt(handles.length)),
+    makeValue(minterFee),
     makeInlineTxOutputDatum(makeVoidData())
   );
 
@@ -217,6 +253,7 @@ const prepareNewMintTransaction = async (
     deployedScripts: fetchedResult.data,
     settings,
     settingsV1,
+    handlePriceInfo,
   });
 };
 

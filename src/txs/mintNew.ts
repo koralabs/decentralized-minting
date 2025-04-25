@@ -11,29 +11,26 @@ import {
 import { TxBuilder } from "@helios-lang/tx-utils";
 import { Err, Ok, Result } from "ts-res";
 
-import {
-  PREFIX_100,
-  PREFIX_222,
-  PZ_UTXO_MIN_LOVELACE,
-} from "../constants/index.js";
+import { PREFIX_100, PREFIX_222 } from "../constants/index.js";
 import {
   buildOrderExecuteRedeemer,
   decodeOrderDatum,
-  Handle,
   makeVoidData,
+  NewHandle,
 } from "../contracts/index.js";
-import { getNetwork } from "../helpers/index.js";
+import { getNetwork, invariant } from "../helpers/index.js";
+import { calculateHandlePriceFromHandlePriceInfo } from "../utils/index.js";
 import { prepareNewMintTransaction } from "./prepareNewMint.js";
 
 /**
  * @interface
- * @typedef {object} MintParams
+ * @typedef {object} MintNewHandlesParams
  * @property {Address} address Wallet Address to perform mint
  * @property {TxInput[]} ordersTxInputs Orders UTxOs
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
-interface MintParams {
+interface MintNewHandlesParams {
   address: Address;
   ordersTxInputs: TxInput[];
   db: Trie;
@@ -41,11 +38,13 @@ interface MintParams {
 }
 
 /**
- * @description Mint Handles from Order
- * @param {MintParams} params
+ * @description Mint Handles from Order (only new handles)
+ * @param {MintNewHandlesParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
-const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
+const mintNewHandles = async (
+  params: MintNewHandlesParams
+): Promise<Result<TxBuilder, Error>> => {
   const { ordersTxInputs, blockfrostApiKey } = params;
   const network = getNetwork(blockfrostApiKey);
 
@@ -57,13 +56,22 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   ordersTxInputs.sort((a, b) => (a.id.toString() > b.id.toString() ? 1 : -1));
   if (ordersTxInputs.length == 0) return Err(new Error("No Order requested"));
   console.log(`${ordersTxInputs.length} Handles are ordered`);
-  const handles: Handle[] = ordersTxInputs.map((order) => {
+
+  const orderedHandles: NewHandle[] = ordersTxInputs.map((order) => {
     const decodedOrder = decodeOrderDatum(order.datum, network);
-    return decodedOrder.requested_handle;
+    return {
+      utf8Name: Buffer.from(decodedOrder.requested_handle, "hex").toString(
+        "utf8"
+      ),
+      hexName: decodedOrder.requested_handle,
+      destination: decodedOrder.destination,
+      price: order.value.lovelace,
+    };
   });
+
   const preparedTxBuilderResult = await prepareNewMintTransaction({
     ...params,
-    handles,
+    handles: orderedHandles,
   });
 
   if (!preparedTxBuilderResult.ok) {
@@ -73,9 +81,8 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
       )
     );
   }
-  const { txBuilder, deployedScripts, settingsV1 } =
+  const { txBuilder, deployedScripts, settingsV1, handlePriceInfo } =
     preparedTxBuilderResult.data;
-  const { minter_fee, treasury_fee } = settingsV1;
   const { mintProxyScriptDetails } = deployedScripts;
   const newPolicyHash = makeMintingPolicyHash(
     mintProxyScriptDetails.validatorHash
@@ -84,24 +91,36 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   const mintingHandlesData = [];
   for (const orderTxInput of ordersTxInputs) {
     const decodedOrder = decodeOrderDatum(orderTxInput.datum, network);
+    const { destination, requested_handle } = decodedOrder;
+    const utf8Name = Buffer.from(requested_handle, "hex").toString("utf8");
+
     const refHandleAssetClass = makeAssetClass(
       newPolicyHash,
-      `${PREFIX_100}${decodedOrder.requested_handle}`
+      `${PREFIX_100}${requested_handle}`
     );
     const userHandleAssetClass = makeAssetClass(
       newPolicyHash,
-      `${PREFIX_222}${decodedOrder.requested_handle}`
+      `${PREFIX_222}${requested_handle}`
     );
+
     const lovelace = orderTxInput.value.lovelace;
+    const handlePrice = calculateHandlePriceFromHandlePriceInfo(
+      utf8Name,
+      handlePriceInfo
+    );
+
+    // check order input lovelace is bigger than handle price
+    invariant(lovelace >= handlePrice, "Order Input lovelace insufficient");
+
     const refHandleValue = makeValue(
-      PZ_UTXO_MIN_LOVELACE,
+      1n,
       makeAssets([[refHandleAssetClass, 1n]])
     );
     const userHandleValue = makeValue(
-      lovelace - (minter_fee + treasury_fee),
+      1n,
       makeAssets([[userHandleAssetClass, 1n]])
     );
-    const destinationAddress = decodedOrder.destination.address;
+    const destinationAddress = destination.address;
 
     mintingHandlesData.push({
       orderTxInput,
@@ -116,30 +135,36 @@ const mint = async (params: MintParams): Promise<Result<TxBuilder, Error>> => {
   // <-- spend order utxos and mint handle
   // and send minted handle to destination with datum
   const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
-  mintingHandlesData.forEach((mintingHandle) =>
+  mintingHandlesData.forEach((mintingHandle) => {
+    const { refHandleAssetClass, userHandleAssetClass } = mintingHandle;
     mintingHandlesTokensValue.push(
-      [mintingHandle.refHandleAssetClass.tokenName, 1n],
-      [mintingHandle.userHandleAssetClass.tokenName, 1n]
-    )
-  );
+      [refHandleAssetClass.tokenName, 1n],
+      [userHandleAssetClass.tokenName, 1n]
+    );
+  });
   txBuilder.mintPolicyTokensUnsafe(
     newPolicyHash,
     mintingHandlesTokensValue,
     makeVoidData()
   );
   for (const mintingHandle of mintingHandlesData) {
+    const {
+      orderTxInput,
+      refHandleValue,
+      userHandleValue,
+      destinationAddress,
+    } = mintingHandle;
+
     txBuilder
-      .spendUnsafe(mintingHandle.orderTxInput, buildOrderExecuteRedeemer())
+      .spendUnsafe(orderTxInput, buildOrderExecuteRedeemer())
+      // TODO:
       // Add Personalization Datum
-      .payUnsafe(settingsV1.pz_script_address, mintingHandle.refHandleValue)
-      .payUnsafe(
-        mintingHandle.destinationAddress,
-        mintingHandle.userHandleValue
-      );
+      .payUnsafe(settingsV1.pz_script_address, refHandleValue)
+      .payUnsafe(destinationAddress, userHandleValue);
   }
 
   return Ok(txBuilder);
 };
 
-export type { MintParams };
-export { mint };
+export type { MintNewHandlesParams };
+export { mintNewHandles };

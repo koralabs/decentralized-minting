@@ -11,7 +11,8 @@ import { decodeUplcProgramV2FromCbor } from "@helios-lang/uplc";
 import { ScriptDetails, ScriptType } from "@koralabs/kora-labs-common";
 import { Err, Ok, Result } from "ts-res";
 
-import { fetchSettings } from "../configs/index.js";
+import { fetchHandlePriceInfoData } from "../configs/index.js";
+import { HANDLE_PRICE_INFO_HANDLE_NAME } from "../constants/index.js";
 import {
   buildOrderCancelRedeemer,
   buildOrderData,
@@ -24,7 +25,10 @@ import {
   mayFail,
   mayFailAsync,
 } from "../helpers/index.js";
-import { fetchDeployedScript } from "../utils/contract.js";
+import {
+  calculateHandlePriceFromHandlePriceInfo,
+  fetchDeployedScript,
+} from "../utils/index.js";
 
 /**
  * @interface
@@ -49,11 +53,23 @@ const request = async (
 ): Promise<Result<TxBuilder, Error>> => {
   const { network, address, handle } = params;
 
-  // fetch settings
-  const settingsResult = await fetchSettings(network);
-  if (!settingsResult.ok) return Err(new Error(settingsResult.error));
-  const { settingsV1 } = settingsResult.data;
-  const { minter_fee, treasury_fee } = settingsV1;
+  // get handle price
+  const handlePriceInfoDataResult = await fetchHandlePriceInfoData(
+    HANDLE_PRICE_INFO_HANDLE_NAME
+  );
+  if (!handlePriceInfoDataResult.ok) {
+    return Err(
+      new Error(
+        `Failed to fetch handle price info: ${handlePriceInfoDataResult.error}`
+      )
+    );
+  }
+  const { handlePriceInfo } = handlePriceInfoDataResult.data;
+  const handlePrice = calculateHandlePriceFromHandlePriceInfo(
+    handle,
+    handlePriceInfo
+  );
+
   const isMainnet = network == "mainnet";
   if (address.era == "Byron")
     return Err(new Error("Byron Address not supported"));
@@ -77,11 +93,11 @@ const request = async (
   );
 
   const order: OrderDatum = {
+    owner: makeSignatureMultiSigScriptData(address.spendingCredential),
+    requested_handle: Buffer.from(handle).toString("hex"),
     destination: {
       address,
     },
-    owner: makeSignatureMultiSigScriptData(address.spendingCredential),
-    requested_handle: Buffer.from(handle).toString("hex"),
   };
 
   // start building tx
@@ -92,7 +108,7 @@ const request = async (
   // <-- lock order
   txBuilder.payUnsafe(
     ordersScriptAddress,
-    makeValue(3_000_000n + minter_fee + treasury_fee),
+    makeValue(handlePrice),
     makeInlineTxOutputDatum(buildOrderData(order))
   );
 
@@ -101,12 +117,12 @@ const request = async (
 
 /**
  * @interface
- * @typedef {object} CancelParmas
+ * @typedef {object} CancelParams
  * @property {NetworkName} network Network
  * @property {Address} address User's Wallet Address to perform order
  * @property {TxInput} orderTxInput Order Tx Input
  */
-interface CancelParmas {
+interface CancelParams {
   network: NetworkName;
   address: Address;
   orderTxInput: TxInput;
@@ -114,11 +130,11 @@ interface CancelParmas {
 
 /**
  * @description Request handle to be minted
- * @param {CancelParmas} params
+ * @param {CancelParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
 const cancel = async (
-  params: CancelParmas
+  params: CancelParams
 ): Promise<Result<TxBuilder, Error>> => {
   const { network, address, orderTxInput } = params;
 
@@ -213,5 +229,5 @@ const fetchOrdersTxInputs = async (
   return Ok(orderUtxos);
 };
 
-export type { CancelParmas, FetchOrdersTxInputsParams, RequestParams };
+export type { CancelParams, FetchOrdersTxInputsParams, RequestParams };
 export { cancel, fetchOrdersTxInputs, request };

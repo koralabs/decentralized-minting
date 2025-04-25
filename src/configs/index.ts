@@ -18,9 +18,11 @@ import {
   SETTINGS_HANDLE_NAME,
 } from "../constants/index.js";
 import {
+  decodeHandlePriceInfoDatum,
   decodeMintingDataDatum,
   decodeSettingsDatum,
   decodeSettingsV1Data,
+  HandlePriceInfo,
   MintingData,
   Settings,
   SettingsV1,
@@ -99,7 +101,7 @@ const fetchMintingData = async (): Promise<
     ]);
 
   if (!mintingDataHandleDatum) {
-    throw new Error("Settings Datum Not Found");
+    throw new Error("Minting Data Datum Not Found");
   }
 
   const mintingDataAssetTxInput = makeTxInput(
@@ -116,17 +118,76 @@ const fetchMintingData = async (): Promise<
     )
   );
 
-  const decodedSettingsResult = mayFail(() =>
+  const decodedMintingDataResult = mayFail(() =>
     decodeMintingDataDatum(mintingDataAssetTxInput.datum)
   );
-  if (!decodedSettingsResult.ok) {
-    return Err(decodedSettingsResult.error);
+  if (!decodedMintingDataResult.ok) {
+    return Err(decodedMintingDataResult.error);
   }
 
   return Ok({
-    mintingData: decodedSettingsResult.data,
+    mintingData: decodedMintingDataResult.data,
     mintingDataAssetTxInput,
   });
 };
 
-export { fetchMintingData, fetchSettings };
+/**
+ * Fetch Handle Price Info Data
+ * @param handlePriceAssetName - The name of the handle price asset in UTF8
+ * @returns The handle price info data
+ */
+const fetchHandlePriceInfoData = async (
+  handlePriceAssetName: string
+): Promise<
+  Result<
+    { handlePriceInfo: HandlePriceInfo; handlePriceInfoAssetTxInput: TxInput },
+    string
+  >
+> => {
+  const [
+    handlePriceInfoHandle,
+    handlePriceInfoUtxo,
+    handlePriceInfoHandleDatum,
+  ] = await Promise.all([
+    fetchApi(`handles/${handlePriceAssetName}`).then((res) => res.json()),
+    fetchApi(`handles/${handlePriceAssetName}/utxo`).then((res) => res.json()),
+    fetchApi(`handles/${handlePriceAssetName}/datum`, {
+      "Content-Type": "text/plain",
+    }).then((res) => res.text()),
+  ]);
+
+  if (!handlePriceInfoHandleDatum) {
+    throw new Error("Handle Price Info Datum Not Found");
+  }
+
+  const handlePriceInfoAssetTxInput = makeTxInput(
+    handlePriceInfoHandle.utxo,
+    makeTxOutput(
+      makeAddress(handlePriceInfoHandle.resolved_addresses.ada),
+      makeValue(
+        BigInt(handlePriceInfoUtxo.lovelace),
+        makeAssets([
+          [
+            makeAssetClass(`${LEGACY_POLICY_ID}.${handlePriceInfoHandle.hex}`),
+            1n,
+          ],
+        ])
+      ),
+      makeInlineTxOutputDatum(decodeUplcData(handlePriceInfoHandleDatum))
+    )
+  );
+
+  const decodedHandlePriceInfoResult = mayFail(() =>
+    decodeHandlePriceInfoDatum(handlePriceInfoAssetTxInput.datum)
+  );
+  if (!decodedHandlePriceInfoResult.ok) {
+    return Err(decodedHandlePriceInfoResult.error);
+  }
+
+  return Ok({
+    handlePriceInfo: decodedHandlePriceInfoResult.data,
+    handlePriceInfoAssetTxInput,
+  });
+};
+
+export { fetchHandlePriceInfoData, fetchMintingData, fetchSettings };

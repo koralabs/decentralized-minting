@@ -22,17 +22,19 @@ pub fn find_minting_data(inputs: List<Input>) -> (Output, MintingData) {
   expect Some(minting_data_input) =
     list.find(
       inputs,
-      fn(i) {
+      fn(input) {
         value.quantity_of(
-          i.output.value,
+          input.output.value,
           minting_data_asset_policy_id,
           minting_data_asset_name,
         ) == 1
       },
     )
-  expect InlineDatum(inline_minting_data) = minting_data_input.output.datum
+
+  let minting_data_output = minting_data_input.output
+  expect InlineDatum(inline_minting_data) = minting_data_output.datum
   expect minting_data: MintingData = inline_minting_data
-  (minting_data_input.output, minting_data)
+  (minting_data_output, minting_data)
 }
 
 // this function also makes sure that

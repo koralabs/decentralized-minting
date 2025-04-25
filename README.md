@@ -32,7 +32,7 @@ You need to set up configuration variables.
 
 `"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"`
 
-- `GOD_VERIFICATION_KEY_HASH`: The verification key hash of the god role.
+- `ADMIN_VERIFICATION_KEY_HASH`: The verification key hash of the Admin role.
 
 This GOD Role is used in Minting Data smart contract.
 
@@ -76,7 +76,7 @@ npm run start # start:preview | start:preprod
 
 `on-chain` -> `deploy` -> select contract to deploy
 
-- Regisiter Staking Addresses
+- Register Staking Addresses
 
 `on-chain` -> `staking-addresses` -> select contract to register
 
