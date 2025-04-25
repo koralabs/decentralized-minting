@@ -91,6 +91,30 @@ test check_new_handle_validity_and_get_price_10() {
   handle_price == 5_000_000
 }
 
+test check_new_handle_validity_and_get_price_11() fail {
+  let handle_price_info = make_handle_price_info()
+  let handle_name = "abcde@abcde"
+  let handle_price =
+    check_new_handle_validity_and_get_price(handle_name, handle_price_info)
+  handle_price == 5_000_000
+}
+
+test check_new_handle_validity_and_get_price_12() fail {
+  let handle_price_info = make_handle_price_info()
+  let handle_name = "abcdefghijklmnop"
+  let handle_price =
+    check_new_handle_validity_and_get_price(handle_name, handle_price_info)
+  handle_price == 5_000_000
+}
+
+test check_new_handle_validity_and_get_price_13() fail {
+  let handle_price_info = make_handle_price_info()
+  let handle_name = ""
+  let handle_price =
+    check_new_handle_validity_and_get_price(handle_name, handle_price_info)
+  handle_price == 1_000_000_000
+}
+
 test check_legacy_handle_validity_0() {
   and {
     check_legacy_handle_validity("abc", False),
