@@ -1,5 +1,7 @@
 use tests/mocks/fake_tx.{make_handle_price_info}
-use validations/minting_data/utils.{check_new_handle_validity_and_get_price}
+use validations/minting_data/utils.{
+  check_legacy_handle_validity, check_new_handle_validity_and_get_price,
+}
 
 test check_new_handle_validity_and_get_price_0() {
   let handle_price_info = make_handle_price_info()
@@ -87,4 +89,40 @@ test check_new_handle_validity_and_get_price_10() {
   let handle_price =
     check_new_handle_validity_and_get_price(handle_name, handle_price_info)
   handle_price == 5_000_000
+}
+
+test check_legacy_handle_validity_0() {
+  and {
+    check_legacy_handle_validity("abc", False),
+    check_legacy_handle_validity("abc@abc", False),
+    check_legacy_handle_validity("abc@abc", True),
+  }
+}
+
+test check_legacy_handle_validity_1() fail {
+  check_legacy_handle_validity("abc", True)
+}
+
+test check_legacy_handle_validity_2() fail {
+  check_legacy_handle_validity("abcdefghijklmnop", False)
+}
+
+test check_legacy_handle_validity_3() fail {
+  check_legacy_handle_validity("", False)
+}
+
+test check_legacy_handle_validity_4() fail {
+  check_legacy_handle_validity("abc@", True)
+}
+
+test check_legacy_handle_validity_5() fail {
+  check_legacy_handle_validity("@abc", True)
+}
+
+test check_legacy_handle_validity_6() fail {
+  check_legacy_handle_validity("abcdefghijklm@abcdefghijklmno", True)
+}
+
+test check_legacy_handle_validity_7() fail {
+  check_legacy_handle_validity("abc@abcdefghijklmnop", True)
 }
