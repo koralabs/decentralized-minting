@@ -1,13 +1,14 @@
+use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{ScriptContext, Spend}
 use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
-use validations/minting_data/types.{LegacyHandleProof, NewHandleProof}
+use validations/minting_data/types.{LegacyHandleProof}
 use validations/minting_data/validation.{
   can_mint_legacy_handles, can_mint_new_handles, can_update_mpt,
 }
 
 type MintingDataRedeemer {
-  MintNewHandles(List<NewHandleProof>, Int)
+  MintNewHandles(List<mpt.Proof>, Int)
   MintLegacyHandles(List<LegacyHandleProof>)
   // Update MPT
   UpdateMPT

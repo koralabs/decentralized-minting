@@ -1,9 +1,5 @@
 use aiken/merkle_patricia_forestry as mpt
 
-pub type NewHandleProof {
-  mpt_proof: mpt.Proof,
-}
-
 // handle_name is the asset name of the handle in hex format
 //
 pub type LegacyHandleProof {

@@ -13,7 +13,7 @@ use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings_v1.{min_minter_fee, min_treasury_fee}
-use validations/minting_data/types.{LegacyHandleProof, NewHandleProof}
+use validations/minting_data/types.{LegacyHandleProof}
 
 const max_handle_length = 15
 
@@ -27,7 +27,7 @@ pub fn all_orders_are_satisfied(
   policy_id: PolicyId,
   pz_script_address: Address,
   handle_price_info: HandlePriceInfo,
-  proofs: List<NewHandleProof>,
+  proofs: List<mpt.Proof>,
   root: mpt.MerklePatriciaForestry,
   expected_mint_value: Value,
   total_handles_price: Int,
@@ -47,8 +47,7 @@ pub fn all_orders_are_satisfied(
           let OrderDatum { requested_handle, destination, .. } = datum
 
           // parse proofs
-          expect [proof, ..rest_proofs] = proofs
-          let NewHandleProof { mpt_proof } = proof
+          expect [mpt_proof, ..rest_proofs] = proofs
 
           // check handle validity and get price
           let handle_price =

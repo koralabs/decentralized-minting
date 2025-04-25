@@ -22,7 +22,6 @@ pub type OrderDatum {
 }
 
 pub type OrderRedeemer {
-  ExecuteAsNew
-  ExecuteAsLegacy
+  Execute
   Cancel
 }

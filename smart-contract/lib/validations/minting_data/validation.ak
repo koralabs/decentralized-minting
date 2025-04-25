@@ -11,7 +11,7 @@ use decentralized_minting/settings.{Settings, find_settings}
 use decentralized_minting/settings_v1.{
   SettingsV1, get_allowed_minter_and_valid_handle_price_asset,
 }
-use validations/minting_data/types.{LegacyHandleProof, NewHandleProof}
+use validations/minting_data/types.{LegacyHandleProof}
 use validations/minting_data/utils.{
   all_orders_are_satisfied, all_proofs_are_valid,
   calculate_treasury_fee_and_minter_fee,
@@ -30,7 +30,7 @@ use validations/minting_data/utils.{
 pub fn can_mint_new_handles(
   transaction: Transaction,
   spending_output_reference: OutputReference,
-  proofs: List<NewHandleProof>,
+  proofs: List<mpt.Proof>,
   minter_index: Int,
 ) -> Bool {
   trace @"can_mint_new_handles"
