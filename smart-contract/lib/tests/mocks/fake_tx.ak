@@ -46,8 +46,6 @@ pub fn make_order_input(
       destination: Destination {
         address: credential.from_verification_key(owner_verification_key_hash),
       },
-      is_legacy: 0,
-      is_virtual: 0,
     }
   Input {
     output_reference: OutputReference {
@@ -135,9 +133,9 @@ pub fn make_minting_data_input(
   }
 }
 
-pub fn make_handle_price_info_reference_input(
+pub fn make_handle_price_info_output(
   valid_handle_price_asset: (PolicyId, AssetName),
-) -> Input {
+) -> Output {
   let (policy_id, asset_name) = valid_handle_price_asset
   let handle_price_info: HandlePriceInfo =
     HandlePriceInfo {
@@ -146,18 +144,12 @@ pub fn make_handle_price_info_reference_input(
       updated_at: 0,
     }
 
-  Input {
-    output_reference: OutputReference {
-      transaction_id: TransactionId { hash: #"aaac" },
-      output_index: 0,
-    },
-    output: Output {
-      address: credential.from_verification_key(#"abab"),
-      value: value.zero()
-        |> value.add(policy_id, asset_name, 1),
-      datum: InlineDatum(handle_price_info),
-      reference_script: None,
-    },
+  Output {
+    address: credential.from_verification_key(#"abab"),
+    value: value.zero()
+      |> value.add(policy_id, asset_name, 1),
+    datum: InlineDatum(handle_price_info),
+    reference_script: None,
   }
 }
 

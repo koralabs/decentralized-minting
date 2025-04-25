@@ -1,5 +1,4 @@
-use aiken/list
-use aiken/transaction.{InlineDatum, Input, Output}
+use aiken/transaction.{InlineDatum, Output}
 use aiken/transaction/value.{AssetName, PolicyId}
 
 // This is the list of handles price
@@ -22,23 +21,20 @@ pub type HandlePriceInfo {
   updated_at: Int,
 }
 
-pub fn find_handle_price_info(
-  reference_inputs: List<Input>,
+pub fn resolve_handle_price_info(
+  output: Output,
   valid_handle_price_asset: (PolicyId, AssetName),
 ) -> HandlePriceInfo {
-  // get handle_price_info_input from index
-  // check output value has one of valid assets
-  expect Some(handle_price_info_input) =
-    list.find(
-      reference_inputs,
-      fn(input) {
-        let (policy_id, asset_name) = valid_handle_price_asset
-        value.quantity_of(input.output.value, policy_id, asset_name) == 1
-      },
-    )
+  let Output { datum: output_datum, value: output_value, .. } = output
+  let (policy_id, asset_name) = valid_handle_price_asset
 
-  let handle_price_info_output = handle_price_info_input.output
-  expect InlineDatum(inline_handle_price_info) = handle_price_info_output.datum
+  // check if output value has valid handle price asset
+  let has_valid_handle_price_asset =
+    value.quantity_of(output_value, policy_id, asset_name) == 1
+  expect has_valid_handle_price_asset
+
+  // resolve handle price info
+  expect InlineDatum(inline_handle_price_info) = output_datum
   expect handle_price_info: HandlePriceInfo = inline_handle_price_info
   handle_price_info
 }

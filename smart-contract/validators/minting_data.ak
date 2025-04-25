@@ -1,11 +1,14 @@
 use aiken/transaction.{ScriptContext, Spend}
 use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
-use validations/minting_data/types.{Proof}
-use validations/minting_data/validation.{can_mint_handles, can_update_mpt}
+use validations/minting_data/types.{LegacyHandleProof, NewHandleProof}
+use validations/minting_data/validation.{
+  can_mint_legacy_handles, can_mint_new_handles, can_update_mpt,
+}
 
 type MintingDataRedeemer {
-  MintHandles(List<Proof>, Int)
+  MintNewHandles(List<NewHandleProof>, Int)
+  MintLegacyHandles(List<LegacyHandleProof>)
   // Update MPT
   UpdateMPT
 }
@@ -40,13 +43,19 @@ validator(
     expect Spend(spending_output_reference) = purpose
 
     when redeemer is {
-      MintHandles(proofs, minter_index) ->
-        can_mint_handles(
+      MintNewHandles(proofs, minter_index) ->
+        can_mint_new_handles(
+          transaction,
+          spending_output_reference,
+          proofs,
+          minter_index,
+        )
+      MintLegacyHandles(proofs) ->
+        can_mint_legacy_handles(
           transaction,
           spending_output_reference,
           proofs,
           legacy_policy_id,
-          minter_index,
         )
       UpdateMPT -> can_update_mpt(transaction, admin_verification_key_hash)
     }

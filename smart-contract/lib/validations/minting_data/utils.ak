@@ -13,26 +13,21 @@ use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings_v1.{min_minter_fee, min_treasury_fee}
-use decentralized_minting/sub_handle.{
-  get_root_handle_settings, get_sub_handle_price,
-}
-use validations/minting_data/types.{Proof}
+use validations/minting_data/types.{LegacyHandleProof, NewHandleProof}
 
 const max_handle_length = 15
 
 const max_sub_handle_length = 28
 
-// This function also check handle_name is valid or not
+// This function checks only new handles orders are satisfied
 pub fn all_orders_are_satisfied(
   order_script_hash: ScriptHash,
   inputs: List<Input>,
   outputs: List<Output>,
-  reference_inputs: List<Input>,
-  new_policy_id: PolicyId,
-  legacy_policy_id: PolicyId,
+  policy_id: PolicyId,
   pz_script_address: Address,
   handle_price_info: HandlePriceInfo,
-  proofs: List<Proof>,
+  proofs: List<NewHandleProof>,
   root: mpt.MerklePatriciaForestry,
   expected_mint_value: Value,
   total_handles_price: Int,
@@ -49,39 +44,17 @@ pub fn all_orders_are_satisfied(
           // parse order datum
           expect InlineDatum(datum) = datum
           expect datum: OrderDatum = datum
-          let OrderDatum {
-            requested_handle,
-            destination,
-            is_legacy,
-            is_virtual,
-            ..
-          } = datum
-
-          let is_legacy_bool = parse_bool_from_int(is_legacy)
-          let is_virtual_bool = parse_bool_from_int(is_virtual)
-
-          // get minting policy id (new or legacy)
-          let minting_handle_policy_id =
-            get_minting_handle_policy_id(
-              is_legacy_bool,
-              legacy_policy_id,
-              new_policy_id,
-            )
+          let OrderDatum { requested_handle, destination, .. } = datum
 
           // parse proofs
           expect [proof, ..rest_proofs] = proofs
-          let Proof { mpt_proof, root_handle_settings_index } = proof
+          let NewHandleProof { mpt_proof } = proof
 
           // check handle validity and get price
           let handle_price =
-            check_handle_validity_and_get_price(
+            check_new_handle_validity_and_get_price(
               requested_handle,
-              is_virtual_bool,
               handle_price_info,
-              reference_inputs,
-              root_handle_settings_index,
-              new_policy_id,
-              legacy_policy_id,
             )
           //
           // update root
@@ -89,37 +62,34 @@ pub fn all_orders_are_satisfied(
           // for now we assume that all order is for minting (not burning)
           let new_root = update_root(root, requested_handle, 1, mpt_proof)
 
+          // check order input has enought lovelace for handle price
+          let order_input_lovelace =
+            value.quantity_of(
+              order_input.output.value,
+              ada_policy_id,
+              ada_asset_name,
+            )
+          let order_is_enough = order_input_lovelace >= handle_price
+          expect order_is_enough
+
           // extract ref & user output (or virtual output)
           // check minted assets are correctly sent to correct address
-          // and returns rest_outputs to continue processing
-          let rest_outputs: List<Output> =
+          // and returns rest_outputs and new_mint_value to continue processing
+          let (rest_outputs, new_mint_value) =
             check_ref_and_user_outputs(
-              order_input,
               outputs,
-              minting_handle_policy_id,
+              policy_id,
               requested_handle,
-              handle_price,
-              is_virtual_bool,
               pz_script_address,
               destination.address,
-            )
-
-          let new_mint_value =
-            update_mint_value(
               expected_mint_value,
-              minting_handle_policy_id,
-              requested_handle,
-              is_virtual_bool,
-              1,
             )
 
           all_orders_are_satisfied(
             order_script_hash,
             rest_inputs,
             rest_outputs,
-            reference_inputs,
-            new_policy_id,
-            legacy_policy_id,
+            policy_id,
             pz_script_address,
             handle_price_info,
             rest_proofs,
@@ -135,9 +105,7 @@ pub fn all_orders_are_satisfied(
             order_script_hash,
             rest_inputs,
             outputs,
-            reference_inputs,
-            new_policy_id,
-            legacy_policy_id,
+            policy_id,
             pz_script_address,
             handle_price_info,
             proofs,
@@ -147,6 +115,48 @@ pub fn all_orders_are_satisfied(
             continuation,
           )
       }
+    }
+  }
+}
+
+pub fn all_proofs_are_valid(
+  proofs: List<LegacyHandleProof>,
+  root: mpt.MerklePatriciaForestry,
+  legacy_policy_id: PolicyId,
+  expected_mint_value: Value,
+  continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
+) -> result {
+  when proofs is {
+    [] -> continuation(root, expected_mint_value)
+    [proof, ..rest_proofs] -> {
+      let LegacyHandleProof { mpt_proof, handle_name, is_virtual } = proof
+      let is_virtual_bool = parse_bool_from_int(is_virtual)
+
+      // check handle is valid
+      expect check_legacy_handle_validity(handle_name, is_virtual_bool)
+
+      // update root
+      // NOTE:
+      // for now we assume that all order is for minting (not burning)
+      let new_root = update_root(root, handle_name, 1, mpt_proof)
+
+      // update mint value
+      let new_mint_value =
+        update_mint_value(
+          expected_mint_value,
+          legacy_policy_id,
+          handle_name,
+          is_virtual_bool,
+          1,
+        )
+
+      all_proofs_are_valid(
+        rest_proofs,
+        new_root,
+        legacy_policy_id,
+        new_mint_value,
+        continuation,
+      )
     }
   }
 }
@@ -161,29 +171,38 @@ fn is_order_script_address(
   }
 }
 
-fn get_minting_handle_policy_id(
-  is_legacy_handle: Bool,
-  legacy_policy_id: PolicyId,
-  new_policy_id: PolicyId,
-) -> PolicyId {
-  when is_legacy_handle is {
-    True -> legacy_policy_id
-    False -> new_policy_id
-  }
-}
-
-// This function checks if handle is valid or not
+// This function checks if new handle is valid or not
 // and returns the price of the handle
 //
-pub fn check_handle_validity_and_get_price(
+pub fn check_new_handle_validity_and_get_price(
+  handle_name: ByteArray,
+  handle_price_info: HandlePriceInfo,
+) -> Int {
+  // parse handle name
+  // get root handle name and is sub handle
+  let (_root_handle_name, is_sub_handle, _sub_handle_name) =
+    parse_handle_name(handle_name)
+
+  // sub handle is not supported for new handles
+  expect !is_sub_handle
+
+  // check handle's length
+  let handle_length = bytearray.length(handle_name)
+  expect handle_length <= max_handle_length
+  expect handle_length > 0
+
+  let (current_price, prev_price) =
+    get_handle_price(handle_price_info, handle_length)
+
+  // we only consider the miniume price for user's sake
+  let handle_price = math.min(current_price, prev_price)
+  handle_price
+}
+
+pub fn check_legacy_handle_validity(
   handle_name: ByteArray,
   is_virtual: Bool,
-  handle_price_info: HandlePriceInfo,
-  reference_inputs: List<Input>,
-  root_handle_settings_index: Int,
-  new_policy_id: PolicyId,
-  legacy_policy_id: PolicyId,
-) -> Int {
+) -> Bool {
   // parse handle name
   // get root handle name and is sub handle
   let (root_handle_name, is_sub_handle, sub_handle_name) =
@@ -198,33 +217,63 @@ pub fn check_handle_validity_and_get_price(
     expect root_handle_length > 0
     expect sub_handle_length > 0
 
-    // get root handle settings from reference inputs
-    let root_handle_settings =
-      get_root_handle_settings(
-        reference_inputs,
-        root_handle_settings_index,
-        root_handle_name,
-        new_policy_id,
-        legacy_policy_id,
-      )
-
-    // get sub handle price
-    let sub_handle_price =
-      get_sub_handle_price(root_handle_settings, sub_handle_length, is_virtual)
-
-    sub_handle_price
+    True
   } else {
+    // only subhandle can be virtual
+    expect !is_virtual
+
     expect handle_length <= max_handle_length
     expect handle_length > 0
 
-    // if not sub handle, it should not be virtual
-    expect !is_virtual
-
-    let (current_price, prev_price) =
-      get_handle_price(handle_price_info, handle_length)
-    let handle_price = math.min(current_price, prev_price)
-    handle_price
+    True
   }
+}
+
+fn check_ref_and_user_outputs(
+  outputs: List<Output>,
+  policy_id: PolicyId,
+  handle_name: ByteArray,
+  pz_script_address: Address,
+  order_destination_address: Address,
+  mint_value: Value,
+) -> (List<Output>, Value) {
+  // make ref asset name and user asset name from handle_name
+  let ref_asset_name = bytearray.concat(prefix_100, handle_name)
+  let user_asset_name = bytearray.concat(prefix_222, handle_name)
+
+  // parse ref and user outputs
+  expect [ref_output, user_output, ..rest_outputs] = outputs
+  let Output {
+    address: ref_output_address,
+    value: ref_output_value,
+    reference_script: ref_output_reference_script,
+    ..
+  } = ref_output
+  let Output { address: user_output_address, value: user_output_value, .. } =
+    user_output
+
+  // check ref output
+  expect ref_output_address == pz_script_address
+  let expected_ref_value =
+    value.zero()
+      |> value.add(policy_id, ref_asset_name, 1)
+  expect value.without_lovelace(ref_output_value) == expected_ref_value
+  // ref asset's datum is set by minter
+  expect ref_output_reference_script == None
+
+  // check user output
+  expect user_output_address == order_destination_address
+  let user_output_value_has_handle =
+    value.quantity_of(user_output_value, policy_id, user_asset_name) == 1
+  expect user_output_value_has_handle
+
+  // update mint value
+  let new_mint_value =
+    mint_value
+      |> value.add(policy_id, ref_asset_name, 1)
+      |> value.add(policy_id, user_asset_name, 1)
+
+  (rest_outputs, new_mint_value)
 }
 
 fn update_root(
@@ -244,111 +293,20 @@ fn update_root(
   }
 }
 
-fn check_ref_and_user_outputs(
-  order_input: Input,
-  outputs: List<Output>,
-  minting_handle_policy_id: PolicyId,
-  requested_handle: ByteArray,
-  handle_price: Int,
-  is_virtual: Bool,
-  pz_script_address: Address,
-  order_destination_address: Address,
-) -> List<Output> {
-  // make ref asset name and user asset name from requested_handle
-  let virtual_asset_name = bytearray.concat(prefix_000, requested_handle)
-  let ref_asset_name = bytearray.concat(prefix_100, requested_handle)
-  let user_asset_name = bytearray.concat(prefix_222, requested_handle)
-
-  // check order input value
-  let order_input_lovelace =
-    value.quantity_of(order_input.output.value, ada_policy_id, ada_asset_name)
-  let order_is_enough = order_input_lovelace >= handle_price
-  expect order_is_enough
-
-  when is_virtual is {
-    True -> {
-      expect [virtual_output, ..rest_outputs] = outputs
-      let Output {
-        address: virtual_output_address,
-        value: virtual_output_value,
-        reference_script: virtual_output_reference_script,
-        ..
-      } = virtual_output
-
-      // check virtual output
-      expect virtual_output_address == pz_script_address
-      let expected_virtual_value =
-        value.zero()
-          |> value.add(minting_handle_policy_id, virtual_asset_name, 1)
-      expect
-        value.without_lovelace(virtual_output_value) == expected_virtual_value
-      // virtual asset's datum is set by minter
-      expect virtual_output_reference_script == None
-
-      rest_outputs
-    }
-    False -> {
-      expect [ref_output, user_output, ..rest_outputs] = outputs
-      let Output {
-        address: ref_output_address,
-        value: ref_output_value,
-        reference_script: ref_output_reference_script,
-        ..
-      } = ref_output
-      let Output { address: user_output_address, value: user_output_value, .. } =
-        user_output
-
-      // check ref output
-      expect ref_output_address == pz_script_address
-      let expected_ref_value =
-        value.zero()
-          |> value.add(minting_handle_policy_id, ref_asset_name, 1)
-      expect value.without_lovelace(ref_output_value) == expected_ref_value
-      // ref asset's datum is set by minter
-      expect ref_output_reference_script == None
-
-      // check user output
-      expect user_output_address == order_destination_address
-      // user output value = min_lovelace + minted handle (user)
-      let user_output_value_has_handle =
-        value.quantity_of(
-          user_output_value,
-          minting_handle_policy_id,
-          user_asset_name,
-        ) == 1
-      expect user_output_value_has_handle
-
-      rest_outputs
-    }
-  }
-}
-
 fn update_mint_value(
   mint_value: Value,
-  minting_policy_id: PolicyId,
+  policy_id: PolicyId,
   handle_name: ByteArray,
   is_virtual: Bool,
   amount: Int,
 ) -> Value {
   if is_virtual {
     mint_value
-      |> value.add(
-          minting_policy_id,
-          bytearray.concat(prefix_000, handle_name),
-          amount,
-        )
+      |> value.add(policy_id, bytearray.concat(prefix_000, handle_name), amount)
   } else {
     mint_value
-      |> value.add(
-          minting_policy_id,
-          bytearray.concat(prefix_100, handle_name),
-          amount,
-        )
-      |> value.add(
-          minting_policy_id,
-          bytearray.concat(prefix_222, handle_name),
-          amount,
-        )
+      |> value.add(policy_id, bytearray.concat(prefix_100, handle_name), amount)
+      |> value.add(policy_id, bytearray.concat(prefix_222, handle_name), amount)
   }
 }
 
