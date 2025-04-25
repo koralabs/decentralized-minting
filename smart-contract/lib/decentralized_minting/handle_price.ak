@@ -60,9 +60,9 @@ fn get_handle_price_from_price_data(
 
   if handle_length <= 2 {
     ultra_rare
-  } else if handle_length == 3 {
+  } else if handle_length <= 3 {
     rare
-  } else if handle_length == 7 {
+  } else if handle_length <= 7 {
     common
   } else {
     basic

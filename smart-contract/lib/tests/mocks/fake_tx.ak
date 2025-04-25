@@ -133,22 +133,24 @@ pub fn make_minting_data_input(
   }
 }
 
+pub fn make_handle_price_info() -> HandlePriceInfo {
+  HandlePriceInfo {
+    current_data: current_handle_price_data(),
+    prev_data: prev_handle_price_data(),
+    updated_at: 0,
+  }
+}
+
 pub fn make_handle_price_info_output(
   valid_handle_price_asset: (PolicyId, AssetName),
 ) -> Output {
   let (policy_id, asset_name) = valid_handle_price_asset
-  let handle_price_info: HandlePriceInfo =
-    HandlePriceInfo {
-      current_data: current_handle_price_data(),
-      prev_data: prev_handle_price_data(),
-      updated_at: 0,
-    }
 
   Output {
     address: credential.from_verification_key(#"abab"),
     value: value.zero()
       |> value.add(policy_id, asset_name, 1),
-    datum: InlineDatum(handle_price_info),
+    datum: InlineDatum(make_handle_price_info()),
     reference_script: None,
   }
 }
