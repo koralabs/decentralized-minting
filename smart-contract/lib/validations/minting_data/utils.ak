@@ -61,7 +61,7 @@ pub fn all_orders_are_satisfied(
           // for now we assume that all order is for minting (not burning)
           let new_root = update_root(root, requested_handle, 1, mpt_proof)
 
-          // check order input has enought lovelace for handle price
+          // check order input has enough lovelace for handle price
           let order_input_lovelace =
             value.quantity_of(
               order_input.output.value,
