@@ -1339,16 +1339,16 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
   // ======= mint many handles =======
 
-  // user_2 orders many handle - <10 random handles>
+  // user_2 orders many handle - <12 random handles>
   myTest(
-    "user_2 orders many handle - <10 random handles>",
+    "user_2 orders many handle - <12 random handles>",
     async ({ network, emulator, wallets, ordersDetail }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
       const { usersWallets } = wallets;
       const user1Wallet = usersWallets[0];
 
-      const handleNames = Array.from({ length: 10 }, () =>
+      const handleNames = Array.from({ length: 12 }, () =>
         getRandomString(8, 15)
       );
 
@@ -1379,9 +1379,9 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
-  // mint many handles - <10 random handles>
+  // mint many handles - <12 random handles>
   myTest(
-    "mint many handles - <10 random handles>",
+    "mint many handles - <12 random handles>",
     async ({
       mockedFunctions,
       db,
