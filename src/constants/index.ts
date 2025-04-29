@@ -33,7 +33,7 @@ export const PREFIX_000 = "00000000";
 /// (001) Root Handle Settings Prefix
 export const PREFIX_001 = "00001070";
 
-export const MIN_TREASURY_FEE = 2_000_000n;
+export const MIN_TREASURY_FEE = 1_000_000n;
 export const MIN_MINTER_FEE = 2_000_000n;
 
 // Contract names
@@ -49,4 +49,4 @@ export const LEGACY_POLICY_ID =
 
 export const SETTINGS_HANDLE_NAME = "demi@handle_settings";
 export const MINTING_DATA_HANDLE_NAME = "handle_root@handle_settings";
-export const HANDLE_PRICE_INFO_HANDLE_NAME = "price@handle_settings";
+export const HANDLE_PRICE_INFO_HANDLE_NAME = "kora@handle_prices";

@@ -32,6 +32,12 @@ import { prepareNewMintTransaction } from "./prepareNewMint.js";
  */
 interface MintNewHandlesParams {
   address: Address;
+  latestHandlePrices: {
+    basic: number;
+    common: number;
+    rare: number;
+    ultraRare: number;
+  };
   ordersTxInputs: TxInput[];
   db: Trie;
   blockfrostApiKey: string;
