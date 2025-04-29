@@ -24,7 +24,7 @@ import {
   getBlockfrostV0Client,
   invariant,
   mayFailTransaction,
-  mint,
+  //mint,
   MintingData,
   registerStakingAddress,
   request,
@@ -184,30 +184,33 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
               type: "text",
               message: "Address to perform minting all ordered handles",
             });
-            const txBuilderResult = await mint({
-              address: makeAddress(address),
-              ordersTxInputs: ordersTxInputsResult.data,
-              db: commandImpl.mpt!,
-              blockfrostApiKey: BLOCKFROST_API_KEY,
-            });
-            if (txBuilderResult.ok) {
-              const txResult = await mayFailTransaction(
-                txBuilderResult.data,
-                address,
-                await blockfrostV0Client.getUtxos(address)
-              ).complete();
-              if (txResult.ok) {
-                await handleTxResult(txResult.data);
-              } else {
-                console.error("\nFailed to make Transaction\n");
-                console.error(txResult.error);
-                console.error("\n");
-              }
-            } else {
-              console.error("\nFailed to build Transaction\n");
-              console.error(txBuilderResult.error);
-              console.error("\n");
-            }
+            throw new Error(
+              "Minting is not supported yet, please use mintNewHandles instead"
+            );
+            // const txBuilderResult = await mint({
+            //   address: makeAddress(address),
+            //   ordersTxInputs: ordersTxInputsResult.data,
+            //   db: commandImpl.mpt!,
+            //   blockfrostApiKey: BLOCKFROST_API_KEY,
+            // });
+            // if (txBuilderResult.ok) {
+            //   const txResult = await mayFailTransaction(
+            //     txBuilderResult.data,
+            //     address,
+            //     await blockfrostV0Client.getUtxos(address)
+            //   ).complete();
+            //   if (txResult.ok) {
+            //     await handleTxResult(txResult.data);
+            //   } else {
+            //     console.error("\nFailed to make Transaction\n");
+            //     console.error(txResult.error);
+            //     console.error("\n");
+            //   }
+            // } else {
+            //   console.error("\nFailed to build Transaction\n");
+            //   console.error(txBuilderResult.error);
+            //   console.error("\n");
+            // }
           },
           disabled: !commandImpl.mpt,
         },
@@ -233,8 +236,8 @@ const buildSettingsDataCbor = () => {
     ALLOWED_MINTERS,
     TREASURY_ADDRESS,
     PZ_SCRIPT_ADDRESS,
-    TREASURY_FEE,
-    MINTER_FEE,
+    TREASURY_FEE_PERCENTAGE,
+    HANDLE_PRICES_ASSETS,
   } = configs;
 
   const contractsConfig = buildContracts({
@@ -253,14 +256,13 @@ const buildSettingsDataCbor = () => {
   const settingsV1: SettingsV1 = {
     policy_id: contractsConfig.handlePolicyHash.toHex(),
     allowed_minters: ALLOWED_MINTERS,
+    valid_handle_price_assets: HANDLE_PRICES_ASSETS,
     treasury_address: TREASURY_ADDRESS,
-    treasury_fee: TREASURY_FEE,
-    minter_fee: MINTER_FEE,
+    treasury_fee_percentage: TREASURY_FEE_PERCENTAGE,
     pz_script_address: PZ_SCRIPT_ADDRESS,
     order_script_hash: ordersConfig.ordersValidatorHash.toHex(),
     minting_data_script_hash:
       mintingDataConfig.mintingDataValidatorHash.toHex(),
-    valid_handle_price_assets: [],
   };
   const settings: Settings = {
     mint_governor: mintV1Config.mintV1ValidatorHash.toHex(),

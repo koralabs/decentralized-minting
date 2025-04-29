@@ -8,8 +8,8 @@ import {
   makeListData,
   UplcData,
 } from "@helios-lang/uplc";
-import { invariant } from "helpers/index.js";
 
+import { invariant } from "../../helpers/index.js";
 import { HandlePriceData, HandlePriceInfo } from "../types/index.js";
 
 const buildHandlePriceInfoData = (

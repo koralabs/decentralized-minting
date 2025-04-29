@@ -1,4 +1,4 @@
-import { MIN_MINTER_FEE, MIN_TREASURY_FEE } from "../constants/index.js";
+import { MIN_TREASURY_FEE } from "../constants/index.js";
 import { HandlePriceInfo } from "../contracts/index.js";
 import { maxBigInt } from "./math.js";
 
@@ -7,13 +7,10 @@ const calculateTreasuryFeeAndMinterFee = (
   treasuryFeePercentage: bigint
 ): { treasuryFee: bigint; minterFee: bigint } => {
   const treasuryFee = maxBigInt(
-    (totalHandlePrice * treasuryFeePercentage) / 100n + 1n,
+    (totalHandlePrice * treasuryFeePercentage) / 100n,
     MIN_TREASURY_FEE
   );
-  const minterFee = maxBigInt(
-    (totalHandlePrice * (100n - treasuryFeePercentage)) / 100n + 1n,
-    MIN_MINTER_FEE
-  );
+  const minterFee = totalHandlePrice - treasuryFee;
   return { treasuryFee, minterFee };
 };
 

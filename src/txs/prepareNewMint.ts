@@ -8,7 +8,6 @@ import {
   makeValue,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
-import { HANDLE_PRICE_INFO_HANDLE_NAME } from "constants/index.js";
 import { Err, Ok, Result } from "ts-res";
 
 import {
@@ -16,6 +15,7 @@ import {
   fetchMintingData,
   fetchSettings,
 } from "../configs/index.js";
+import { HANDLE_PRICE_INFO_HANDLE_NAME } from "../constants/index.js";
 import {
   buildHandlePriceInfoData,
   buildMintingData,
@@ -45,6 +45,12 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 interface PrepareNewMintParams {
   address: Address;
   handles: NewHandle[];
+  latestHandlePrices: {
+    basic: number;
+    common: number;
+    rare: number;
+    ultraRare: number;
+  };
   db: Trie;
   blockfrostApiKey: string;
 }
@@ -68,7 +74,7 @@ const prepareNewMintTransaction = async (
     Error
   >
 > => {
-  const { address, handles, db, blockfrostApiKey } = params;
+  const { address, handles, db, blockfrostApiKey, latestHandlePrices } = params;
   const network = getNetwork(blockfrostApiKey);
   const isMainnet = network == "mainnet";
   if (address.era == "Byron")
@@ -213,11 +219,22 @@ const prepareNewMintTransaction = async (
   // <-- spend handle price info utxo
   txBuilder.spendUnsafe(handlePriceInfoAssetTxInput);
 
-  // <-- lock handle price info value with new root hash
+  // <-- lock handle price info value with handle prices
+  const newHandlePriceInfo: HandlePriceInfo = {
+    current_data: [
+      BigInt(latestHandlePrices.ultraRare * 1000000),
+      BigInt(latestHandlePrices.rare * 1000000),
+      BigInt(latestHandlePrices.common * 1000000),
+      BigInt(latestHandlePrices.basic * 1000000),
+    ],
+    prev_data: handlePriceInfo.prev_data,
+    updated_at: BigInt(Date.now()),
+  };
+
   txBuilder.payUnsafe(
     handlePriceInfoAssetTxInput.address,
     handlePriceInfoValue,
-    makeInlineTxOutputDatum(buildHandlePriceInfoData(handlePriceInfo))
+    makeInlineTxOutputDatum(buildHandlePriceInfoData(newHandlePriceInfo))
   );
 
   // <-- withdraw from mint v1 withdraw validator (script from reference input)
