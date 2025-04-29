@@ -21,7 +21,9 @@ import {
   buildMintingData,
   buildMintingDataMintNewHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
+  convertHandlePricesToHandlePriceData,
   HandlePriceInfo,
+  HandlePrices,
   makeVoidData,
   MintingData,
   MPTProof,
@@ -38,19 +40,15 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
  * @interface
  * @typedef {object} PrepareNewMintParams
  * @property {Address} address Wallet Address to perform mint
+ * @property {HandlePrices} latestHandlePrices Latest Handle Prices to update while minting
  * @property {NewHandle[]} handles New Handles to mint
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareNewMintParams {
   address: Address;
+  latestHandlePrices: HandlePrices;
   handles: NewHandle[];
-  latestHandlePrices: {
-    basic: number;
-    common: number;
-    rare: number;
-    ultraRare: number;
-  };
   db: Trie;
   blockfrostApiKey: string;
 }
@@ -221,12 +219,7 @@ const prepareNewMintTransaction = async (
 
   // <-- lock handle price info value with handle prices
   const newHandlePriceInfo: HandlePriceInfo = {
-    current_data: [
-      BigInt(latestHandlePrices.ultraRare * 1000000),
-      BigInt(latestHandlePrices.rare * 1000000),
-      BigInt(latestHandlePrices.common * 1000000),
-      BigInt(latestHandlePrices.basic * 1000000),
-    ],
+    current_data: convertHandlePricesToHandlePriceData(latestHandlePrices),
     prev_data: handlePriceInfo.prev_data,
     updated_at: BigInt(Date.now()),
   };

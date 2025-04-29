@@ -77,6 +77,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       emulator,
       wallets,
       ordersDetail,
+      handlePrices,
     }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -86,6 +87,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -250,6 +252,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       emulator,
       wallets,
       ordersDetail,
+      handlePrices,
     }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -260,6 +263,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -556,6 +560,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       emulator,
       wallets,
       ordersDetail,
+      handlePrices,
     }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -566,6 +571,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -703,7 +709,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
   // can not mint new handle, because that is sub handle - <demi-6@user_4>
   myTest(
     "can not mint new handle, because that is sub handle - <demi-6@user_4>",
-    async ({ db, wallets, ordersDetail }) => {
+    async ({ db, wallets, ordersDetail, handlePrices }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
       const { allowedMintersWallets } = wallets;
@@ -713,6 +719,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -805,7 +812,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
   // can not mint new handle, because that is too long - <abcdefghijklmnop>
   myTest(
     "can not mint new handle, because that is too long - <abcdefghijklmnop>",
-    async ({ db, wallets, ordersDetail }) => {
+    async ({ db, wallets, ordersDetail, handlePrices }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
       const { allowedMintersWallets } = wallets;
@@ -815,6 +822,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -1389,6 +1397,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       emulator,
       wallets,
       ordersDetail,
+      handlePrices,
     }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -1398,6 +1407,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
