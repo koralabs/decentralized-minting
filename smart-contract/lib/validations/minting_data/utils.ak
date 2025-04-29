@@ -2,13 +2,11 @@ use aiken/bytearray
 use aiken/math
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/credential.{
-  Address, ScriptCredential, VerificationKeyCredential,
-}
+use aiken/transaction/credential.{Address, ScriptCredential}
 use aiken/transaction/value.{PolicyId, Value, ada_asset_name, ada_policy_id}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
 use common/handle.{parse_handle_name}
-use common/hashes.{ScriptHash, VerificationKeyHash}
+use common/hashes.{ScriptHash}
 use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
@@ -327,15 +325,4 @@ pub fn calculate_treasury_fee_and_minter_fee(
       min_minter_fee,
     )
   (treasury_fee, minter_fee)
-}
-
-pub fn is_minter_address_match_with_verification_key_hash(
-  minter_output_address: Address,
-  allowed_minter: VerificationKeyHash,
-) -> Bool {
-  let Address { payment_credential, .. } = minter_output_address
-  when payment_credential is {
-    VerificationKeyCredential(vkh) -> vkh == allowed_minter
-    _ -> False
-  }
 }
