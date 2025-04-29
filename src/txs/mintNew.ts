@@ -15,6 +15,7 @@ import { PREFIX_100, PREFIX_222 } from "../constants/index.js";
 import {
   buildOrderExecuteRedeemer,
   decodeOrderDatum,
+  HandlePrices,
   makeVoidData,
   NewHandle,
 } from "../contracts/index.js";
@@ -26,18 +27,14 @@ import { prepareNewMintTransaction } from "./prepareNewMint.js";
  * @interface
  * @typedef {object} MintNewHandlesParams
  * @property {Address} address Wallet Address to perform mint
+ * @property {HandlePrices} latestHandlePrices Latest Handle Prices to update while minting
  * @property {TxInput[]} ordersTxInputs Orders UTxOs
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface MintNewHandlesParams {
   address: Address;
-  latestHandlePrices: {
-    basic: number;
-    common: number;
-    rare: number;
-    ultraRare: number;
-  };
+  latestHandlePrices: HandlePrices;
   ordersTxInputs: TxInput[];
   db: Trie;
   blockfrostApiKey: string;

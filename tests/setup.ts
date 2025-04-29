@@ -33,6 +33,7 @@ import {
   buildSettingsV1Data,
   DeployedScripts,
   HandlePriceInfo,
+  HandlePrices,
   init,
   MintingData,
   Settings,
@@ -198,6 +199,12 @@ const setup = async () => {
     current_data: [1_000_000_000n, 500_000_000n, 100_000_000n, 10_000_000n],
     prev_data: [1_000_000_000n, 500_000_000n, 80_000_000n, 5_000_000n],
     updated_at: BigInt(Date.now()),
+  };
+  const latestHandlePrices: HandlePrices = {
+    basic: 10,
+    common: 100,
+    rare: 500,
+    ultraRare: 1000,
   };
 
   // ============ prepare settings and minting data asset and handle price asset ============
@@ -411,6 +418,9 @@ const setup = async () => {
       pzWallet,
       treasuryWallet,
       usersWallets,
+    },
+    handlePrices: {
+      latestHandlePrices,
     },
     ordersDetail,
   };

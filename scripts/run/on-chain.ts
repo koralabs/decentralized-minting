@@ -26,6 +26,7 @@ import {
   mayFailTransaction,
   //mint,
   MintingData,
+  mintNewHandles,
   registerStakingAddress,
   request,
   Settings,
@@ -184,33 +185,36 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
               type: "text",
               message: "Address to perform minting all ordered handles",
             });
-            throw new Error(
-              "Minting is not supported yet, please use mintNewHandles instead"
-            );
-            // const txBuilderResult = await mint({
-            //   address: makeAddress(address),
-            //   ordersTxInputs: ordersTxInputsResult.data,
-            //   db: commandImpl.mpt!,
-            //   blockfrostApiKey: BLOCKFROST_API_KEY,
-            // });
-            // if (txBuilderResult.ok) {
-            //   const txResult = await mayFailTransaction(
-            //     txBuilderResult.data,
-            //     address,
-            //     await blockfrostV0Client.getUtxos(address)
-            //   ).complete();
-            //   if (txResult.ok) {
-            //     await handleTxResult(txResult.data);
-            //   } else {
-            //     console.error("\nFailed to make Transaction\n");
-            //     console.error(txResult.error);
-            //     console.error("\n");
-            //   }
-            // } else {
-            //   console.error("\nFailed to build Transaction\n");
-            //   console.error(txBuilderResult.error);
-            //   console.error("\n");
-            // }
+            const txBuilderResult = await mintNewHandles({
+              address: makeAddress(address),
+              latestHandlePrices: {
+                basic: 10,
+                common: 50,
+                rare: 100,
+                ultraRare: 500,
+              },
+              ordersTxInputs: ordersTxInputsResult.data,
+              db: commandImpl.mpt!,
+              blockfrostApiKey: BLOCKFROST_API_KEY,
+            });
+            if (txBuilderResult.ok) {
+              const txResult = await mayFailTransaction(
+                txBuilderResult.data,
+                address,
+                await blockfrostV0Client.getUtxos(address)
+              ).complete();
+              if (txResult.ok) {
+                await handleTxResult(txResult.data);
+              } else {
+                console.error("\nFailed to make Transaction\n");
+                console.error(txResult.error);
+                console.error("\n");
+              }
+            } else {
+              console.error("\nFailed to build Transaction\n");
+              console.error(txBuilderResult.error);
+              console.error("\n");
+            }
           },
           disabled: !commandImpl.mpt,
         },
