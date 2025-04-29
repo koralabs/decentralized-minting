@@ -5,7 +5,7 @@ import { makeAddress } from "@helios-lang/ledger";
 export const MINT_VERSION = 0n;
 export const LEGACY_POLICY_ID =
   "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a";
-export const GOD_VERIFICATION_KEY_HASH =
+export const ADMIN_VERIFICATION_KEY_HASH =
   "4da965a049dfd15ed1ee19fba6e2974a0b79fc416dd1796a1f97f5e1";
 // ------- End contract config -------
 
