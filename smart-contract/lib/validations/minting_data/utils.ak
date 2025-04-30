@@ -42,7 +42,7 @@ pub fn all_orders_are_satisfied(
           // parse order datum
           expect InlineDatum(datum) = datum
           expect datum: OrderDatum = datum
-          let OrderDatum { requested_handle, destination, .. } = datum
+          let OrderDatum { requested_handle, destination_address, .. } = datum
 
           // parse proofs
           expect [mpt_proof, ..rest_proofs] = proofs
@@ -78,7 +78,7 @@ pub fn all_orders_are_satisfied(
               policy_id,
               requested_handle,
               pz_script_address,
-              destination.address,
+              destination_address,
               expected_mint_value,
             )
 
@@ -231,7 +231,7 @@ fn check_ref_and_user_outputs(
   policy_id: PolicyId,
   handle_name: ByteArray,
   pz_script_address: Address,
-  order_destination_address: Address,
+  destination_address: Address,
   mint_value: Value,
 ) -> (List<Output>, Value) {
   // make ref asset name and user asset name from handle_name
@@ -259,7 +259,7 @@ fn check_ref_and_user_outputs(
   expect ref_output_reference_script == None
 
   // check user output
-  expect user_output_address == order_destination_address
+  expect user_output_address == destination_address
   let user_output_value_has_handle =
     value.quantity_of(user_output_value, policy_id, user_asset_name) == 1
   expect user_output_value_has_handle

@@ -9,7 +9,7 @@ use aiken/transaction/value.{AssetName, PolicyId, Value}
 use common/hashes.{ScriptHash, VerificationKeyHash}
 use decentralized_minting/handle_price.{HandlePriceInfo}
 use decentralized_minting/minting_data.{MintingData}
-use decentralized_minting/orders.{Destination, OrderDatum}
+use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings.{Settings}
 use decentralized_minting/settings_v1.{SettingsV1}
 use sundae/multisig.{Signature}
@@ -43,9 +43,9 @@ pub fn make_order_input(
     OrderDatum {
       owner: Signature(owner_verification_key_hash),
       requested_handle,
-      destination: Destination {
-        address: credential.from_verification_key(owner_verification_key_hash),
-      },
+      destination_address: credential.from_verification_key(
+        owner_verification_key_hash,
+      ),
     }
   Input {
     output_reference: OutputReference {
