@@ -1,12 +1,8 @@
 use aiken/transaction/credential.{Address}
 
-pub type Destination {
-  address: Address,
-}
-
 // OrderDatum now consists of owner (to close order), 
 // requested_handle (handle name - any string)
-// and destination (for now it is address)
+// and destination_address (for now it is address)
 // 
 // TODO:
 // In order datum, will have info for what kinda handle they mint (subhandle, root handle, ...)
@@ -18,7 +14,7 @@ pub type OrderDatum {
   // without asset name label
   requested_handle: ByteArray,
   // the payment credential in the address that the Handle should be sent to
-  destination: Destination,
+  destination_address: Address,
 }
 
 pub type OrderRedeemer {

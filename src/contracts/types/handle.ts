@@ -1,10 +1,10 @@
-import { Destination } from "./order.js";
+import { ShelleyAddress } from "@helios-lang/ledger";
 
 interface NewHandle {
   // without asset name label
   hexName: string;
   utf8Name: string;
-  destination: Destination;
+  destinationAddress: ShelleyAddress;
   minterFee: bigint;
   treasuryFee: bigint;
 }

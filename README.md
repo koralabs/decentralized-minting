@@ -103,3 +103,11 @@ So in real minting scenario, it will be more expensive.
 - Mem: 13070271 (93.3%)
 
 - CPU: 3927634235 (39.2%)
+
+## Handle Price Discounts (Not implemented yet)
+
+1. OG, UltraRare and Rare
+
+2. Project based (Project NFT policy id)
+
+3. Handle owner

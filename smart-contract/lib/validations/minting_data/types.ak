@@ -1,5 +1,6 @@
 use aiken/merkle_patricia_forestry as mpt
 
+// legacy handle proof
 // handle_name is the asset name of the handle in hex format
 //
 pub type LegacyHandleProof {
