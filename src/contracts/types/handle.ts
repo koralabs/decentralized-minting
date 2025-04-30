@@ -5,7 +5,8 @@ interface NewHandle {
   hexName: string;
   utf8Name: string;
   destination: Destination;
-  price: bigint;
+  minterFee: bigint;
+  treasuryFee: bigint;
 }
 
 interface LegacyHandle {

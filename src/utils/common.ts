@@ -1,18 +1,4 @@
-import { MIN_TREASURY_FEE } from "../constants/index.js";
 import { HandlePriceInfo } from "../contracts/index.js";
-import { maxBigInt } from "./math.js";
-
-const calculateTreasuryFeeAndMinterFee = (
-  totalHandlePrice: bigint,
-  treasuryFeePercentage: bigint
-): { treasuryFee: bigint; minterFee: bigint } => {
-  const treasuryFee = maxBigInt(
-    (totalHandlePrice * treasuryFeePercentage) / 100n,
-    MIN_TREASURY_FEE
-  );
-  const minterFee = totalHandlePrice - treasuryFee;
-  return { treasuryFee, minterFee };
-};
 
 const calculateHandlePriceFromHandlePriceInfo = (
   handle: string,
@@ -68,6 +54,5 @@ const parseHandle = (
 export {
   calculateHandlePriceFromHandlePriceInfo,
   calculateSubHandlePriceFromTierPricing,
-  calculateTreasuryFeeAndMinterFee,
   parseHandle,
 };

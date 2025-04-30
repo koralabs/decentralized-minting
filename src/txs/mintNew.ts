@@ -68,7 +68,8 @@ const mintNewHandles = async (
       ),
       hexName: decodedOrder.requested_handle,
       destination: decodedOrder.destination,
-      price: order.value.lovelace,
+      treasuryFee: order.value.lovelace,
+      minterFee: order.value.lovelace,
     };
   });
 

@@ -33,7 +33,6 @@ import {
   SettingsV1,
 } from "../contracts/index.js";
 import { getBlockfrostV0Client, getNetwork } from "../helpers/index.js";
-import { calculateTreasuryFeeAndMinterFee } from "../utils/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 
 /**
@@ -96,8 +95,7 @@ const prepareNewMintTransaction = async (
   if (!settingsResult.ok)
     return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
   const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
-  const { allowed_minters, treasury_address, treasury_fee_percentage } =
-    settingsV1;
+  const { allowed_minters, treasury_address } = settingsV1;
 
   const mintingDataResult = await fetchMintingData();
   if (!mintingDataResult.ok)
@@ -131,11 +129,8 @@ const prepareNewMintTransaction = async (
   }
 
   // calculate total handle price
-  const totalHandlePrice = handles.reduce((acc, cur) => acc + cur.price, 0n);
-  const { treasuryFee, minterFee } = calculateTreasuryFeeAndMinterFee(
-    totalHandlePrice,
-    treasury_fee_percentage
-  );
+  const treasuryFee = handles.reduce((acc, cur) => acc + cur.treasuryFee, 0n);
+  const minterFee = handles.reduce((acc, cur) => acc + cur.minterFee, 0n);
 
   // make Proofs for Minting Data V1 Redeemer
   const proofs: MPTProof[] = [];

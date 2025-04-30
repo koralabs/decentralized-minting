@@ -33,7 +33,7 @@ export const PREFIX_000 = "00000000";
 /// (001) Root Handle Settings Prefix
 export const PREFIX_001 = "00001070";
 
-export const MIN_TREASURY_FEE = 1_000_000n;
+export const MIN_TREASURY_FEE = 2_000_000n;
 export const MIN_MINTER_FEE = 2_000_000n;
 
 // Contract names
