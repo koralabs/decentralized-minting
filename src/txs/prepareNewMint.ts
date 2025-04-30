@@ -8,7 +8,6 @@ import {
   makeValue,
 } from "@helios-lang/ledger";
 import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
-import { HANDLE_PRICE_INFO_HANDLE_NAME } from "constants/index.js";
 import { Err, Ok, Result } from "ts-res";
 
 import {
@@ -16,12 +15,15 @@ import {
   fetchMintingData,
   fetchSettings,
 } from "../configs/index.js";
+import { HANDLE_PRICE_INFO_HANDLE_NAME } from "../constants/index.js";
 import {
   buildHandlePriceInfoData,
   buildMintingData,
   buildMintingDataMintNewHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
+  convertHandlePricesToHandlePriceData,
   HandlePriceInfo,
+  HandlePrices,
   makeVoidData,
   MintingData,
   MPTProof,
@@ -38,12 +40,14 @@ import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
  * @interface
  * @typedef {object} PrepareNewMintParams
  * @property {Address} address Wallet Address to perform mint
+ * @property {HandlePrices} latestHandlePrices Latest Handle Prices to update while minting
  * @property {NewHandle[]} handles New Handles to mint
  * @property {Trie} db Trie DB
  * @property {string} blockfrostApiKey Blockfrost API Key
  */
 interface PrepareNewMintParams {
   address: Address;
+  latestHandlePrices: HandlePrices;
   handles: NewHandle[];
   db: Trie;
   blockfrostApiKey: string;
@@ -68,7 +72,7 @@ const prepareNewMintTransaction = async (
     Error
   >
 > => {
-  const { address, handles, db, blockfrostApiKey } = params;
+  const { address, handles, db, blockfrostApiKey, latestHandlePrices } = params;
   const network = getNetwork(blockfrostApiKey);
   const isMainnet = network == "mainnet";
   if (address.era == "Byron")
@@ -213,11 +217,17 @@ const prepareNewMintTransaction = async (
   // <-- spend handle price info utxo
   txBuilder.spendUnsafe(handlePriceInfoAssetTxInput);
 
-  // <-- lock handle price info value with new root hash
+  // <-- lock handle price info value with handle prices
+  const newHandlePriceInfo: HandlePriceInfo = {
+    current_data: convertHandlePricesToHandlePriceData(latestHandlePrices),
+    prev_data: handlePriceInfo.prev_data,
+    updated_at: BigInt(Date.now()),
+  };
+
   txBuilder.payUnsafe(
     handlePriceInfoAssetTxInput.address,
     handlePriceInfoValue,
-    makeInlineTxOutputDatum(buildHandlePriceInfoData(handlePriceInfo))
+    makeInlineTxOutputDatum(buildHandlePriceInfoData(newHandlePriceInfo))
   );
 
   // <-- withdraw from mint v1 withdraw validator (script from reference input)

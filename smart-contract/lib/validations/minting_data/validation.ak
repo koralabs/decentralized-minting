@@ -15,7 +15,6 @@ use validations/minting_data/types.{LegacyHandleProof}
 use validations/minting_data/utils.{
   all_orders_are_satisfied, all_proofs_are_valid,
   calculate_treasury_fee_and_minter_fee,
-  is_minter_address_match_with_verification_key_hash,
 }
 
 // Validation:
@@ -150,16 +149,11 @@ pub fn can_mint_new_handles(
 
   // check minter output
   let Output {
-    address: minter_output_address,
     value: minter_output_value,
     datum: minter_output_datum,
     reference_script: minter_output_reference_script,
+    ..
   } = minter_output
-  expect
-    is_minter_address_match_with_verification_key_hash(
-      minter_output_address,
-      allowed_minter,
-    )
   expect minter_output_datum == InlineDatum(Void)
   expect value.lovelace_of(minter_output_value) >= minter_fee
   expect minter_output_reference_script == None

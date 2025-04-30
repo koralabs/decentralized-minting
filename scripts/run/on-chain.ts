@@ -24,8 +24,9 @@ import {
   getBlockfrostV0Client,
   invariant,
   mayFailTransaction,
-  mint,
+  //mint,
   MintingData,
+  mintNewHandles,
   registerStakingAddress,
   request,
   Settings,
@@ -184,8 +185,14 @@ const doOnChainActions = async (commandImpl: CommandImpl) => {
               type: "text",
               message: "Address to perform minting all ordered handles",
             });
-            const txBuilderResult = await mint({
+            const txBuilderResult = await mintNewHandles({
               address: makeAddress(address),
+              latestHandlePrices: {
+                basic: 10,
+                common: 50,
+                rare: 100,
+                ultraRare: 500,
+              },
               ordersTxInputs: ordersTxInputsResult.data,
               db: commandImpl.mpt!,
               blockfrostApiKey: BLOCKFROST_API_KEY,
@@ -233,8 +240,8 @@ const buildSettingsDataCbor = () => {
     ALLOWED_MINTERS,
     TREASURY_ADDRESS,
     PZ_SCRIPT_ADDRESS,
-    TREASURY_FEE,
-    MINTER_FEE,
+    TREASURY_FEE_PERCENTAGE,
+    HANDLE_PRICES_ASSETS,
   } = configs;
 
   const contractsConfig = buildContracts({
@@ -253,14 +260,13 @@ const buildSettingsDataCbor = () => {
   const settingsV1: SettingsV1 = {
     policy_id: contractsConfig.handlePolicyHash.toHex(),
     allowed_minters: ALLOWED_MINTERS,
+    valid_handle_price_assets: HANDLE_PRICES_ASSETS,
     treasury_address: TREASURY_ADDRESS,
-    treasury_fee: TREASURY_FEE,
-    minter_fee: MINTER_FEE,
+    treasury_fee_percentage: TREASURY_FEE_PERCENTAGE,
     pz_script_address: PZ_SCRIPT_ADDRESS,
     order_script_hash: ordersConfig.ordersValidatorHash.toHex(),
     minting_data_script_hash:
       mintingDataConfig.mintingDataValidatorHash.toHex(),
-    valid_handle_price_assets: [],
   };
   const settings: Settings = {
     mint_governor: mintV1Config.mintV1ValidatorHash.toHex(),

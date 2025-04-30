@@ -2,13 +2,11 @@ use aiken/bytearray
 use aiken/math
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/credential.{
-  Address, ScriptCredential, VerificationKeyCredential,
-}
+use aiken/transaction/credential.{Address, ScriptCredential}
 use aiken/transaction/value.{PolicyId, Value, ada_asset_name, ada_policy_id}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
 use common/handle.{parse_handle_name}
-use common/hashes.{ScriptHash, VerificationKeyHash}
+use common/hashes.{ScriptHash}
 use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
@@ -61,7 +59,7 @@ pub fn all_orders_are_satisfied(
           // for now we assume that all order is for minting (not burning)
           let new_root = update_root(root, requested_handle, 1, mpt_proof)
 
-          // check order input has enought lovelace for handle price
+          // check order input has enough lovelace for handle price
           let order_input_lovelace =
             value.quantity_of(
               order_input.output.value,
@@ -323,15 +321,4 @@ pub fn calculate_treasury_fee_and_minter_fee(
     )
   let minter_fee = total_handles_price - treasury_fee
   (treasury_fee, minter_fee)
-}
-
-pub fn is_minter_address_match_with_verification_key_hash(
-  minter_output_address: Address,
-  allowed_minter: VerificationKeyHash,
-) -> Bool {
-  let Address { payment_credential, .. } = minter_output_address
-  when payment_credential is {
-    VerificationKeyCredential(vkh) -> vkh == allowed_minter
-    _ -> False
-  }
 }

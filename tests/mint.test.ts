@@ -77,6 +77,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       emulator,
       wallets,
       ordersDetail,
+      handlePrices,
     }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -86,6 +87,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -250,6 +252,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       emulator,
       wallets,
       ordersDetail,
+      handlePrices,
     }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -260,6 +263,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -556,6 +560,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       emulator,
       wallets,
       ordersDetail,
+      handlePrices,
     }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -566,6 +571,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -703,7 +709,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
   // can not mint new handle, because that is sub handle - <demi-6@user_4>
   myTest(
     "can not mint new handle, because that is sub handle - <demi-6@user_4>",
-    async ({ db, wallets, ordersDetail }) => {
+    async ({ db, wallets, ordersDetail, handlePrices }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
       const { allowedMintersWallets } = wallets;
@@ -713,6 +719,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -805,7 +812,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
   // can not mint new handle, because that is too long - <abcdefghijklmnop>
   myTest(
     "can not mint new handle, because that is too long - <abcdefghijklmnop>",
-    async ({ db, wallets, ordersDetail }) => {
+    async ({ db, wallets, ordersDetail, handlePrices }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
       const { allowedMintersWallets } = wallets;
@@ -815,6 +822,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
@@ -1339,16 +1347,16 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
   // ======= mint many handles =======
 
-  // user_2 orders many handle - <10 random handles>
+  // user_2 orders many handle - <12 random handles>
   myTest(
-    "user_2 orders many handle - <10 random handles>",
+    "user_2 orders many handle - <12 random handles>",
     async ({ network, emulator, wallets, ordersDetail }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
       const { usersWallets } = wallets;
       const user1Wallet = usersWallets[0];
 
-      const handleNames = Array.from({ length: 10 }, () =>
+      const handleNames = Array.from({ length: 12 }, () =>
         getRandomString(8, 15)
       );
 
@@ -1379,9 +1387,9 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
     }
   );
 
-  // mint many handles - <10 random handles>
+  // mint many handles - <12 random handles>
   myTest(
-    "mint many handles - <10 random handles>",
+    "mint many handles - <12 random handles>",
     async ({
       mockedFunctions,
       db,
@@ -1389,6 +1397,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       emulator,
       wallets,
       ordersDetail,
+      handlePrices,
     }) => {
       invariant(Array.isArray(ordersDetail), "Orders detail is not an array");
 
@@ -1398,6 +1407,7 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
 
       const txBuilderResult = await mintNewHandles({
         address: allowedMinter1Wallet.address,
+        latestHandlePrices: handlePrices.latestHandlePrices,
         ordersTxInputs: ordersDetail.map((order) => order.txInput),
         db,
         blockfrostApiKey: "",
