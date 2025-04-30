@@ -59,8 +59,6 @@ pub const treasury_fee_percentage: Int = 90
 
 pub const min_treasury_fee: Int = 2_000_000
 
-pub const min_minter_fee: Int = 2_000_000
-
 // price info
 
 pub fn current_handle_price_data() -> List<Int> {

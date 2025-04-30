@@ -36,7 +36,7 @@ pub type SettingsV1 {
 // minting data asset must be spent from minting data script
 //
 // treasury fee: Math.max(total_handles_price * treasury_fee_percentage / 100n, min_treasury_fee)
-// minter fee: Math.max(total_handles_price * (100n - treasury_fee_percentage) / 100n, min_minter_fee)
+// minter fee: total_handles_price - treasury_fee
 
 pub fn get_allowed_minter_and_valid_handle_price_asset(
   allowed_minters: List<VerificationKeyHash>,
