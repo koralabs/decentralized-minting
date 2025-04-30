@@ -6,8 +6,6 @@ use common/hashes.{ScriptHash, VerificationKeyHash}
 // constants
 pub const min_treasury_fee: Int = 2_000_000
 
-pub const min_minter_fee: Int = 2_000_000
-
 pub type SettingsV1 {
   policy_id: PolicyId,
   // anyone who buy minting credit will be listed here

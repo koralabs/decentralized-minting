@@ -10,7 +10,7 @@ use common/hashes.{ScriptHash}
 use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
-use decentralized_minting/settings_v1.{min_minter_fee, min_treasury_fee}
+use decentralized_minting/settings_v1.{min_treasury_fee}
 use validations/minting_data/types.{LegacyHandleProof}
 
 const max_handle_length = 15
