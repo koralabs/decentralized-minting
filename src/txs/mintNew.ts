@@ -67,7 +67,7 @@ const mintNewHandles = async (
         "utf8"
       ),
       hexName: decodedOrder.requested_handle,
-      destination: decodedOrder.destination,
+      destinationAddress: decodedOrder.destination_address,
       treasuryFee: order.value.lovelace,
       minterFee: order.value.lovelace,
     };
@@ -95,7 +95,7 @@ const mintNewHandles = async (
   const mintingHandlesData = [];
   for (const orderTxInput of ordersTxInputs) {
     const decodedOrder = decodeOrderDatum(orderTxInput.datum, network);
-    const { destination, requested_handle } = decodedOrder;
+    const { destination_address, requested_handle } = decodedOrder;
     const utf8Name = Buffer.from(requested_handle, "hex").toString("utf8");
 
     const refHandleAssetClass = makeAssetClass(
@@ -124,7 +124,7 @@ const mintNewHandles = async (
       1n,
       makeAssets([[userHandleAssetClass, 1n]])
     );
-    const destinationAddress = destination.address;
+    const destinationAddress = destination_address;
 
     mintingHandlesData.push({
       orderTxInput,

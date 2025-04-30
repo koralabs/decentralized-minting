@@ -95,9 +95,7 @@ const request = async (
   const order: OrderDatum = {
     owner: makeSignatureMultiSigScriptData(address.spendingCredential),
     requested_handle: Buffer.from(handle).toString("hex"),
-    destination: {
-      address,
-    },
+    destination_address: address,
   };
 
   // start building tx
