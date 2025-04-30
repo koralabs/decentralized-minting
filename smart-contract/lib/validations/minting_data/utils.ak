@@ -321,11 +321,7 @@ pub fn calculate_treasury_fee_and_minter_fee(
       total_handles_price * treasury_fee_percentage / 100,
       min_treasury_fee,
     )
-  let minter_fee =
-    math.max(
-      total_handles_price * ( 100 - treasury_fee_percentage ) / 100,
-      min_minter_fee,
-    )
+  let minter_fee = total_handles_price - treasury_fee
   (treasury_fee, minter_fee)
 }
 
