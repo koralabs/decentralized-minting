@@ -1,4 +1,4 @@
-import { HandlePriceInfo } from "../contracts/index.js";
+import { HandlePriceInfo, HandlePrices } from "../contracts/index.js";
 
 const calculateHandlePriceFromHandlePriceInfo = (
   handle: string,
@@ -13,6 +13,20 @@ const calculateHandlePriceFromHandlePriceInfo = (
   if (handleLength <= 7) return current_data[2];
   if (handleLength <= 15) return current_data[3];
   return current_data[3];
+};
+
+const calculateHandlePriceFromHandlePrices = (
+  handle: string,
+  handlePrices: HandlePrices
+): number => {
+  const handleLength = handle.length;
+  if (handleLength <= 1)
+    throw new Error("Handle must be at least 2 characters");
+  if (handleLength <= 2) return handlePrices.ultraRare;
+  if (handleLength <= 3) return handlePrices.rare;
+  if (handleLength <= 7) return handlePrices.common;
+  if (handleLength <= 15) return handlePrices.basic;
+  return handlePrices.basic;
 };
 
 const calculateSubHandlePriceFromTierPricing = (
@@ -53,6 +67,7 @@ const parseHandle = (
 
 export {
   calculateHandlePriceFromHandlePriceInfo,
+  calculateHandlePriceFromHandlePrices,
   calculateSubHandlePriceFromTierPricing,
   parseHandle,
 };

@@ -936,7 +936,11 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // remove handle from DB as rollback
       for (const handleName of handleNames) await removeHandle(db, handleName);
 
-      assert(txResult.error.message.includes("value.merge"));
+      assert(
+        txResult.error.message.includes(
+          "expect value.from_minted_value(mint) == expected_mint_value"
+        )
+      );
     }
   );
 
@@ -1341,7 +1345,11 @@ describe.sequential("Koralab Decentralized Minting Tests", () => {
       // remove handle from DB as rollback
       for (const handleName of handleNames) await removeHandle(db, handleName);
 
-      assert(txResult.error.message.includes("value.merge"));
+      assert(
+        txResult.error.message.includes(
+          "expect value.from_minted_value(mint) == expected_mint_value"
+        )
+      );
     }
   );
 

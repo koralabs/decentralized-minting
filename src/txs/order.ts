@@ -17,6 +17,7 @@ import {
   buildOrderCancelRedeemer,
   buildOrderData,
   decodeOrderDatum,
+  HandlePrices,
   makeSignatureMultiSigScriptData,
   OrderDatum,
 } from "../contracts/index.js";
@@ -27,6 +28,7 @@ import {
 } from "../helpers/index.js";
 import {
   calculateHandlePriceFromHandlePriceInfo,
+  calculateHandlePriceFromHandlePrices,
   fetchDeployedScript,
 } from "../utils/index.js";
 
@@ -227,5 +229,51 @@ const fetchOrdersTxInputs = async (
   return Ok(orderUtxos);
 };
 
+/**
+ * @interface
+ * @typedef {object} IsValidOrderTxInputParams
+ * @property {NetworkName} network Network
+ * @property {TxInput} orderTxInput Order Tx Input
+ * @property {HandlePrices} prevHandlePrices Previous Handle Prices
+ * @property {HandlePrices} currentHandlePrices Current (Latest) Handle Prices
+ */
+interface IsValidOrderTxInputParams {
+  network: NetworkName;
+  orderTxInput: TxInput;
+  prevHandlePrices: HandlePrices;
+  currentHandlePrices: HandlePrices;
+}
+
+/**
+ * @description Check if the order tx input is valid
+ * @param {IsValidOrderTxInputParams} params
+ * @returns {Promise<Result<true, Error>>} Result
+ */
+const isValidOrderTxInput = async (
+  params: IsValidOrderTxInputParams
+): Promise<Result<true, Error>> => {
+  const { network, orderTxInput, prevHandlePrices, currentHandlePrices } =
+    params;
+
+  const orderDatumResult = mayFail(() =>
+    decodeOrderDatum(orderTxInput.datum, network)
+  );
+  if (!orderDatumResult.ok)
+    return Err(
+      new Error(`Failed to decode order datum: ${orderDatumResult.error}`)
+    );
+  const { requested_handle } = orderDatumResult.data;
+  const handleName = Buffer.from(requested_handle, "hex").toString("utf8");
+
+  const handlePrice = Math.min(
+    calculateHandlePriceFromHandlePrices(handleName, prevHandlePrices),
+    calculateHandlePriceFromHandlePrices(handleName, currentHandlePrices)
+  );
+  if (orderTxInput.value.lovelace < BigInt(handlePrice * 1_000_000))
+    return Err(new Error("Insufficient lovelace"));
+
+  return Ok(true);
+};
+
 export type { CancelParams, FetchOrdersTxInputsParams, RequestParams };
-export { cancel, fetchOrdersTxInputs, request };
+export { cancel, fetchOrdersTxInputs, isValidOrderTxInput, request };

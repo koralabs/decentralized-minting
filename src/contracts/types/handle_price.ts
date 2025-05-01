@@ -27,5 +27,19 @@ const convertHandlePricesToHandlePriceData = (
   ];
 };
 
+const convertHandlePriceDataToHandlePrices = (
+  handlePriceData: HandlePriceData
+): HandlePrices => {
+  return {
+    basic: Number(handlePriceData[0]) / 1_000_000,
+    common: Number(handlePriceData[1]) / 1_000_000,
+    rare: Number(handlePriceData[2]) / 1_000_000,
+    ultraRare: Number(handlePriceData[3]) / 1_000_000,
+  };
+};
+
 export type { HandlePriceData, HandlePriceInfo, HandlePrices };
-export { convertHandlePricesToHandlePriceData };
+export {
+  convertHandlePriceDataToHandlePrices,
+  convertHandlePricesToHandlePriceData,
+};
