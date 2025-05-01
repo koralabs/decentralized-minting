@@ -20,5 +20,4 @@ pub type OrderDatum {
 pub type OrderRedeemer {
   Execute
   Cancel
-  Refund
 }

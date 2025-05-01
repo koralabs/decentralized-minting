@@ -1,10 +1,8 @@
 use aiken/transaction.{ScriptContext, Spend, Transaction}
 use common/utils.{is_withdrawal_script_executed}
-use decentralized_minting/orders.{
-  Cancel, Execute, OrderDatum, OrderRedeemer, Refund,
-}
+use decentralized_minting/orders.{Cancel, Execute, OrderDatum, OrderRedeemer}
 use decentralized_minting/settings.{Settings, find_settings}
-use sundae/multisig.{MultisigScript, Signature}
+use sundae/multisig.{MultisigScript}
 
 validator {
   fn spend(
@@ -38,13 +36,6 @@ validator {
           validity_range,
           withdrawals,
         )
-      }
-      Refund -> {
-        expect owner: MultisigScript = datum.owner
-        when owner is {
-          Signature(owner_key_hash) -> True
-          _ -> False
-        }
       }
     }
   }
