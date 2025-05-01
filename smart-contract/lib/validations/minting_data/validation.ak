@@ -159,11 +159,7 @@ pub fn can_mint_new_handles(
   expect minter_output_reference_script == None
 
   // check minted handles
-  expect
-    value.merge(
-      value.from_minted_value(mint),
-      value.negate(expected_mint_value),
-    ) == value.zero()
+  expect value.from_minted_value(mint) == expected_mint_value
 
   True
 }
@@ -219,11 +215,7 @@ pub fn can_mint_legacy_handles(
   expect minting_data_output.reference_script == None
 
   // check minted handles
-  expect
-    value.merge(
-      value.from_minted_value(mint),
-      value.negate(expected_mint_value),
-    ) == value.zero()
+  expect value.from_minted_value(mint) == expected_mint_value
 
   True
 }
