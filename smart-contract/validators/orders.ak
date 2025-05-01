@@ -2,7 +2,7 @@ use aiken/transaction.{ScriptContext, Spend, Transaction}
 use common/utils.{is_withdrawal_script_executed}
 use decentralized_minting/orders.{Cancel, Execute, OrderDatum, OrderRedeemer}
 use decentralized_minting/settings.{Settings, find_settings}
-use sundae/multisig.{MultisigScript}
+use sundae/multisig
 
 validator {
   fn spend(
@@ -28,7 +28,7 @@ validator {
         is_withdrawal_script_executed(withdrawals, mint_governor)
       }
       Cancel -> {
-        expect owner: MultisigScript = datum.owner
+        expect owner: multisig.MultisigScript = datum.owner
         // Defer to sundae.multisig
         multisig.satisfied(
           owner,
