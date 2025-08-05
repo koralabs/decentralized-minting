@@ -24,7 +24,6 @@ import {
   getBlockfrostV0Client,
   invariant,
   mayFailTransaction,
-  //mint,
   MintingData,
   mintNewHandles,
   registerStakingAddress,
