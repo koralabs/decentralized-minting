@@ -13,7 +13,7 @@ import { Err, Ok, Result } from "ts-res";
 
 import { PREFIX_100, PREFIX_222 } from "../constants/index.js";
 import {
-  buildOrderExecuteRedeemer,
+  buildOrdersExecuteOrdersRedeemer,
   decodeOrderDatum,
   HandlePrices,
   makeVoidData,
@@ -62,12 +62,11 @@ const mintNewHandles = async (
 
   const orderedHandles: NewHandle[] = ordersTxInputs.map((order) => {
     const decodedOrder = decodeOrderDatum(order.datum, network);
+    const { handle_name, destination_address } = decodedOrder;
     return {
-      utf8Name: Buffer.from(decodedOrder.requested_handle, "hex").toString(
-        "utf8"
-      ),
-      hexName: decodedOrder.requested_handle,
-      destinationAddress: decodedOrder.destination_address,
+      utf8Name: Buffer.from(handle_name, "hex").toString("utf8"),
+      hexName: handle_name,
+      destinationAddress: destination_address,
       treasuryFee: order.value.lovelace,
       minterFee: order.value.lovelace,
     };
@@ -95,16 +94,16 @@ const mintNewHandles = async (
   const mintingHandlesData = [];
   for (const orderTxInput of ordersTxInputs) {
     const decodedOrder = decodeOrderDatum(orderTxInput.datum, network);
-    const { destination_address, requested_handle } = decodedOrder;
-    const utf8Name = Buffer.from(requested_handle, "hex").toString("utf8");
+    const { handle_name, destination_address } = decodedOrder;
+    const utf8Name = Buffer.from(handle_name, "hex").toString("utf8");
 
     const refHandleAssetClass = makeAssetClass(
       newPolicyHash,
-      `${PREFIX_100}${requested_handle}`
+      `${PREFIX_100}${handle_name}`
     );
     const userHandleAssetClass = makeAssetClass(
       newPolicyHash,
-      `${PREFIX_222}${requested_handle}`
+      `${PREFIX_222}${handle_name}`
     );
 
     const lovelace = orderTxInput.value.lovelace;
@@ -160,7 +159,7 @@ const mintNewHandles = async (
     } = mintingHandle;
 
     txBuilder
-      .spendUnsafe(orderTxInput, buildOrderExecuteRedeemer())
+      .spendUnsafe(orderTxInput, buildOrdersExecuteOrdersRedeemer())
       // TODO:
       // Add Personalization Datum
       .payUnsafe(settingsV1.pz_script_address, refHandleValue)

@@ -15,19 +15,12 @@ import {
   getOrdersSpendUplcProgram,
 } from "./validators.js";
 
-/**
- * @interface
- * @typedef {object} BuildContractsParams
- * @property {NetworkName} network Cardano Network
- * @property {bigint} mint_version De-Mi version
- * @property {string} legacy_policy_id Legacy Handle's Policy ID
- * @property {string} admin_verification_key_hash Admin Verification Key Hash
- */
 interface BuildContractsParams {
   network: NetworkName;
   mint_version: bigint;
   legacy_policy_id: string;
   admin_verification_key_hash: string;
+  orders_randomizer?: string;
 }
 
 /**
@@ -41,6 +34,7 @@ const buildContracts = (params: BuildContractsParams) => {
     mint_version,
     legacy_policy_id,
     admin_verification_key_hash,
+    orders_randomizer = "",
   } = params;
   const isMainnet = network == "mainnet";
 
@@ -80,7 +74,7 @@ const buildContracts = (params: BuildContractsParams) => {
   );
 
   // "orders.spend"
-  const ordersSpendUplcProgram = getOrdersSpendUplcProgram();
+  const ordersSpendUplcProgram = getOrdersSpendUplcProgram(orders_randomizer);
   const ordersValidatorHash = makeValidatorHash(ordersSpendUplcProgram.hash());
   const ordersValidatorAddress = makeAddress(isMainnet, ordersValidatorHash);
 

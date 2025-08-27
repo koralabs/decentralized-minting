@@ -37,12 +37,12 @@ pub fn make_output_with_datum(
 
 pub fn make_order_input(
   owner_verification_key_hash: VerificationKeyHash,
-  requested_handle: ByteArray,
+  handle_name: ByteArray,
 ) -> Input {
   let order: OrderDatum =
     OrderDatum {
       owner: Signature(owner_verification_key_hash),
-      requested_handle,
+      handle_name,
       destination_address: credential.from_verification_key(
         owner_verification_key_hash,
       ),

@@ -14,8 +14,8 @@ import { Err, Ok, Result } from "ts-res";
 import { fetchHandlePriceInfoData } from "../configs/index.js";
 import { HANDLE_PRICE_INFO_HANDLE_NAME } from "../constants/index.js";
 import {
-  buildOrderCancelRedeemer,
   buildOrderData,
+  buildOrdersCancelOrderRedeemer,
   decodeOrderDatum,
   HandlePrices,
   makeSignatureMultiSigScriptData,
@@ -96,7 +96,7 @@ const request = async (
 
   const order: OrderDatum = {
     owner: makeSignatureMultiSigScriptData(address.spendingCredential),
-    requested_handle: Buffer.from(handle).toString("hex"),
+    handle_name: Buffer.from(handle).toString("hex"),
     destination_address: address,
   };
 
@@ -172,7 +172,7 @@ const cancel = async (
   txBuilder.attachUplcProgram(orderUplcProgram);
 
   // <-- spend order tx input
-  txBuilder.spendUnsafe(orderTxInput, buildOrderCancelRedeemer());
+  txBuilder.spendUnsafe(orderTxInput, buildOrdersCancelOrderRedeemer());
 
   // <-- add signer
   txBuilder.addSigners(address.spendingCredential);
@@ -262,8 +262,8 @@ const isValidOrderTxInput = async (
     return Err(
       new Error(`Failed to decode order datum: ${orderDatumResult.error}`)
     );
-  const { requested_handle } = orderDatumResult.data;
-  const handleName = Buffer.from(requested_handle, "hex").toString("utf8");
+  const { handle_name } = orderDatumResult.data;
+  const handleName = Buffer.from(handle_name, "hex").toString("utf8");
 
   const handlePrice = Math.min(
     calculateHandlePriceFromHandlePrices(handleName, prevHandlePrices),

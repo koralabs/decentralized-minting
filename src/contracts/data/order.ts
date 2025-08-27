@@ -24,9 +24,7 @@ const decodeOrderDatum = (
   const orderConstrData = expectConstrData(datumData, 0, 3);
 
   const owner = orderConstrData.fields[0];
-  const requested_handle = expectByteArrayData(
-    orderConstrData.fields[1]
-  ).toHex();
+  const handle_name = expectByteArrayData(orderConstrData.fields[1]).toHex();
   const destination_address = decodeAddressFromData(
     orderConstrData.fields[2],
     network
@@ -34,31 +32,31 @@ const decodeOrderDatum = (
 
   return {
     owner,
-    requested_handle,
+    handle_name,
     destination_address,
   };
 };
 
 const buildOrderData = (order: OrderDatum): UplcData => {
-  const { owner, destination_address, requested_handle } = order;
+  const { owner, handle_name, destination_address } = order;
   return makeConstrData(0, [
     owner,
-    makeByteArrayData(requested_handle),
+    makeByteArrayData(handle_name),
     buildAddressData(destination_address),
   ]);
 };
 
-const buildOrderExecuteRedeemer = (): UplcData => {
+const buildOrdersExecuteOrdersRedeemer = (): UplcData => {
   return makeConstrData(0, []);
 };
 
-const buildOrderCancelRedeemer = (): UplcData => {
+const buildOrdersCancelOrderRedeemer = (): UplcData => {
   return makeConstrData(1, []);
 };
 
 export {
-  buildOrderCancelRedeemer,
   buildOrderData,
-  buildOrderExecuteRedeemer,
+  buildOrdersCancelOrderRedeemer,
+  buildOrdersExecuteOrdersRedeemer,
   decodeOrderDatum,
 };

@@ -1,27 +1,65 @@
-# Update Scripts
+## How to use De Mi Interactive CLI
 
-## When update `minting_data` spending script
+- This is an interactive CLI to simulate Decentralized Minting Process.
 
-1. Run `deploy` command
+From requesting orders as User and run mint engine as allowed minter.
 
-This will return json.
+- This CLI is also used to deploy
 
-The `scriptAddress` is the address of the new `minting_data` script.
+### Set up configuration files
 
-2. Spend `handle_root@handle_settings` from old `minting_data` script and send that to new `minting_data` script
+You need to set up configuration variables.
 
-- Must attach correct MPT root hash to `handle_root@handle_settings`
+- `MINT_VERSION`: The version of the minting policy.
 
-3. Deploy new `minting_data` script
+- `LEGACY_POLICY_ID`: The policy ID of the legacy minting policy.
 
-- Update script attached to `mint_data_v1@demi_scripts` handle
+`"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"`
 
-Spend that handle from multisig wallet and send it again with updated reference script.
+- `ADMIN_VERIFICATION_KEY_HASH`: The verification key hash of the Admin role.
 
-4. Update demi settings datum
+This GOD Role is used in Minting Data smart contract.
 
-- Run `settings` script to get new settings datum cbor
+- `SETTINGS_ASSET_CLASS`: The asset class of the settings.
 
-- Update settings attached to `demi@handle_settings`
+`"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14064656d694068616e646c655f73657474696e6773"`
 
-- Spend `demi@handle_settings` from multisig wallet and sent it again with updated datum
+This is Legacy handle `demi@handle_settings`
+
+- `MINTING_DATA_ASSET_CLASS`: The asset class of the minting data.
+
+`"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14068616e646c655f726f6f744068616e646c655f73657474696e6773"`
+
+This is Legacy Handle `handle_root@handle_settings`
+
+- `ALLOWED_MINTERS`: The list of allowed minters.
+
+Verification Keys who are allowed to mint handles.
+
+- `TREASURY_ADDRESS`: The address of the treasury.
+
+Treasury address is use to collect fee
+
+- `PZ_SCRIPT_ADDRESS`: The address of the personalization script.
+
+Reference Handle Asset must be sent to PZ script.
+
+- `TREASURY_FEE`: The fee of the treasury.
+
+- `MINTER_FEE`: The fee of the minter.
+
+### Deploy Smart contracts
+
+- Start De-Mi CLI
+
+```bash
+npm run start # start:preview | start:preprod
+```
+
+- Pick actions
+
+`on-chain` -> `deploy` -> select contract to deploy
+
+- Register Staking Addresses
+
+`on-chain` -> `staking-addresses` -> select contract to register

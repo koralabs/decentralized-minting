@@ -7,7 +7,7 @@ use aiken/transaction/value.{PolicyId, Value, ada_asset_name, ada_policy_id}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
 use common/handle.{parse_handle_name}
 use common/hashes.{ScriptHash}
-use common/utils.{parse_bool_from_int}
+use common/utils.{parse_int_to_bool}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings_v1.{min_treasury_fee}
@@ -42,7 +42,7 @@ pub fn all_orders_are_satisfied(
           // parse order datum
           expect InlineDatum(datum) = datum
           expect datum: OrderDatum = datum
-          let OrderDatum { requested_handle, destination_address, .. } = datum
+          let OrderDatum { handle_name, destination_address, .. } = datum
 
           // parse proofs
           expect [mpt_proof, ..rest_proofs] = proofs
@@ -50,14 +50,14 @@ pub fn all_orders_are_satisfied(
           // check handle validity and get price
           let handle_price =
             check_new_handle_validity_and_get_price(
-              requested_handle,
+              handle_name,
               handle_price_info,
             )
           //
           // update root
           // NOTE:
           // for now we assume that all order is for minting (not burning)
-          let new_root = update_root(root, requested_handle, 1, mpt_proof)
+          let new_root = update_root(root, handle_name, 1, mpt_proof)
 
           // check order input has enough lovelace for handle price
           let order_input_lovelace =
@@ -76,7 +76,7 @@ pub fn all_orders_are_satisfied(
             check_ref_and_user_outputs(
               outputs,
               policy_id,
-              requested_handle,
+              handle_name,
               pz_script_address,
               destination_address,
               expected_mint_value,
@@ -127,7 +127,7 @@ pub fn all_proofs_are_valid(
     [] -> continuation(root, expected_mint_value)
     [proof, ..rest_proofs] -> {
       let LegacyHandleProof { mpt_proof, handle_name, is_virtual } = proof
-      let is_virtual_bool = parse_bool_from_int(is_virtual)
+      let is_virtual_bool = parse_int_to_bool(is_virtual)
 
       // check handle is valid
       expect check_legacy_handle_validity(handle_name, is_virtual_bool)
