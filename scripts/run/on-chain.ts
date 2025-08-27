@@ -320,8 +320,12 @@ const getStakingAddresses = () => {
 
 const doDeployActions = async () => {
   const configs = GET_CONFIGS(NETWORK as NetworkName);
-  const { MINT_VERSION, LEGACY_POLICY_ID, ADMIN_VERIFICATION_KEY_HASH } =
-    configs;
+  const {
+    MINT_VERSION,
+    LEGACY_POLICY_ID,
+    ADMIN_VERIFICATION_KEY_HASH,
+    ORDERS_RANDOMIZER,
+  } = configs;
 
   let finished: boolean = false;
   while (!finished) {
@@ -340,6 +344,7 @@ const doDeployActions = async () => {
               mintVersion: MINT_VERSION,
               legacyPolicyId: LEGACY_POLICY_ID,
               adminVerificationKeyHash: ADMIN_VERIFICATION_KEY_HASH,
+              ordersRandomizer: ORDERS_RANDOMIZER,
             });
 
             const { filepath } = await prompts({

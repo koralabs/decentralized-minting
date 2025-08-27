@@ -344,7 +344,7 @@ export default {
               $ref: "#/definitions/Data",
             },
             {
-              title: "requested_handle",
+              title: "handle_name",
               $ref: "#/definitions/ByteArray",
             },
             {

@@ -5,6 +5,9 @@ const calculateHandlePriceFromHandlePriceInfo = (
   handlePriceInfo: HandlePriceInfo
 ): bigint => {
   const { current_data } = handlePriceInfo;
+  if (current_data.length < 4) {
+    throw new Error("Current Handle Price Data is invalid. Must have 4 items");
+  }
   const handleLength = handle.length;
   if (handleLength <= 1)
     throw new Error("Handle must be at least 2 characters");

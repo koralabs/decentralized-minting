@@ -58,6 +58,17 @@ const makeMintingDataUplcProgramParameterDatum = (
   );
 };
 
+const makeOrdersUplcProgramParameter = (randomizer: string): UplcValue[] => {
+  console.log({ randomizer });
+  return [makeUplcDataValue(makeByteArrayData(randomizer))];
+};
+
+const makeOrdersUplcProgramParameterDatum = (
+  randomizer: string
+): InlineTxOutputDatum => {
+  return makeInlineTxOutputDatum(makeListData([makeByteArrayData(randomizer)]));
+};
+
 export {
   makeMintingDataUplcProgramParameter,
   makeMintingDataUplcProgramParameterDatum,
@@ -65,4 +76,6 @@ export {
   makeMintProxyUplcProgramParameterDatum,
   makeMintV1UplcProgramParameter,
   makeMintV1UplcProgramParameterDatum,
+  makeOrdersUplcProgramParameter,
+  makeOrdersUplcProgramParameterDatum,
 };

@@ -10,24 +10,17 @@ import {
   makeMintingDataUplcProgramParameterDatum,
   makeMintProxyUplcProgramParameterDatum,
   makeMintV1UplcProgramParameterDatum,
+  makeOrdersUplcProgramParameterDatum,
 } from "../contracts/index.js";
 import { convertError, invariant } from "../helpers/index.js";
 import { fetchDeployedScript } from "../utils/contract.js";
 
-/**
- * @interface
- * @typedef {object} DeployParams
- * @property {NetworkName} network Network
- * @property {bigint} mintVersion Mint Version - Parameter in Mint Proxy validator
- * @property {string} legacyPolicyId Legacy Handle's Policy ID
- * @property {string} adminVerificationKeyHash Admin Verification Key  Hash - Parameter in Minting Data V1 Validator
- * @property {string} contractName Contract Name to Deploy
- */
 interface DeployParams {
   network: NetworkName;
   mintVersion: bigint;
   legacyPolicyId: string;
   adminVerificationKeyHash: string;
+  ordersRandomizer?: string;
   contractName: string;
 }
 
@@ -52,6 +45,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
     mintVersion,
     legacyPolicyId,
     adminVerificationKeyHash,
+    ordersRandomizer = "",
     contractName,
   } = params;
 
@@ -80,6 +74,19 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         validatorHash: mintProxyConfig.mintProxyPolicyHash.toHex(),
         policyId: mintProxyConfig.mintProxyPolicyHash.toHex(),
       };
+    case "mint_v1.withdraw":
+      return {
+        ...extractScriptCborsFromUplcProgram(
+          mintV1Config.mintV1WithdrawUplcProgram
+        ),
+        datumCbor: bytesToHex(
+          makeMintV1UplcProgramParameterDatum(
+            mintingDataConfig.mintingDataValidatorHash.toHex()
+          ).data.toCbor()
+        ),
+        validatorHash: mintV1Config.mintV1ValidatorHash.toHex(),
+        scriptStakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
+      };
     case "minting_data.spend":
       return {
         ...extractScriptCborsFromUplcProgram(
@@ -94,23 +101,13 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         validatorHash: mintingDataConfig.mintingDataValidatorHash.toHex(),
         scriptAddress: mintingDataConfig.mintingDataValidatorAddress.toBech32(),
       };
-    case "mint_v1.withdraw":
-      return {
-        ...extractScriptCborsFromUplcProgram(
-          mintV1Config.mintV1WithdrawUplcProgram
-        ),
-        datumCbor: bytesToHex(
-          makeMintV1UplcProgramParameterDatum(
-            mintingDataConfig.mintingDataValidatorHash.toHex()
-          ).data.toCbor()
-        ),
-        validatorHash: mintV1Config.mintV1ValidatorHash.toHex(),
-        scriptStakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
-      };
     case "orders.spend":
       return {
         ...extractScriptCborsFromUplcProgram(
           ordersConfig.ordersSpendUplcProgram
+        ),
+        datumCbor: bytesToHex(
+          makeOrdersUplcProgramParameterDatum(ordersRandomizer).data.toCbor()
         ),
         validatorHash: ordersConfig.ordersValidatorHash.toHex(),
         scriptAddress: ordersConfig.ordersValidatorAddress.toBech32(),
