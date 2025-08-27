@@ -1,21 +1,21 @@
-use common/utils.{parse_bool_from_int}
+use common/utils.{parse_int_to_bool}
 
-test parse_bool_from_int_0() {
-  False == parse_bool_from_int(0)
+test parse_int_to_bool_0() {
+  False == parse_int_to_bool(0)
 }
 
-test parse_bool_from_int_1() {
-  True == parse_bool_from_int(1)
+test parse_int_to_bool_1() {
+  True == parse_int_to_bool(1)
 }
 
-test parse_bool_from_int_negative() fail {
-  parse_bool_from_int(-1)
+test parse_int_to_bool_negative() fail {
+  parse_int_to_bool(-1)
 }
 
-test parse_bool_from_int_2() fail {
-  parse_bool_from_int(2)
+test parse_int_to_bool_2() fail {
+  parse_int_to_bool(2)
 }
 
-test parse_bool_from_int_large() fail {
-  parse_bool_from_int(100)
+test parse_int_to_bool_large() fail {
+  parse_int_to_bool(100)
 }

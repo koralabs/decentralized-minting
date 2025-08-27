@@ -7,7 +7,7 @@ use aiken/transaction/value.{PolicyId, Value, ada_asset_name, ada_policy_id}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
 use common/handle.{parse_handle_name}
 use common/hashes.{ScriptHash}
-use common/utils.{parse_bool_from_int}
+use common/utils.{parse_int_to_bool}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings_v1.{min_treasury_fee}
@@ -127,7 +127,7 @@ pub fn all_proofs_are_valid(
     [] -> continuation(root, expected_mint_value)
     [proof, ..rest_proofs] -> {
       let LegacyHandleProof { mpt_proof, handle_name, is_virtual } = proof
-      let is_virtual_bool = parse_bool_from_int(is_virtual)
+      let is_virtual_bool = parse_int_to_bool(is_virtual)
 
       // check handle is valid
       expect check_legacy_handle_validity(handle_name, is_virtual_bool)

@@ -16,8 +16,3 @@ pub type OrderDatum {
   // the payment credential in the address that the Handle should be sent to
   destination_address: Address,
 }
-
-pub type OrderRedeemer {
-  Execute
-  Cancel
-}

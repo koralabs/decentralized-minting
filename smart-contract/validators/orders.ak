@@ -1,42 +1,32 @@
-use aiken/transaction.{ScriptContext, Spend, Transaction}
-use common/utils.{is_withdrawal_script_executed}
-use decentralized_minting/orders.{Cancel, Execute, OrderDatum, OrderRedeemer}
-use decentralized_minting/settings.{Settings, find_settings}
-use sundae/multisig
+use aiken/transaction.{ScriptContext, Spend}
+use decentralized_minting/orders.{OrderDatum}
+use validations/orders/validation.{can_cancel_order, can_execute_orders}
 
-validator {
+type OrderRedeemer {
+  ExecuteOrders
+  CancelOrder
+}
+
+// This is Spending validator
+// Where Order UTxO is sent
+// with OrderDatum and enough lovelace to pay
+//
+// ===== Parameters =====
+// `randomizer`: Random bytearray to make validator hash random
+//
+validator(_randomizer: ByteArray) {
   fn spend(
     datum: OrderDatum,
     redeemer: OrderRedeemer,
     ctx: ScriptContext,
   ) -> Bool {
-    let ScriptContext(
-      Transaction {
-        reference_inputs,
-        extra_signatories,
-        validity_range,
-        withdrawals,
-        ..
-      },
-      purpose,
-    ) = ctx
-    expect Spend(_) = purpose
+    let ScriptContext(transaction, purpose) = ctx
+    expect Spend(spending_output_reference) = purpose
 
     when redeemer is {
-      Execute -> {
-        let Settings { mint_governor, .. } = find_settings(reference_inputs)
-        is_withdrawal_script_executed(withdrawals, mint_governor)
-      }
-      Cancel -> {
-        expect owner: multisig.MultisigScript = datum.owner
-        // Defer to sundae.multisig
-        multisig.satisfied(
-          owner,
-          extra_signatories,
-          validity_range,
-          withdrawals,
-        )
-      }
+      ExecuteOrders -> can_execute_orders(transaction)
+      CancelOrder ->
+        can_cancel_order(transaction, datum, spending_output_reference)
     }
   }
 }
