@@ -3,6 +3,7 @@ import { addValues, makeTxOutputId } from "@helios-lang/ledger";
 import { Ok } from "ts-res";
 import { assert, describe } from "vitest";
 
+import { myTest } from "./setup.js";
 import {
   cancel,
   decodeHandlePriceInfoDatum,
@@ -17,7 +18,6 @@ import {
   removeHandle,
   request,
 } from "../src/index.js";
-import { myTest } from "./setup.js";
 import {
   balanceOf,
   getRandomString,
