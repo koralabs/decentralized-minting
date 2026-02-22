@@ -4,6 +4,12 @@
 
 This is Ada Handles' Decentralized Minting Smart contracts and its Off chain SDK.
 
+## Documentation
+
+- [Docs Index](./docs/index.md)
+- [Product Docs](./docs/product/index.md)
+- [Spec Docs](./docs/spec/index.md)
+
 ## Project structure
 
 ```bash
