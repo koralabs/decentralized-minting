@@ -1,37 +1,287 @@
-line_pct=100
-branch_pct=100
+FORMAT_VERSION=1
+REPO=decentralized-minting
+TIMESTAMP_UTC=2026-02-22T16:27:44Z
+THRESHOLD_LINES=90
+THRESHOLD_BRANCHES=90
+TOTAL_LINES_PCT=100
+TOTAL_BRANCHES_PCT=100
+STATUS=pass
+SOURCE_PATHS=src/index.ts,src/contracts/**,src/helpers/**
+EXCLUDED_PATHS=NONE
+LANGUAGE_SUMMARY=nodejs:lines=100,branches=100,tool=vitest-v8,status=pass
 
-{
-  "total": {
-    "lines": {
-      "total": 1168,
-      "covered": 1168,
-      "skipped": 0,
-      "pct": 100
-    },
-    "statements": {
-      "total": 1168,
-      "covered": 1168,
-      "skipped": 0,
-      "pct": 100
-    },
-    "functions": {
-      "total": 13,
-      "covered": 13,
-      "skipped": 0,
-      "pct": 100
-    },
-    "branches": {
-      "total": 23,
-      "covered": 23,
-      "skipped": 0,
-      "pct": 100
-    },
-    "branchesTrue": {
-      "total": 0,
-      "covered": 0,
-      "skipped": 0,
-      "pct": 100
-    }
-  }
+=== RAW_OUTPUT_VITEST ===
+
+ RUN  v3.2.4 /home/jesse/src/koralabs/decentralized-minting
+      Coverage enabled with v8
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
+1 Handles are ordered
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
+[1m[32mmem: 1236951 (8.835 %), cpu: 394990330 (3.950 %)[39m[22m
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
+ba8f..[56 digits]..a017 #5f4e60fabb42 { demi-1 →  }
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_1 orders new handle - <demi-1> 10ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1> 101ms
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
+2 Handles are ordered
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
+[1m[32mmem: 1846269 (13.188 %), cpu: 583211844 (5.832 %)[39m[22m
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #fef7babbfd6e55e1282c21510ee44cffcacd9e11932b8c60a4847ad04b386ef3 ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ a #885c50f94a44
+ ├─ b #ed37babdfaae
+ └─ c #4a94e8a3ee1c
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_3 orders new handle - <demi-3> 8ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders new handle - <demi-2> 8ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3> 101ms
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2>
+[1m[32mmem: 696709 (4.976 %), cpu: 207895898 (2.079 %)[39m[22m
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #887366cb90196b27ce48a9e5b62b2fdcea4889b6797fa370bea5ab359fd2200b ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 3 #8fa2b8c1c29a
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ └─ c #4a94e8a3ee1c
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
+2 Handles are ordered
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
+[1m[32mmem: 1829329 (13.067 %), cpu: 575897715 (5.759 %)[39m[22m
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #4a94e8a3ee1c
+ └─ e #fb2b7e1d1a87
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2> 56ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders new handle - <demi-4> 8ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_3 orders new handle - <demi-5> 8ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5> 94ms
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4>
+1 Handles are ordered
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #4a94e8a3ee1c
+ └─ e #fb2b7e1d1a87
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop>
+1 Handles are ordered
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #4a94e8a3ee1c
+ └─ e #fb2b7e1d1a87
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 orders new sub handle which is not supported - <demi-6@user_4> 8ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4> 64ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 cancel his order, because sub handle is not supported - <demi-6@user_4> 18ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 orders new handle, but handle is too long - <abcdefghijklmnop> 8ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop> 58ms
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #3b5891fdfe2a7a689ba3b1465c4cbf516f90b232a020c5b11b405da6b89127f6 ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 0 #5e1e289632c7
+ ├─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #4a94e8a3ee1c
+ └─ e #fb2b7e1d1a87
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #4a94e8a3ee1c
+ └─ e #fb2b7e1d1a87
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1>
+[1m[32mmem: 484898 (3.464 %), cpu: 147810095 (1.478 %)[39m[22m
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #21e4be1f4bdeddc253e0e19ddbeb5f7f8f0abe250392645477b10f54344b2513 ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #519ecc45a5da
+ └─ e #fb2b7e1d1a87
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 cancel his order, because handle is too long - <abcdefghijklmnop> 19ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4> 47ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1> 48ms
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1>
+[1m[32mmem: 393651 (2.812 %), cpu: 118804920 (1.188 %)[39m[22m
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ 9 #9236b7f23e87
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #519ecc45a5da
+ └─ e #fb2b7e1d1a87
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if sub handle is too long - <abcdefghijklmnopqrstuv@user_1>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ 9 #9236b7f23e87
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #519ecc45a5da
+ └─ e #fb2b7e1d1a87
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if root handle is too long - <legacy-1@abcdefghijklmnop>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ 9 #9236b7f23e87
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #519ecc45a5da
+ └─ e #fb2b7e1d1a87
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1> 67ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if sub handle is too long - <abcdefghijklmnopqrstuv@user_1> 33ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if root handle is too long - <legacy-1@abcdefghijklmnop> 32ms
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy virtual sub handle, if minted value is not correct (must be prefix_000) - <legacy-virtual-2@user_1
+╔═══════════════════════════════════════════════════════════════════╗
+║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 2 #25df85ec549d
+ ├─ 3 #8fa2b8c1c29a
+ ├─ 9 #9236b7f23e87
+ ├─ a #885c50f94a44
+ ├─ b #711f16b2746f
+ ├─ c #519ecc45a5da
+ └─ e #fb2b7e1d1a87
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy virtual sub handle, if minted value is not correct (must be prefix_000) - <legacy-virtual-2@user_1 37ms
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders many handle - <12 random handles> 90ms
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
+12 Handles are ordered
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
+[1m[32mmem: 9336287 (66.688 %), cpu: 2875288870 (28.753 %)[39m[22m
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #b7e349f356f2e7c929187a043cccb3f9f19645a1e6860c0dfbf2bac271856434 ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 0 #897d6fbbfddd
+ ├─ 2 #25df85ec549d
+ ├─ 3 #59473af04b0f
+ ├─ 4 #f96452c93fa3
+ ├─ 7 #6e147b09ffc9
+ ├─ 8 #74b86b69e363
+ ├─ 9 #9236b7f23e87
+ ├─ a #885c50f94a44
+ ├─ b #10c4fd2e705a
+ ├─ c #519ecc45a5da
+ ├─ e #952240eaa6f2
+ └─ f #37b9e1c23653
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles> 311ms
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles>
+[1m[32mmem: 9073329 (64.809 %), cpu: 2572434445 (25.724 %)[39m[22m
+
+stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles>
+╔═══════════════════════════════════════════════════════════════════╗
+║ #b7d7abff3335d51cc7c73f0bb57cb5c1471ded26b49f7d65e9e56530a12dd8b5 ║
+╚═══════════════════════════════════════════════════════════════════╝
+ ┌─ 0 #12815c6695df
+ ├─ 2 #927cecf5cd76
+ ├─ 3 #e3b705346443
+ ├─ 4 #486d1597990d
+ ├─ 5 #c36905d2eb07
+ ├─ 6 #ba90c8902024
+ ├─ 7 #220eeea000a3
+ ├─ 8 #953ad1eae88c
+ ├─ 9 #9236b7f23e87
+ ├─ a #e489dd7c1e79
+ ├─ b #10c4fd2e705a
+ ├─ c #346caa68440d
+ ├─ d #800c5e8b6713
+ ├─ e #dfd96576dde4
+ └─ f #37b9e1c23653
+
+ ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles> 331ms
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  08:27:40
+   Duration  4.17s (transform 177ms, setup 2.23s, collect 20ms, tests 1.57s, environment 0ms, prepare 68ms)
+
+ % Coverage report from v8
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 1168/1168 )
+Branches     : 100% ( 23/23 )
+Functions    : 100% ( 13/13 )
+Lines        : 100% ( 1168/1168 )
+================================================================================
+
+=== RAW_OUTPUT_COVERAGE_SUMMARY_JSON ===
+{"total": {"lines":{"total":1168,"covered":1168,"skipped":0,"pct":100},"statements":{"total":1168,"covered":1168,"skipped":0,"pct":100},"functions":{"total":13,"covered":13,"skipped":0,"pct":100},"branches":{"total":23,"covered":23,"skipped":0,"pct":100},"branchesTrue":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/index.ts": {"lines":{"total":6,"covered":6,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":6,"covered":6,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/config.ts": {"lines":{"total":66,"covered":66,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":66,"covered":66,"skipped":0,"pct":100},"branches":{"total":1,"covered":1,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/index.ts": {"lines":{"total":5,"covered":5,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":5,"covered":5,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/optimized-blueprint.ts": {"lines":{"total":443,"covered":443,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":443,"covered":443,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/unoptimized-blueprint.ts": {"lines":{"total":443,"covered":443,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":443,"covered":443,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/validators.ts": {"lines":{"total":92,"covered":92,"skipped":0,"pct":100},"functions":{"total":4,"covered":4,"skipped":0,"pct":100},"statements":{"total":92,"covered":92,"skipped":0,"pct":100},"branches":{"total":12,"covered":12,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/data/handle_price.ts": {"lines":{"total":42,"covered":42,"skipped":0,"pct":100},"functions":{"total":3,"covered":3,"skipped":0,"pct":100},"statements":{"total":42,"covered":42,"skipped":0,"pct":100},"branches":{"total":5,"covered":5,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/data/index.ts": {"lines":{"total":10,"covered":10,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":10,"covered":10,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/data/multisig.ts": {"lines":{"total":4,"covered":4,"skipped":0,"pct":100},"functions":{"total":1,"covered":1,"skipped":0,"pct":100},"statements":{"total":4,"covered":4,"skipped":0,"pct":100},"branches":{"total":1,"covered":1,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/data/order.ts": {"lines":{"total":41,"covered":41,"skipped":0,"pct":100},"functions":{"total":4,"covered":4,"skipped":0,"pct":100},"statements":{"total":41,"covered":41,"skipped":0,"pct":100},"branches":{"total":4,"covered":4,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/contracts/types/index.ts": {"lines":{"total":8,"covered":8,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":8,"covered":8,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/helpers/index.ts": {"lines":{"total":5,"covered":5,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":5,"covered":5,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/helpers/blockfrost/index.ts": {"lines":{"total":2,"covered":2,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":2,"covered":2,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/home/jesse/src/koralabs/decentralized-minting/src/helpers/common/index.ts": {"lines":{"total":1,"covered":1,"skipped":0,"pct":100},"functions":{"total":0,"covered":0,"skipped":0,"pct":100},"statements":{"total":1,"covered":1,"skipped":0,"pct":100},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
 }
