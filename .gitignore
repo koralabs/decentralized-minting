@@ -65,3 +65,5 @@ node_modules/
 
 # test db
 test-db/
+# K.O.R.A executor logs
+.kora/executor-logs/
