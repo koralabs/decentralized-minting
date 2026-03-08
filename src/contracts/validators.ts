@@ -11,10 +11,10 @@ import {
 
 const getMintProxyMintUplcProgram = (mint_version: bigint): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "mint_proxy.mint"
+    (validator) => validator.title == "demimntprx.mint"
   );
   const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "mint_proxy.mint"
+    (validator) => validator.title == "demimntprx.mint"
   );
   invariant(
     !!optimizedFoundValidator && !!unOptimizedFoundValidator,
@@ -33,10 +33,10 @@ const getMintV1WithdrawUplcProgram = (
   minting_data_script_hash: string
 ): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "mint_v1.withdraw"
+    (validator) => validator.title == "demimnt.withdraw"
   );
   const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "mint_v1.withdraw"
+    (validator) => validator.title == "demimnt.withdraw"
   );
   invariant(
     !!optimizedFoundValidator && unOptimizedFoundValidator,
@@ -57,10 +57,10 @@ const getMintingDataSpendUplcProgram = (
   admin_verification_key_hash: string
 ): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "minting_data.spend"
+    (validator) => validator.title == "demimntmpt.spend"
   );
   const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "minting_data.spend"
+    (validator) => validator.title == "demimntmpt.spend"
   );
   invariant(
     !!optimizedFoundValidator && !!unOptimizedFoundValidator,
@@ -85,10 +85,10 @@ const getMintingDataSpendUplcProgram = (
 
 const getOrdersSpendUplcProgram = (): UplcProgramV2 => {
   const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "orders.spend"
+    (validator) => validator.title == "demiord.spend"
   );
   const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "orders.spend"
+    (validator) => validator.title == "demiord.spend"
   );
   invariant(
     !!optimizedFoundValidator && !!unOptimizedFoundValidator,

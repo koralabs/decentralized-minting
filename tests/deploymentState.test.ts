@@ -17,10 +17,10 @@ describe("decentralized minting deployment state", () => {
       "kora@handle_prices",
     ]);
     expect(mainnet.contracts.map((item) => item.contractSlug)).toEqual([
-      "demi-mint-proxy",
-      "demi-minting-data",
-      "demi-mint",
-      "demi-orders",
+      "demimntprx",
+      "demimntmpt",
+      "demimnt",
+      "demiord",
     ]);
   });
 
@@ -58,11 +58,12 @@ settings:
       current_data: [1]
       prev_data: [2]
 contracts:
-  - contract_slug: demi-mint-proxy
-    script_type: demi_mint_proxy
-    deployment_handle_slug: demimprxy
+  - contract_slug: demimntprx
+    script_type: demimntprx
+    old_script_type: demi_mint_proxy
+    deployment_handle_slug: demimntprx
     build:
-      contract_name: mint_proxy.mint
+      contract_name: demimntprx.mint
       kind: minting_policy
 `)
     ).toThrow(/must not include observed-only field `current_script_hash`/);

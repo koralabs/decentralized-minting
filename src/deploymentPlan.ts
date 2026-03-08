@@ -39,6 +39,82 @@ export interface LiveContractState {
   currentSubhandle: string | null;
 }
 
+export const discoverNextContractSubhandles = async ({
+  network,
+  contracts,
+  liveContracts = [],
+  userAgent,
+  fetchFn = fetch,
+}: {
+  network: "preview" | "preprod" | "mainnet";
+  contracts: DesiredContractTarget[];
+  liveContracts?: LiveContractState[];
+  userAgent: string;
+  fetchFn?: typeof fetch;
+}): Promise<Record<string, string>> => {
+  const entries = await Promise.all(
+    contracts.map(async (contract) => {
+      const liveContract = liveContracts.find((item) => item.contractSlug === contract.contractSlug);
+      return [
+        contract.contractSlug,
+        await discoverNextContractSubhandle({
+          network,
+          deploymentHandleSlug: contract.deploymentHandleSlug,
+          currentSubhandle: liveContract?.currentSubhandle ?? null,
+          userAgent,
+          fetchFn,
+        }),
+      ] as const;
+    })
+  );
+  return Object.fromEntries(entries);
+};
+
+const discoverNextContractSubhandle = async ({
+  network,
+  deploymentHandleSlug,
+  currentSubhandle,
+  userAgent,
+  fetchFn = fetch,
+}: {
+  network: "preview" | "preprod" | "mainnet";
+  deploymentHandleSlug: string;
+  currentSubhandle?: string | null;
+  userAgent: string;
+  fetchFn?: typeof fetch;
+}): Promise<string> => {
+  const baseUrl = handlesApiBaseUrlForNetwork(network);
+  const suffix = "@handlecontract";
+  const currentOrdinal =
+    currentSubhandle &&
+    currentSubhandle.startsWith(deploymentHandleSlug) &&
+    currentSubhandle.endsWith(suffix) &&
+    /^[0-9]+$/.test(currentSubhandle.slice(deploymentHandleSlug.length, currentSubhandle.length - suffix.length))
+      ? Number.parseInt(currentSubhandle.slice(deploymentHandleSlug.length, currentSubhandle.length - suffix.length), 10)
+      : 0;
+  const existingOrdinals: number[] = [];
+
+  for (let ordinal = 1; ordinal < 10000; ordinal += 1) {
+    const candidate = `${deploymentHandleSlug}${ordinal}${suffix}`;
+    const response = await fetchFn(
+      `${baseUrl}/handles/${encodeURIComponent(candidate)}`,
+      { headers: { "User-Agent": userAgent } }
+    );
+    if (response.status === 404) {
+      const existingReplacement = existingOrdinals.find((existingOrdinal) => existingOrdinal > currentOrdinal);
+      return existingReplacement
+        ? `${deploymentHandleSlug}${existingReplacement}${suffix}`
+        : candidate;
+    }
+    if (!response.ok) {
+      throw new Error(`failed to probe SubHandle ${candidate}: HTTP ${response.status}`);
+    }
+    existingOrdinals.push(ordinal);
+  }
+
+  throw new Error(`no available SubHandle found for ${deploymentHandleSlug}${suffix}`);
+};
+
 interface HandlePayload {
   utxo: string;
   hex: string;
@@ -86,13 +162,13 @@ const expectedScriptHashForContract = (
   built: ReturnType<typeof buildContracts>
 ): string => {
   switch (contract.build.contractName) {
-    case "mint_proxy.mint":
+    case "demimntprx.mint":
       return built.mintProxy.mintProxyPolicyHash.toHex();
-    case "minting_data.spend":
+    case "demimntmpt.spend":
       return built.mintingData.mintingDataValidatorHash.toHex();
-    case "mint_v1.withdraw":
+    case "demimnt.withdraw":
       return built.mintV1.mintV1ValidatorHash.toHex();
-    case "orders.spend":
+    case "demiord.spend":
       return built.orders.ordersValidatorHash.toHex();
     default:
       throw new Error(`unsupported contract_name \`${contract.build.contractName}\``);
@@ -114,7 +190,7 @@ export const fetchLiveContractStates = async ({
   return Promise.all(
     contracts.map(async (contract) => {
       const response = await fetchFn(
-        `${baseUrl}/scripts?latest=true&type=${encodeURIComponent(contract.scriptType)}`,
+        `${baseUrl}/scripts?latest=true&type=${encodeURIComponent(contract.oldScriptType ?? contract.scriptType)}`,
         { headers: { "User-Agent": userAgent } }
       );
       if (!response.ok) {
@@ -236,11 +312,13 @@ export const buildDeploymentPlan = ({
   expectedContracts,
   liveContracts,
   liveSettings,
+  nextSubhandles = {},
 }: {
   desired: DesiredDeploymentState;
   expectedContracts: ExpectedContractState[];
   liveContracts: LiveContractState[];
   liveSettings: LiveSettingsState;
+  nextSubhandles?: Record<string, string>;
 }) => {
   const filteredDesiredSettings = withoutIgnoredPaths(desired.settings.values, desired.ignoredSettings);
   const filteredLiveSettings = withoutIgnoredPaths(liveSettings.values ?? {}, desired.ignoredSettings);
@@ -274,18 +352,18 @@ export const buildDeploymentPlan = ({
         ignored_paths: desired.ignoredSettings,
       },
       subhandle: {
-        action: scriptHashChanged ? "manual_review" : "reuse",
-        value: scriptHashChanged ? null : live.currentSubhandle,
+        action: scriptHashChanged ? "allocate" : "reuse",
+        value: scriptHashChanged ? nextSubhandles[contract.contractSlug] ?? null : live.currentSubhandle,
       },
       expected_post_deploy_state: {
         repo: REPO_NAME,
         network: desired.network,
         contract_slug: contract.contractSlug,
         expected_script_hash: expected.expectedScriptHash,
-        expected_subhandle: scriptHashChanged ? null : live.currentSubhandle,
+        expected_subhandle: scriptHashChanged ? nextSubhandles[contract.contractSlug] ?? null : live.currentSubhandle,
         assigned_handles: {
           settings: desired.assignedHandles.settings,
-          scripts: scriptHashChanged ? [] : desired.assignedHandles.scripts,
+          scripts: scriptHashChanged ? [nextSubhandles[contract.contractSlug]].filter(Boolean) : desired.assignedHandles.scripts,
         },
         settings: {
           type: desired.settings.type,
@@ -340,9 +418,6 @@ export const buildDeploymentPlan = ({
       `- \`${entry.contract_slug}\`: \`${entry.drift_type}\``,
       `  - Script Hash: \`${entry.script_hashes.current}\` -> \`${entry.script_hashes.expected}\``,
       `  - Handle: \`${entry.subhandle.value || ""}\``,
-      ...(entry.subhandle.action === "manual_review"
-        ? ["  - Operator review required for replacement deployment handle namespace."]
-        : []),
     ]),
     "",
     "## Transaction Order",

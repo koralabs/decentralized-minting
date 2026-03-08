@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildDeploymentPlan,
   buildExpectedContractStates,
+  discoverNextContractSubhandles,
   fetchLiveContractStates,
   fetchLiveSettingsState,
 } from "../src/deploymentPlan.js";
@@ -18,7 +19,7 @@ const desiredState: DesiredDeploymentState = {
   },
   assignedHandles: {
     settings: ["demi@handle_settings", "handle_root@handle_settings", "kora@handle_prices"],
-    scripts: ["mint_proxy@demi_scripts", "mint_data_v1@demi_scripts"],
+    scripts: ["demimntprx1@handlecontract", "demimntmpt1@handlecontract"],
   },
   ignoredSettings: ["settings.values.handle_root@handle_settings.mpt_root_hash"],
   settings: {
@@ -47,16 +48,18 @@ const desiredState: DesiredDeploymentState = {
   },
   contracts: [
     {
-      contractSlug: "demi-mint-proxy",
-      scriptType: "demi_mint_proxy",
-      deploymentHandleSlug: "demimprxy",
-      build: { contractName: "mint_proxy.mint", kind: "minting_policy" },
+      contractSlug: "demimntprx",
+      scriptType: "demimntprx",
+      oldScriptType: "demi_mint_proxy",
+      deploymentHandleSlug: "demimntprx",
+      build: { contractName: "demimntprx.mint", kind: "minting_policy" },
     },
     {
-      contractSlug: "demi-minting-data",
-      scriptType: "demi_minting_data",
-      deploymentHandleSlug: "demimdata",
-      build: { contractName: "minting_data.spend", kind: "validator" },
+      contractSlug: "demimntmpt",
+      scriptType: "demimntmpt",
+      oldScriptType: "demi_minting_data",
+      deploymentHandleSlug: "demimntmpt",
+      build: { contractName: "demimntmpt.spend", kind: "validator" },
     },
   ],
 };
@@ -71,8 +74,8 @@ describe("decentralized minting deployment plan", () => {
     })) as never);
 
     expect(expected).toEqual([
-      { contractSlug: "demi-mint-proxy", scriptType: "demi_mint_proxy", expectedScriptHash: "aa" },
-      { contractSlug: "demi-minting-data", scriptType: "demi_minting_data", expectedScriptHash: "bb" },
+      { contractSlug: "demimntprx", scriptType: "demimntprx", expectedScriptHash: "aa" },
+      { contractSlug: "demimntmpt", scriptType: "demimntmpt", expectedScriptHash: "bb" },
     ]);
   });
 
@@ -83,15 +86,15 @@ describe("decentralized minting deployment plan", () => {
       userAgent: "codex-test",
       fetchFn: vi.fn(async (url) => {
         if (String(url).includes("demi_mint_proxy")) {
-          return new Response(JSON.stringify({ validatorHash: "aa", handle: "mint_proxy@demi_scripts" }), { status: 200 });
+          return new Response(JSON.stringify({ validatorHash: "aa", handle: "demimntprx1@handlecontract" }), { status: 200 });
         }
-        return new Response(JSON.stringify({ validatorHash: "bb", handle: "mint_data_v1@demi_scripts" }), { status: 200 });
+        return new Response(JSON.stringify({ validatorHash: "bb", handle: "demimntmpt1@handlecontract" }), { status: 200 });
       }) as typeof fetch,
     });
 
     expect(live).toEqual([
-      { contractSlug: "demi-mint-proxy", scriptType: "demi_mint_proxy", currentScriptHash: "aa", currentSubhandle: "mint_proxy@demi_scripts" },
-      { contractSlug: "demi-minting-data", scriptType: "demi_minting_data", currentScriptHash: "bb", currentSubhandle: "mint_data_v1@demi_scripts" },
+      { contractSlug: "demimntprx", scriptType: "demimntprx", currentScriptHash: "aa", currentSubhandle: "demimntprx1@handlecontract" },
+      { contractSlug: "demimntmpt", scriptType: "demimntmpt", currentScriptHash: "bb", currentSubhandle: "demimntmpt1@handlecontract" },
     ]);
   });
 
@@ -173,12 +176,12 @@ describe("decentralized minting deployment plan", () => {
     const plan = buildDeploymentPlan({
       desired: desiredState,
       expectedContracts: [
-        { contractSlug: "demi-mint-proxy", scriptType: "demi_mint_proxy", expectedScriptHash: "aa" },
-        { contractSlug: "demi-minting-data", scriptType: "demi_minting_data", expectedScriptHash: "bb" },
+        { contractSlug: "demimntprx", scriptType: "demimntprx", expectedScriptHash: "aa" },
+        { contractSlug: "demimntmpt", scriptType: "demimntmpt", expectedScriptHash: "bb" },
       ],
       liveContracts: [
-        { contractSlug: "demi-mint-proxy", scriptType: "demi_mint_proxy", currentScriptHash: "aa", currentSubhandle: "mint_proxy@demi_scripts" },
-        { contractSlug: "demi-minting-data", scriptType: "demi_minting_data", currentScriptHash: "cc", currentSubhandle: "mint_data_v1@demi_scripts" },
+        { contractSlug: "demimntprx", scriptType: "demimntprx", currentScriptHash: "aa", currentSubhandle: "demimntprx1@handlecontract" },
+        { contractSlug: "demimntmpt", scriptType: "demimntmpt", currentScriptHash: "cc", currentSubhandle: "demimntmpt1@handlecontract" },
       ],
       liveSettings: {
         currentSettingsUtxoRefs: {},
@@ -187,6 +190,10 @@ describe("decentralized minting deployment plan", () => {
           "handle_root@handle_settings": { mpt_root_hash: "old-root" },
           "kora@handle_prices": { current_data: [1, 2, 3, 4], prev_data: [4, 3, 2, 1] },
         },
+      },
+      nextSubhandles: {
+        demimntprx: "demimntprx2@handlecontract",
+        demimntmpt: "demimntmpt2@handlecontract",
       },
     });
 
@@ -198,5 +205,35 @@ describe("decentralized minting deployment plan", () => {
       "kora@handle_prices.current_data",
       "kora@handle_prices.prev_data",
     ]);
+    expect(plan.summaryJson.contracts[1].subhandle).toEqual({
+      action: "allocate",
+      value: "demimntmpt2@handlecontract",
+    });
+  });
+
+  it("reuses an already minted DeMi replacement handle before skipping to a new ordinal", async () => {
+    const subhandles = await discoverNextContractSubhandles({
+      network: "preview",
+      contracts: desiredState.contracts,
+      liveContracts: [
+        { contractSlug: "demimntprx", scriptType: "demimntprx", currentScriptHash: "aa", currentSubhandle: "demimntprx1@handlecontract" },
+        { contractSlug: "demimntmpt", scriptType: "demimntmpt", currentScriptHash: "bb", currentSubhandle: "legacy@demi_scripts" },
+      ],
+      userAgent: "codex-test",
+      fetchFn: vi.fn(async (url) => {
+        const target = String(url);
+        if (target.includes("demimntprx1%40handlecontract")) return new Response(null, { status: 200 });
+        if (target.includes("demimntprx2%40handlecontract")) return new Response(null, { status: 200 });
+        if (target.includes("demimntprx3%40handlecontract")) return new Response(null, { status: 404 });
+        if (target.includes("demimntmpt1%40handlecontract")) return new Response(null, { status: 200 });
+        if (target.includes("demimntmpt2%40handlecontract")) return new Response(null, { status: 404 });
+        throw new Error(`unexpected url ${target}`);
+      }) as typeof fetch,
+    });
+
+    expect(subhandles).toEqual({
+      demimntprx: "demimntprx2@handlecontract",
+      demimntmpt: "demimntmpt1@handlecontract",
+    });
   });
 });

@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   buildDeploymentPlan,
   buildExpectedContractStates,
+  discoverNextContractSubhandles,
   fetchLiveContractStates,
   fetchLiveSettingsState,
 } from "../src/deploymentPlan.js";
@@ -32,16 +33,24 @@ const main = async () => {
 
   const desired = await loadDesiredDeploymentState(args.desired);
   const userAgent = (process.env.KORA_USER_AGENT || "kora-contract-deployments/1.0").trim();
+  const expectedContracts = buildExpectedContractStates(desired);
+  const liveContracts = await fetchLiveContractStates({
+    network: desired.network,
+    contracts: desired.contracts,
+    userAgent,
+  });
   const plan = buildDeploymentPlan({
     desired,
-    expectedContracts: buildExpectedContractStates(desired),
-    liveContracts: await fetchLiveContractStates({
-      network: desired.network,
-      contracts: desired.contracts,
-      userAgent,
-    }),
+    expectedContracts,
+    liveContracts,
     liveSettings: await fetchLiveSettingsState({
       network: desired.network,
+      userAgent,
+    }),
+    nextSubhandles: await discoverNextContractSubhandles({
+      network: desired.network,
+      contracts: desired.contracts,
+      liveContracts,
       userAgent,
     }),
   });

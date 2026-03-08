@@ -12,7 +12,7 @@
   },
   "validators": [
     {
-      "title": "mint_proxy.mint",
+      "title": "demimntprx.mint",
       "redeemer": {
         "title": "_r",
         "schema": {
@@ -31,7 +31,7 @@
       "hash": "246d3bedcde7f269ec6eec8b803361a7fed17e536a4b9ecf70067312"
     },
     {
-      "title": "mint_v1.withdraw",
+      "title": "demimnt.withdraw",
       "redeemer": {
         "title": "redeemer",
         "schema": {
@@ -50,7 +50,7 @@
       "hash": "5694ca017e3c043f24566467b8cd58f93b0c906b3466b46781a92cd5"
     },
     {
-      "title": "minting_data.spend",
+      "title": "demimntmpt.spend",
       "datum": {
         "title": "_minting_data",
         "schema": {
@@ -81,7 +81,7 @@
       "hash": "1255ca56bbd00d7cf9c4bfa58f59f8135bf08e4d1095e25cc4fdbf83"
     },
     {
-      "title": "orders.spend",
+      "title": "demiord.spend",
       "datum": {
         "title": "datum",
         "schema": {

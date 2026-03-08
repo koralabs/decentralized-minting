@@ -15,10 +15,10 @@
   - `src/contracts/optimized-blueprint.ts`
   - `src/contracts/unoptimized-blueprint.ts`
 - `src/contracts/validators.ts` locates validators by title and applies parameters:
-  - `mint_proxy.mint`
-  - `mint_v1.withdraw`
-  - `minting_data.spend`
-  - `orders.spend`
+  - `demimntprx.mint`
+  - `demimnt.withdraw`
+  - `demimntmpt.spend`
+  - `demiord.spend`
 
 ## Transaction Flows
 

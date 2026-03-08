@@ -38,27 +38,31 @@ settings:
       current_data: [995000000, 445000000, 150000000, 35000000]
       prev_data: [640000000, 320000000, 80000000, 10000000]
 contracts:
-  - contract_slug: demi-mint-proxy
-    script_type: demi_mint_proxy
-    deployment_handle_slug: demimprxy
+  - contract_slug: demimntprx
+    script_type: demimntprx
+    old_script_type: demi_mint_proxy
+    deployment_handle_slug: demimntprx
     build:
-      contract_name: mint_proxy.mint
+      contract_name: demimntprx.mint
       kind: minting_policy
-  - contract_slug: demi-minting-data
-    script_type: demi_minting_data
-    deployment_handle_slug: demimdata
+  - contract_slug: demimntmpt
+    script_type: demimntmpt
+    old_script_type: demi_minting_data
+    deployment_handle_slug: demimntmpt
     build:
-      contract_name: minting_data.spend
+      contract_name: demimntmpt.spend
       kind: validator
-  - contract_slug: demi-mint
-    script_type: demi_mint
-    deployment_handle_slug: demimint
+  - contract_slug: demimnt
+    script_type: demimnt
+    old_script_type: demi_mint
+    deployment_handle_slug: demimnt
     build:
-      contract_name: mint_v1.withdraw
+      contract_name: demimnt.withdraw
       kind: validator
-  - contract_slug: demi-orders
-    script_type: demi_orders
-    deployment_handle_slug: demiorder
+  - contract_slug: demiord
+    script_type: demiord
+    old_script_type: demi_orders
+    deployment_handle_slug: demiord
     build:
-      contract_name: orders.spend
+      contract_name: demiord.spend
       kind: validator

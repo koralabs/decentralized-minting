@@ -5,6 +5,11 @@ This repo owns the desired on-chain deployment state for decentralized minting c
 
 The repo defines what should be live on `preview`, `preprod`, and `mainnet`. It should not be treated as the storage location for volatile live references such as current settings UTxO refs.
 
+Canonical slug naming for this repo follows the shared rule in `kora-bot/docs/spec/contract-deployment-pipeline.md`:
+- `<app><[ord|mnt|ref|roy]><[mpt]>`
+- this repo currently uses `demimntprx`, `demimntmpt`, `demimnt`, and `demiord`
+- `old_script_type` is legacy migration-only
+
 ## State Model
 - Desired state lives in committed YAML files in this repo.
 - Observed live state is read from chain UTxOs and deployed script hashes.
@@ -43,7 +48,7 @@ assigned_handles:
     - handle_root@handle_settings
     - kora@handle_prices
   scripts:
-    - mint_proxy@demi_scripts
+    - demimntprx1@handlecontract
 ignored_settings:
   - settings.values.handle_root@handle_settings.mpt_root_hash
 settings:
@@ -53,11 +58,12 @@ settings:
     handle_root@handle_settings: {}
     kora@handle_prices: {}
 contracts:
-  - contract_slug: demi-mint-proxy
-    script_type: demi_mint_proxy
-    deployment_handle_slug: demimprxy
+  - contract_slug: demimntprx
+    script_type: demimntprx
+    old_script_type: demi_mint_proxy
+    deployment_handle_slug: demimntprx
     build:
-      contract_name: mint_proxy.mint
+      contract_name: demimntprx.mint
       kind: minting_policy
 ```
 
@@ -81,8 +87,8 @@ The comparable shared settings state in this repo is:
 The `mpt_root_hash` field changes frequently and is ignored by default for deployment drift.
 
 ## SubHandle Rules
-- A script hash change still requires operator review for handle replacement because the currently live namespaces are legacy handles such as `@demi_scripts` and `@handle_settings`.
-- Future `*.handlecontract` allocation should use the committed `deployment_handle_slug` values, each capped at 10 characters and without separators.
+- A script hash change uses the committed `deployment_handle_slug` values and allocates the next `<slug><ordinal>@handlecontract` name.
+- Existing legacy live handles can remain attached to older contracts during the transition.
 
 ## Artifact Contract
 The deployment workflow for this repo currently emits:
