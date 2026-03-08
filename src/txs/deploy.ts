@@ -69,7 +69,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
   } = contractsConfig;
 
   switch (contractName) {
-    case "mint_proxy.mint":
+    case "demimntprx.mint":
       return {
         ...extractScriptCborsFromUplcProgram(
           mintProxyConfig.mintProxyMintUplcProgram
@@ -80,7 +80,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         validatorHash: mintProxyConfig.mintProxyPolicyHash.toHex(),
         policyId: mintProxyConfig.mintProxyPolicyHash.toHex(),
       };
-    case "minting_data.spend":
+    case "demimntmpt.spend":
       return {
         ...extractScriptCborsFromUplcProgram(
           mintingDataConfig.mintingDataSpendUplcProgram
@@ -94,7 +94,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         validatorHash: mintingDataConfig.mintingDataValidatorHash.toHex(),
         scriptAddress: mintingDataConfig.mintingDataValidatorAddress.toBech32(),
       };
-    case "mint_v1.withdraw":
+    case "demimnt.withdraw":
       return {
         ...extractScriptCborsFromUplcProgram(
           mintV1Config.mintV1WithdrawUplcProgram
@@ -107,7 +107,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         validatorHash: mintV1Config.mintV1ValidatorHash.toHex(),
         scriptStakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
       };
-    case "orders.spend":
+    case "demiord.spend":
       return {
         ...extractScriptCborsFromUplcProgram(
           ordersConfig.ordersSpendUplcProgram
@@ -117,7 +117,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
       };
     default:
       throw new Error(
-        `Contract name must be one of "mint_proxy.mint" | "mint_v1.withdraw" | "minting_data_proxy.spend" | "minting_data_v1.withdraw" | "orders.spend"`
+        `Contract name must be one of "demimntprx.mint" | "demimntmpt.spend" | "demimnt.withdraw" | "demiord.spend"`
       );
   }
 };
@@ -148,7 +148,7 @@ const fetchAllDeployedScripts = async (
   blockfrostV0Client: BlockfrostV0Client
 ): Promise<Result<DeployedScripts, string>> => {
   try {
-    // "mint_proxy.mint"
+    // "demimntprx.mint"
     const mintProxyScriptDetails = await fetchDeployedScript(
       ScriptType.DEMI_MINT_PROXY
     );
@@ -166,7 +166,7 @@ const fetchAllDeployedScripts = async (
         decodeUplcProgramV2FromCbor(mintProxyScriptDetails.unoptimizedCbor)
       );
 
-    // "minting_data.spend"
+    // "demimntmpt.spend"
     const mintingDataScriptDetails = await fetchDeployedScript(
       ScriptType.DEMI_MINTING_DATA
     );
@@ -184,7 +184,7 @@ const fetchAllDeployedScripts = async (
         decodeUplcProgramV2FromCbor(mintingDataScriptDetails.unoptimizedCbor)
       );
 
-    // "mint_v1.withdraw"
+    // "demimnt.withdraw"
     const mintV1ScriptDetails = await fetchDeployedScript(ScriptType.DEMI_MINT);
     invariant(
       mintV1ScriptDetails.refScriptUtxo,
@@ -200,7 +200,7 @@ const fetchAllDeployedScripts = async (
         decodeUplcProgramV2FromCbor(mintV1ScriptDetails.unoptimizedCbor)
       );
 
-    // "orders.spend"
+    // "demiord.spend"
     const ordersScriptDetails = await fetchDeployedScript(
       ScriptType.DEMI_ORDERS
     );

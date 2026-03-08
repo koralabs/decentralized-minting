@@ -37,10 +37,10 @@ export const MIN_TREASURY_FEE = 2_000_000n;
 
 // Contract names
 export const CONTRACT_NAMES = [
-  "mint_proxy.mint",
-  "mint_v1.withdraw",
-  "minting_data.spend",
-  "orders.spend",
+  "demimntprx.mint",
+  "demimnt.withdraw",
+  "demimntmpt.spend",
+  "demiord.spend",
 ];
 
 export const LEGACY_POLICY_ID =

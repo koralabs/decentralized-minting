@@ -1,0 +1,23 @@
+name: Deployment Plan
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      desired_path:
+        description: Desired deployment YAML path
+        required: false
+        default: deploy/preview/decentralized-minting.yaml
+
+jobs:
+  deployment-plan:
+    uses: koralabs/adahandle-deployments/.github/workflows/contract-deployment-plan.yml@master
+    secrets: inherit
+    with:
+      desired_path: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.desired_path || '' }}
+      node_version: "22.13"
+      timeout_minutes: 15
+      kora_user_agent: ${{ vars.KORA_USER_AGENT }}
+      install_command: npm ci
+      planner_command: npx tsx scripts/generateDeploymentPlan.ts

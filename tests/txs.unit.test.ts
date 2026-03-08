@@ -199,25 +199,25 @@ describe("txs/deploy", () => {
 
     const mintProxy = await module.deploy({
       ...params,
-      contractName: "mint_proxy.mint",
+      contractName: "demimntprx.mint",
     });
     expect(mintProxy.policyId).toBe("mint-proxy-policy-hash");
 
     const mintingData = await module.deploy({
       ...params,
-      contractName: "minting_data.spend",
+      contractName: "demimntmpt.spend",
     });
     expect(mintingData.scriptAddress).toBe("addr_test1_minting_data");
 
     const mintV1 = await module.deploy({
       ...params,
-      contractName: "mint_v1.withdraw",
+      contractName: "demimnt.withdraw",
     });
     expect(mintV1.scriptStakingAddress).toBe("stake_test1_mint_v1");
 
     const orders = await module.deploy({
       ...params,
-      contractName: "orders.spend",
+      contractName: "demiord.spend",
     });
     expect(orders.scriptAddress).toBe("addr_test1_orders");
 

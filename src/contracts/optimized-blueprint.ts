@@ -12,7 +12,7 @@ export default {
   },
   validators: [
     {
-      title: "mint_proxy.mint",
+      title: "demimntprx.mint",
       redeemer: {
         title: "_r",
         schema: {
@@ -32,7 +32,7 @@ export default {
       hash: "02333b543ae8e19833fb55ce7813b381c731278197bb5f4b8bd51e91",
     },
     {
-      title: "mint_v1.withdraw",
+      title: "demimnt.withdraw",
       redeemer: {
         title: "redeemer",
         schema: {
@@ -52,7 +52,7 @@ export default {
       hash: "6e19ee0a600753fd978049553dfd1af4cfaacb53cb4ed65cf870c99a",
     },
     {
-      title: "minting_data.spend",
+      title: "demimntmpt.spend",
       datum: {
         title: "_minting_data",
         schema: {
@@ -84,7 +84,7 @@ export default {
       hash: "74c8fcd97fd80eec6430c42fd60ac5948fbb178d4ec1a04a41f45c61",
     },
     {
-      title: "orders.spend",
+      title: "demiord.spend",
       datum: {
         title: "datum",
         schema: {

@@ -44,14 +44,14 @@ const buildContracts = (params: BuildContractsParams) => {
   } = params;
   const isMainnet = network == "mainnet";
 
-  // "mint_proxy.mint"
+  // "demimntprx.mint"
   const mintProxyMintUplcProgram = getMintProxyMintUplcProgram(mint_version);
   const mintProxyPolicyHash = makeMintingPolicyHash(
     mintProxyMintUplcProgram.hash()
   );
   const handlePolicyHash = mintProxyPolicyHash;
 
-  // "minting_data.spend"
+  // "demimntmpt.spend"
   const mintingDataSpendUplcProgram = getMintingDataSpendUplcProgram(
     legacy_policy_id,
     admin_verification_key_hash
@@ -64,7 +64,7 @@ const buildContracts = (params: BuildContractsParams) => {
     mintingDataValidatorHash
   );
 
-  // "mint_v1.withdraw"
+  // "demimnt.withdraw"
   const mintV1WithdrawUplcProgram = getMintV1WithdrawUplcProgram(
     mintingDataValidatorHash.toHex()
   );
@@ -79,7 +79,7 @@ const buildContracts = (params: BuildContractsParams) => {
     mintV1StakingAddress.stakingCredential
   );
 
-  // "orders.spend"
+  // "demiord.spend"
   const ordersSpendUplcProgram = getOrdersSpendUplcProgram();
   const ordersValidatorHash = makeValidatorHash(ordersSpendUplcProgram.hash());
   const ordersValidatorAddress = makeAddress(isMainnet, ordersValidatorHash);
