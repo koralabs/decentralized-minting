@@ -1,9 +1,9 @@
 # Contract Deployment Pipeline Spec
 
 ## Repository Scope
-This repo owns the desired on-chain deployment state for decentralized minting contracts and their contract-level settings.
+This repo owns the desired on-chain deployment state for decentralized minting contracts and their shared settings handles.
 
-The repo should define what ought to be live on `preview`, `preprod`, and `mainnet`. It should not be treated as the storage location for volatile live references such as current settings UTxO refs.
+The repo defines what should be live on `preview`, `preprod`, and `mainnet`. It should not be treated as the storage location for volatile live references such as current settings UTxO refs.
 
 ## State Model
 - Desired state lives in committed YAML files in this repo.
@@ -12,104 +12,85 @@ The repo should define what ought to be live on `preview`, `preprod`, and `mainn
 - Volatile fields such as `tx_hash`, `output_index`, and current UTxO refs belong in observed-state artifacts, not committed desired-state YAML.
 
 ## Desired State Files
-The intended layout is:
+This repo uses one committed desired-state YAML per network:
 
 ```text
-deploy/<network>/<contract_slug>.yaml
+deploy/<network>/decentralized-minting.yaml
 ```
 
-Repo-specific rollout exception:
-- this repo currently uses one committed desired-state YAML per network, `deploy/<network>/decentralized-minting.yaml`
-- each file carries the shared build parameters plus the four deployed contract targets (`demi-mint-proxy`, `demi-minting-data`, `demi-mint`, `demi-orders`)
-- `mainnet` is intentionally out of scope for this rollout path until the repo-native settings-datum generation path is configured there
+Each file carries:
+- the shared build parameters for the four deployed scripts,
+- the current assigned settings Handles,
+- the current assigned script Handles,
+- ignored settings paths,
+- normalized live-comparable settings values for:
+  - `demi@handle_settings`
+  - `handle_root@handle_settings`
+  - `kora@handle_prices`
 
-Each file should contain stable desired state only:
+Example shape:
 
 ```yaml
-schema_version: 1
+schema_version: 2
 network: preview
-contract_slug: decentralized-minting
-build:
-  target: <repo build target>
-  kind: validator
-subhandle_strategy:
-  namespace: handlecontract
-  format: contract_slug_ordinal
+build_parameters:
+  mint_version: 0
+  legacy_policy_id: <policy>
+  admin_verification_key_hash: <pkh>
+assigned_handles:
+  settings:
+    - demi@handle_settings
+    - handle_root@handle_settings
+    - kora@handle_prices
+  scripts:
+    - mint_proxy@demi_scripts
+ignored_settings:
+  - settings.values.handle_root@handle_settings.mpt_root_hash
 settings:
   type: decentralized_minting_settings
   values:
-    # repo-owned datum/settings values only
+    demi@handle_settings: {}
+    handle_root@handle_settings: {}
+    kora@handle_prices: {}
+contracts:
+  - contract_slug: demi-mint-proxy
+    script_type: demi_mint_proxy
+    deployment_handle_slug: demimprxy
+    build:
+      contract_name: mint_proxy.mint
+      kind: minting_policy
 ```
-
-Required stable fields:
-- `schema_version`
-- `network`
-- `contract_slug`
-- `build.target`
-- `build.kind`
-- `subhandle_strategy.namespace`
-- `subhandle_strategy.format`
-- `settings.type`
-- `settings.values`
-
-Observed-only fields that must not be committed into desired-state YAML:
-- `current_script_hash`
-- `current_settings_utxo_ref`
-- `current_subhandle`
-- `observed_at`
-- `last_deployed_tx_hash`
-
-The initial bootstrap job may populate these files from current chain state, but it must strip live-only references before commit.
 
 ## Drift Detection
 Deployment automation should:
 - build the contract and derive the expected script hash,
 - load desired YAML from this repo,
-- read live chain state for the contract settings UTxO,
-- classify drift as `script_hash_only`, `settings_only`, or `script_hash_and_settings`.
+- read live chain state for the shared settings Handles and deployed scripts,
+- decode the live CBOR datums into the same YAML-shaped settings values,
+- ignore configured paths such as `handle_root@handle_settings.mpt_root_hash`,
+- classify drift as `no_change`, `script_hash_only`, `settings_only`, or `script_hash_and_settings`.
 
-No deployment artifact should be created when desired and live state already match.
+No deployment artifact should be created when desired and live state already match after ignored settings are removed.
+
+## Settings Scope
+The comparable shared settings state in this repo is:
+- `demi@handle_settings`: mint governor plus settings-v1 payload
+- `handle_root@handle_settings`: minting-data datum
+- `kora@handle_prices`: handle price current/previous vectors
+
+The `mpt_root_hash` field changes frequently and is ignored by default for deployment drift.
 
 ## SubHandle Rules
-- A script hash change requires a new SubHandle in the format `<contract_slug><ordinal>@handlecontract`.
-- A settings-only change reuses the current SubHandle and moves it forward with the settings UTxO.
-- The next ordinal must be derived from live chain state, not a repo-local counter.
+- A script hash change still requires operator review for handle replacement because the currently live namespaces are legacy handles such as `@demi_scripts` and `@handle_settings`.
+- Future `*.handlecontract` allocation should use the committed `deployment_handle_slug` values, each capped at 10 characters and without separators.
 
 ## Artifact Contract
-The deployment workflow for this repo should emit:
+The deployment workflow for this repo currently emits:
 - `deployment-plan.json`
 - `summary.md`
 - `summary.json`
-- one or more `tx-XX.cbor` artifacts
-- optional observed-state snapshot artifacts for debugging and audit
 
-Current rollout behavior:
-- push and pull request runs emit `deployment-plan.json`, `summary.json`, and `summary.md` for every committed `deploy/<network>/decentralized-minting.yaml`
-- manual dispatch may target one desired-state YAML via `desired_path`
-- current committed rollout scope is `preview` and `preprod` only
-- no unsigned CBOR artifact is emitted yet for this repo; the workflow is currently informational-only until repo-native deployment tx assembly is wired in
-- the generated plan is script-hash focused for the four deployed scripts and marks replacement handle allocation as manual review because the live namespace is still `@demi_scripts`, not an auto-allocated `*.handlecontract` sequence
-
-The canonical observed-state artifact should be JSON and should include:
-
-```json
-{
-  "schema_version": 1,
-  "repo": "decentralized-minting",
-  "network": "preview",
-  "contract_slug": "decentralized-minting",
-  "current_script_hash": "<hash>",
-  "current_settings_utxo_ref": "<tx>#<ix>",
-  "current_subhandle": "decentralized-minting1@handlecontract",
-  "settings": {
-    "type": "decentralized_minting_settings",
-    "values": {}
-  },
-  "observed_at": "<iso8601>"
-}
-```
-
-If more than one transaction is required, the plan artifact must encode execution order and dependencies.
+It does not emit `tx-XX.cbor` artifacts yet. The current rollout scope is informational drift detection for the four scripts plus the shared settings handles across `preview`, `preprod`, and `mainnet`.
 
 ## Human Approval Boundary
 Automation prepares deployment transactions and summaries.
@@ -119,4 +100,4 @@ Humans remain responsible for:
 - uploading/signing/submitting in Eternl,
 - approving the deployment at the wallet boundary.
 
-Post-submit automation should verify that chain state converges to the desired YAML plus the expected SubHandle transition.
+Post-submit automation should verify that chain state converges to the desired YAML plus any expected SubHandle change declared by the workflow.

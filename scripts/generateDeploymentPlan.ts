@@ -1,7 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { buildDeploymentPlan, buildExpectedContractStates, fetchLiveContractStates } from "../src/deploymentPlan.js";
+import {
+  buildDeploymentPlan,
+  buildExpectedContractStates,
+  fetchLiveContractStates,
+  fetchLiveSettingsState,
+} from "../src/deploymentPlan.js";
 import { loadDesiredDeploymentState } from "../src/deploymentState.js";
 
 const parseArgs = (argv: string[]) => {
@@ -33,6 +38,10 @@ const main = async () => {
     liveContracts: await fetchLiveContractStates({
       network: desired.network,
       contracts: desired.contracts,
+      userAgent,
+    }),
+    liveSettings: await fetchLiveSettingsState({
+      network: desired.network,
       userAgent,
     }),
   });

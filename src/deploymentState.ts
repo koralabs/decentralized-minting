@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 
 import YAML from "yaml";
 
-const ALLOWED_NETWORKS = new Set(["preview", "preprod"]);
+const ALLOWED_NETWORKS = new Set(["preview", "preprod", "mainnet"]);
 const ALLOWED_BUILD_KINDS = new Set(["validator", "minting_policy"]);
 const ALLOWED_SCRIPT_TYPES = new Set([
   "demi_mint_proxy",
@@ -24,9 +24,14 @@ const OBSERVED_ONLY_FIELDS = new Set([
   "last_deployed_tx_hash",
 ]);
 
+const DEMI_SETTINGS_HANDLE = "demi@handle_settings";
+const MINTING_DATA_HANDLE = "handle_root@handle_settings";
+const HANDLE_PRICE_HANDLE = "kora@handle_prices";
+
 export interface DesiredContractTarget {
   contractSlug: string;
   scriptType: string;
+  deploymentHandleSlug: string;
   build: {
     contractName: string;
     kind: string;
@@ -34,12 +39,41 @@ export interface DesiredContractTarget {
 }
 
 export interface DesiredDeploymentState {
-  schemaVersion: 1;
-  network: "preview" | "preprod";
+  schemaVersion: 2;
+  network: "preview" | "preprod" | "mainnet";
   buildParameters: {
     mintVersion: number;
     legacyPolicyId: string;
     adminVerificationKeyHash: string;
+  };
+  assignedHandles: {
+    settings: string[];
+    scripts: string[];
+  };
+  ignoredSettings: string[];
+  settings: {
+    type: "decentralized_minting_settings";
+    values: {
+      "demi@handle_settings": {
+        mint_governor: string;
+        mint_version: number;
+        policy_id: string;
+        allowed_minters: string[];
+        valid_handle_price_assets: string[];
+        treasury_address: string;
+        treasury_fee_percentage: number;
+        pz_script_address: string;
+        order_script_hash: string;
+        minting_data_script_hash: string;
+      };
+      "handle_root@handle_settings": {
+        mpt_root_hash: string;
+      };
+      "kora@handle_prices": {
+        current_data: number[];
+        prev_data: number[];
+      };
+    };
   };
   contracts: DesiredContractTarget[];
 }
@@ -74,12 +108,23 @@ export const parseDesiredDeploymentState = (
     throw new Error(`${sourceLabel} must not include observed-only field \`${observedOnlyField}\``);
   }
 
+  const schemaVersion = requireNumber(value, "schema_version", sourceLabel);
+  if (schemaVersion !== 2) {
+    throw new Error(`${sourceLabel} schema_version must equal 2`);
+  }
+
   const network = requireString(value, "network", sourceLabel).toLowerCase();
   if (!ALLOWED_NETWORKS.has(network)) {
-    throw new Error(`${sourceLabel} network must be one of preview, preprod`);
+    throw new Error(`${sourceLabel} network must be one of preview, preprod, mainnet`);
   }
 
   const buildParameters = requireObject(value, "build_parameters", sourceLabel);
+  const assignedHandles = requireObject(value, "assigned_handles", sourceLabel);
+  const settings = requireObject(value, "settings", sourceLabel);
+  const settingsType = requireString(settings, "type", `${sourceLabel}.settings`);
+  if (settingsType !== "decentralized_minting_settings") {
+    throw new Error(`${sourceLabel}.settings.type must be decentralized_minting_settings`);
+  }
   const contracts = requireArray(value, "contracts", sourceLabel).map((entry, index) =>
     parseContractTarget(entry, `${sourceLabel}.contracts[${index}]`)
   );
@@ -93,12 +138,24 @@ export const parseDesiredDeploymentState = (
   }
 
   return {
-    schemaVersion: 1,
-    network: network as "preview" | "preprod",
+    schemaVersion: 2,
+    network: network as "preview" | "preprod" | "mainnet",
     buildParameters: {
       mintVersion: requireNumber(buildParameters, "mint_version", `${sourceLabel}.build_parameters`),
       legacyPolicyId: requireString(buildParameters, "legacy_policy_id", `${sourceLabel}.build_parameters`),
       adminVerificationKeyHash: requireString(buildParameters, "admin_verification_key_hash", `${sourceLabel}.build_parameters`),
+    },
+    assignedHandles: {
+      settings: requireStringArrayAllowEmpty(assignedHandles, "settings", `${sourceLabel}.assigned_handles`),
+      scripts: requireStringArrayAllowEmpty(assignedHandles, "scripts", `${sourceLabel}.assigned_handles`),
+    },
+    ignoredSettings: requireStringArrayAllowEmpty(value, "ignored_settings", sourceLabel),
+    settings: {
+      type: "decentralized_minting_settings",
+      values: parseSettingsValues(
+        requireObject(settings, "values", `${sourceLabel}.settings`),
+        `${sourceLabel}.settings.values`
+      ),
     },
     contracts,
   };
@@ -125,12 +182,50 @@ const parseContractTarget = (value: unknown, sourceLabel: string): DesiredContra
   return {
     contractSlug,
     scriptType,
+    deploymentHandleSlug: requireShortHandleSlug(record, "deployment_handle_slug", sourceLabel),
     build: {
       contractName: requireString(build, "contract_name", `${sourceLabel}.build`),
       kind: buildKind,
     },
   };
 };
+
+const parseSettingsValues = (value: Record<string, unknown>, sourceLabel: string) => ({
+  [DEMI_SETTINGS_HANDLE]: parseDemiSettings(
+    requireObject(value, DEMI_SETTINGS_HANDLE, sourceLabel),
+    `${sourceLabel}.${DEMI_SETTINGS_HANDLE}`
+  ),
+  [MINTING_DATA_HANDLE]: parseMintingDataSettings(
+    requireObject(value, MINTING_DATA_HANDLE, sourceLabel),
+    `${sourceLabel}.${MINTING_DATA_HANDLE}`
+  ),
+  [HANDLE_PRICE_HANDLE]: parseHandlePriceSettings(
+    requireObject(value, HANDLE_PRICE_HANDLE, sourceLabel),
+    `${sourceLabel}.${HANDLE_PRICE_HANDLE}`
+  ),
+});
+
+const parseDemiSettings = (value: Record<string, unknown>, sourceLabel: string) => ({
+  mint_governor: requireString(value, "mint_governor", sourceLabel),
+  mint_version: requireNumber(value, "mint_version", sourceLabel),
+  policy_id: requireString(value, "policy_id", sourceLabel),
+  allowed_minters: requireStringArrayAllowEmpty(value, "allowed_minters", sourceLabel),
+  valid_handle_price_assets: requireStringArrayAllowEmpty(value, "valid_handle_price_assets", sourceLabel),
+  treasury_address: requireString(value, "treasury_address", sourceLabel),
+  treasury_fee_percentage: requireNumber(value, "treasury_fee_percentage", sourceLabel),
+  pz_script_address: requireString(value, "pz_script_address", sourceLabel),
+  order_script_hash: requireString(value, "order_script_hash", sourceLabel),
+  minting_data_script_hash: requireString(value, "minting_data_script_hash", sourceLabel),
+});
+
+const parseMintingDataSettings = (value: Record<string, unknown>, sourceLabel: string) => ({
+  mpt_root_hash: requireString(value, "mpt_root_hash", sourceLabel),
+});
+
+const parseHandlePriceSettings = (value: Record<string, unknown>, sourceLabel: string) => ({
+  current_data: requireNumberArray(value, "current_data", sourceLabel),
+  prev_data: requireNumberArray(value, "prev_data", sourceLabel),
+});
 
 const requireArray = (value: Record<string, unknown>, key: string, sourceLabel: string): unknown[] => {
   const resolved = value[key];
@@ -160,6 +255,55 @@ const requireNumber = (value: Record<string, unknown>, key: string, sourceLabel:
   const resolved = value[key];
   if (typeof resolved !== "number" || Number.isNaN(resolved)) {
     throw new Error(`${sourceLabel} must include numeric field \`${key}\``);
+  }
+  return resolved;
+};
+
+const requireStringArrayAllowEmpty = (
+  value: Record<string, unknown>,
+  key: string,
+  sourceLabel: string
+): string[] => {
+  const resolved = value[key];
+  if (!Array.isArray(resolved)) {
+    throw new Error(`${sourceLabel} must include array field \`${key}\``);
+  }
+  return resolved.map((item) => {
+    if (typeof item !== "string" || item.trim() === "") {
+      throw new Error(`${sourceLabel} must include string array field \`${key}\``);
+    }
+    return item.trim();
+  });
+};
+
+const requireNumberArray = (
+  value: Record<string, unknown>,
+  key: string,
+  sourceLabel: string
+): number[] => {
+  const resolved = value[key];
+  if (!Array.isArray(resolved)) {
+    throw new Error(`${sourceLabel} must include array field \`${key}\``);
+  }
+  return resolved.map((item) => {
+    if (typeof item !== "number" || Number.isNaN(item)) {
+      throw new Error(`${sourceLabel} must include numeric array field \`${key}\``);
+    }
+    return item;
+  });
+};
+
+const requireShortHandleSlug = (
+  value: Record<string, unknown>,
+  key: string,
+  sourceLabel: string
+): string => {
+  const resolved = requireString(value, key, sourceLabel);
+  if (resolved.length > 10) {
+    throw new Error(`${sourceLabel}.${key} must be 10 characters or fewer`);
+  }
+  if (resolved.includes("-") || resolved.includes("_")) {
+    throw new Error(`${sourceLabel}.${key} must not contain '-' or '_'`);
   }
   return resolved;
 };

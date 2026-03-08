@@ -1,5 +1,5 @@
 schema_version: 2
-network: preview
+network: mainnet
 build_parameters:
   mint_version: 0
   legacy_policy_id: f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a
@@ -10,10 +10,10 @@ assigned_handles:
     - handle_root@handle_settings
     - kora@handle_prices
   scripts:
-    - mint_proxy@demi_scripts
-    - mint_data_v1@demi_scripts
-    - mint_v1@demi_scripts
-    - orders@demi_scripts
+    - mint_proxy@handle_settings
+    - mint_data@handle_settings
+    - mint_v1@handle_settings
+    - orders@handle_settings
 ignored_settings:
   - settings.values.handle_root@handle_settings.mpt_root_hash
 settings:
@@ -27,16 +27,16 @@ settings:
         - 976ec349c3a14f58959088e13e98f6cd5a1e8f27f6f3160b25e415ca
       valid_handle_price_assets:
         - f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406b6f72614068616e646c655f707269636573
-      treasury_address: addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j
+      treasury_address: addr1xylxvryvzxddvl6jjeyjut2kmyhaf5pjmc933z74gmenk2e7vcxgcyv66el499jf9ck4dkf06ngr9hstrz9a23hn8v4sc89s5z
       treasury_fee_percentage: 10
-      pz_script_address: addr_test1wzzctdyf9nkgrzqw6vxhaq8mpla7zhzjyjmk6txyu0wsgrgek9nj3
+      pz_script_address: addr1wxktka03n943759y4pcexpmftdhzsrrv8kcd2qs8cwgtdhgg6j4ux
       order_script_hash: 24fe9a2abd4fa926677a65bc8424c755b054790599d4474911a06553
       minting_data_script_hash: 553de54adecc5c9bfa806cbe0341de9c8a8f8ef13d28e86a81284333
     handle_root@handle_settings:
-      mpt_root_hash: c614162a20649af2093df773ec4bb1c7d957fe79a1d9d586ac5ce0a2506e2209
+      mpt_root_hash: 81e6b0e8a08c65e3b3dfaf2085a0ac1e6b82d937cc54d7ed2a3095a04fc696cc
     kora@handle_prices:
       current_data: [995000000, 445000000, 150000000, 35000000]
-      prev_data: [640000000, 320000000, 80000000, 10000000]
+      prev_data: [640000000, 320000000, 80000000, 15000000]
 contracts:
   - contract_slug: demi-mint-proxy
     script_type: demi_mint_proxy
