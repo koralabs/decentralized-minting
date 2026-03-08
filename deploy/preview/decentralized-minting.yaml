@@ -1,0 +1,27 @@
+schema_version: 1
+network: preview
+build_parameters:
+  mint_version: 0
+  legacy_policy_id: f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a
+  admin_verification_key_hash: 4da965a049dfd15ed1ee19fba6e2974a0b79fc416dd1796a1f97f5e1
+contracts:
+  - contract_slug: demi-mint-proxy
+    script_type: demi_mint_proxy
+    build:
+      contract_name: mint_proxy.mint
+      kind: minting_policy
+  - contract_slug: demi-minting-data
+    script_type: demi_minting_data
+    build:
+      contract_name: minting_data.spend
+      kind: validator
+  - contract_slug: demi-mint
+    script_type: demi_mint
+    build:
+      contract_name: mint_v1.withdraw
+      kind: validator
+  - contract_slug: demi-orders
+    script_type: demi_orders
+    build:
+      contract_name: orders.spend
+      kind: validator

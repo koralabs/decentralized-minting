@@ -18,6 +18,11 @@ The intended layout is:
 deploy/<network>/<contract_slug>.yaml
 ```
 
+Repo-specific rollout exception:
+- this repo currently uses one committed desired-state YAML per network, `deploy/<network>/decentralized-minting.yaml`
+- each file carries the shared build parameters plus the four deployed contract targets (`demi-mint-proxy`, `demi-minting-data`, `demi-mint`, `demi-orders`)
+- `mainnet` is intentionally out of scope for this rollout path until the repo-native settings-datum generation path is configured there
+
 Each file should contain stable desired state only:
 
 ```yaml
@@ -77,6 +82,13 @@ The deployment workflow for this repo should emit:
 - `summary.json`
 - one or more `tx-XX.cbor` artifacts
 - optional observed-state snapshot artifacts for debugging and audit
+
+Current rollout behavior:
+- push and pull request runs emit `deployment-plan.json`, `summary.json`, and `summary.md` for every committed `deploy/<network>/decentralized-minting.yaml`
+- manual dispatch may target one desired-state YAML via `desired_path`
+- current committed rollout scope is `preview` and `preprod` only
+- no unsigned CBOR artifact is emitted yet for this repo; the workflow is currently informational-only until repo-native deployment tx assembly is wired in
+- the generated plan is script-hash focused for the four deployed scripts and marks replacement handle allocation as manual review because the live namespace is still `@demi_scripts`, not an auto-allocated `*.handlecontract` sequence
 
 The canonical observed-state artifact should be JSON and should include:
 
