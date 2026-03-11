@@ -13,6 +13,7 @@ import { decodeUplcData } from "@helios-lang/uplc";
 import { Err, Ok, Result } from "ts-res";
 
 import {
+  BLOCKFROST_API_KEY,
   LEGACY_POLICY_ID,
   MINTING_DATA_HANDLE_NAME,
   SETTINGS_HANDLE_NAME,
@@ -27,7 +28,36 @@ import {
   Settings,
   SettingsV1,
 } from "../contracts/index.js";
-import { fetchApi, mayFail } from "../helpers/index.js";
+import { fetchApi, getNetwork, mayFail } from "../helpers/index.js";
+import { fetch } from "cross-fetch";
+
+const fetchCurrentAssetUtxo = async (assetId: string) => {
+  const network = getNetwork(BLOCKFROST_API_KEY);
+  const headers = { project_id: BLOCKFROST_API_KEY, "Content-Type": "application/json" };
+  const txs = (await fetch(
+    `https://cardano-${network}.blockfrost.io/api/v0/assets/${assetId}/transactions?order=desc&count=1`,
+    { headers }
+  ).then((res) => res.json())) as { tx_hash: string }[];
+  const latestTx = txs[0];
+  if (!latestTx?.tx_hash) throw new Error("Minting Data UTxO Not Found");
+
+  const txUtxos = (await fetch(
+    `https://cardano-${network}.blockfrost.io/api/v0/txs/${latestTx.tx_hash}/utxos`,
+    { headers }
+  ).then((res) => res.json())) as {
+    outputs: { output_index: number; amount: { unit: string; quantity: string }[] }[];
+  };
+  const output = txUtxos.outputs.find((candidate) =>
+    candidate.amount.some((amount) => amount.unit === assetId && amount.quantity !== "0")
+  );
+  if (!output) throw new Error("Minting Data UTxO Not Found");
+
+  return {
+    tx_id: latestTx.tx_hash,
+    index: output.output_index,
+    lovelace: output.amount.find((amount) => amount.unit === "lovelace")?.quantity || "0",
+  };
+};
 
 const fetchSettings = async (
   network: NetworkName
@@ -89,12 +119,9 @@ const fetchSettings = async (
 const fetchMintingData = async (): Promise<
   Result<{ mintingData: MintingData; mintingDataAssetTxInput: TxInput }, string>
 > => {
-  const [mintingDataHandle, mintingDataUtxo, mintingDataHandleDatum] =
+  const [mintingDataHandle, mintingDataHandleDatum] =
     await Promise.all([
       fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}`).then((res) => res.json()),
-      fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}/utxo`).then((res) =>
-        res.json()
-      ),
       fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}/datum`, {
         "Content-Type": "text/plain",
       }).then((res) => res.text()),
@@ -104,8 +131,12 @@ const fetchMintingData = async (): Promise<
     throw new Error("Minting Data Datum Not Found");
   }
 
+  const mintingDataUtxo = await fetchCurrentAssetUtxo(
+    `${LEGACY_POLICY_ID}${mintingDataHandle.hex}`
+  );
+
   const mintingDataAssetTxInput = makeTxInput(
-    mintingDataHandle.utxo,
+    `${mintingDataUtxo.tx_id}#${mintingDataUtxo.index}`,
     makeTxOutput(
       makeAddress(mintingDataHandle.resolved_addresses.ada),
       makeValue(

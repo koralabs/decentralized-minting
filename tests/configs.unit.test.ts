@@ -8,6 +8,7 @@ const setupModule = async () => {
   const decodeSettingsV1Data = vi.fn();
   const decodeMintingDataDatum = vi.fn();
   const decodeHandlePriceInfoDatum = vi.fn();
+  const blockfrostFetch = vi.fn();
 
   const makeTxOutput = vi.fn(
     (address: unknown, value: unknown, datum: unknown) => ({
@@ -52,6 +53,7 @@ const setupModule = async () => {
   }));
   vi.doMock("../src/helpers/index.js", () => ({
     fetchApi,
+    getNetwork: vi.fn(() => "preview"),
     mayFail: <T>(callback: () => T) => {
       try {
         return { ok: true as const, data: callback() };
@@ -63,6 +65,9 @@ const setupModule = async () => {
       }
     },
   }));
+  vi.doMock("cross-fetch", () => ({
+    fetch: blockfrostFetch,
+  }));
 
   const module = await import("../src/configs/index.js");
   return {
@@ -72,6 +77,7 @@ const setupModule = async () => {
     decodeSettingsV1Data,
     decodeMintingDataDatum,
     decodeHandlePriceInfoDatum,
+    blockfrostFetch,
     makeTxOutput,
     makeTxInput,
   };
@@ -177,7 +183,7 @@ describe("configs fetchers", () => {
   });
 
   it("fetches minting data successfully", async () => {
-    const { module, fetchApi, decodeMintingDataDatum } = await setupModule();
+    const { module, fetchApi, decodeMintingDataDatum, blockfrostFetch } = await setupModule();
     fetchApi
       .mockResolvedValueOnce({
         json: async () => ({
@@ -187,16 +193,68 @@ describe("configs fetchers", () => {
         }),
       })
       .mockResolvedValueOnce({
-        json: async () => ({ lovelace: "3000000" }),
+        text: async () => "minting-datum-cbor",
+      });
+    blockfrostFetch
+      .mockResolvedValueOnce({
+        json: async () => [{ tx_hash: "live-tx-id" }],
       })
       .mockResolvedValueOnce({
-        text: async () => "minting-datum-cbor",
+        json: async () => ({
+          outputs: [
+            {
+              output_index: 7,
+              amount: [
+                { unit: "lovelace", quantity: "3000000" },
+                { unit: "policy-iddcba", quantity: "1" },
+              ],
+            },
+          ],
+        }),
       });
     decodeMintingDataDatum.mockReturnValue({ mpt_root_hash: "aa".repeat(32) });
 
     const result = await module.fetchMintingData();
     expect(result.ok).toBe(true);
-    expect(fetchApi).toHaveBeenCalledTimes(3);
+    expect(fetchApi).toHaveBeenCalledTimes(2);
+    expect(blockfrostFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses the current minting data /utxo reference for the tx input", async () => {
+    const { module, fetchApi, blockfrostFetch } = await setupModule();
+    fetchApi
+      .mockResolvedValueOnce({
+        json: async () => ({
+          utxo: "stale-utxo-ref",
+          resolved_addresses: { ada: "addr_test1q..." },
+          hex: "dcba",
+        }),
+      })
+      .mockResolvedValueOnce({
+        text: async () => "minting-datum-cbor",
+      });
+    blockfrostFetch
+      .mockResolvedValueOnce({
+        json: async () => [{ tx_hash: "live-tx-id" }],
+      })
+      .mockResolvedValueOnce({
+        json: async () => ({
+          outputs: [
+            {
+              output_index: 7,
+              amount: [
+                { unit: "lovelace", quantity: "3000000" },
+                { unit: "policy-iddcba", quantity: "1" },
+              ],
+            },
+          ],
+        }),
+      });
+
+    const result = await module.fetchMintingData();
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.mintingDataAssetTxInput.utxo).toBe("live-tx-id#7");
   });
 
   it("fails minting data fetch when datum is missing", async () => {
@@ -210,9 +268,6 @@ describe("configs fetchers", () => {
         }),
       })
       .mockResolvedValueOnce({
-        json: async () => ({ lovelace: "3000000" }),
-      })
-      .mockResolvedValueOnce({
         text: async () => "",
       });
 
@@ -222,7 +277,7 @@ describe("configs fetchers", () => {
   });
 
   it("returns Err when minting data decode fails", async () => {
-    const { module, fetchApi, decodeMintingDataDatum } = await setupModule();
+    const { module, fetchApi, decodeMintingDataDatum, blockfrostFetch } = await setupModule();
     fetchApi
       .mockResolvedValueOnce({
         json: async () => ({
@@ -232,10 +287,24 @@ describe("configs fetchers", () => {
         }),
       })
       .mockResolvedValueOnce({
-        json: async () => ({ lovelace: "3000000" }),
+        text: async () => "minting-datum-cbor",
+      });
+    blockfrostFetch
+      .mockResolvedValueOnce({
+        json: async () => [{ tx_hash: "live-tx-id" }],
       })
       .mockResolvedValueOnce({
-        text: async () => "minting-datum-cbor",
+        json: async () => ({
+          outputs: [
+            {
+              output_index: 7,
+              amount: [
+                { unit: "lovelace", quantity: "3000000" },
+                { unit: "policy-iddcba", quantity: "1" },
+              ],
+            },
+          ],
+        }),
       });
     decodeMintingDataDatum.mockImplementation(() => {
       throw new Error("bad-minting-data");
