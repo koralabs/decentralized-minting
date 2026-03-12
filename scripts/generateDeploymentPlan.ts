@@ -2,11 +2,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import {
+  buildUnsignedDeploymentTxArtifact,
   buildDeploymentPlan,
   buildExpectedContractStates,
   discoverNextContractSubhandles,
   fetchLiveContractStates,
   fetchLiveSettingsState,
+  renderTransactionOrderMarkdown,
 } from "../src/deploymentPlan.js";
 import { loadDesiredDeploymentState } from "../src/deploymentState.js";
 
@@ -25,10 +27,27 @@ const parseArgs = (argv: string[]) => {
   return args;
 };
 
+const renderSummaryMarkdown = (summaryMarkdown: string, transactionOrder: string[]) => {
+  const lines = summaryMarkdown.split("\n");
+  const transactionOrderIndex = lines.lastIndexOf("## Transaction Order");
+  if (transactionOrderIndex < 0) {
+    return summaryMarkdown;
+  }
+  return [
+    ...lines.slice(0, transactionOrderIndex + 1),
+    ...renderTransactionOrderMarkdown(transactionOrder),
+  ].join("\n");
+};
+
 const main = async () => {
   const args = parseArgs(process.argv.slice(2));
   if (!args.desired || !args["artifacts-dir"]) {
-    throw new Error("usage: --desired <path> --artifacts-dir <dir>");
+    throw new Error("usage: --desired <path> --artifacts-dir <dir> [--change-address <addr> --cbor-utxos-json <json>]");
+  }
+  const changeAddress = args["change-address"] ?? "";
+  const cborUtxosJson = args["cbor-utxos-json"] ?? "";
+  if (Boolean(changeAddress) !== Boolean(cborUtxosJson)) {
+    throw new Error("--change-address and --cbor-utxos-json must be provided together");
   }
 
   const desired = await loadDesiredDeploymentState(args.desired);
@@ -54,22 +73,61 @@ const main = async () => {
       userAgent,
     }),
   });
+  const generatedArtifacts = ["summary.json", "summary.md", "deployment-plan.json"];
+  let transactionOrder: string[] = [];
+  let txArtifactGenerated = false;
 
   await fs.mkdir(args["artifacts-dir"], { recursive: true });
-  for (const [name, payload] of Object.entries({
-    "summary.json": JSON.stringify({
-      ...plan.summaryJson,
-      tx_artifact_generated: false,
-      artifact_files: ["summary.json", "summary.md", "deployment-plan.json"],
-    }, null, 2),
-    "summary.md": plan.summaryMarkdown,
-    "deployment-plan.json": JSON.stringify({
-      ...plan.deploymentPlanJson,
-      tx_artifact_generated: false,
-      artifact_files: ["summary.json", "summary.md", "deployment-plan.json"],
-    }, null, 2),
-  })) {
-    await fs.writeFile(path.join(args["artifacts-dir"], name), `${payload}\n`);
+  const writePlanFiles = async () => {
+    for (const [name, payload] of Object.entries({
+      "summary.json": JSON.stringify({
+        ...plan.summaryJson,
+        transaction_order: transactionOrder,
+        tx_artifact_generated: txArtifactGenerated,
+        artifact_files: generatedArtifacts,
+      }, null, 2),
+      "summary.md": renderSummaryMarkdown(plan.summaryMarkdown, transactionOrder),
+      "deployment-plan.json": JSON.stringify({
+        ...plan.deploymentPlanJson,
+        transaction_order: transactionOrder,
+        tx_artifact_generated: txArtifactGenerated,
+        artifact_files: generatedArtifacts,
+      }, null, 2),
+    })) {
+      await fs.writeFile(path.join(args["artifacts-dir"], name), `${payload}\n`);
+    }
+  };
+  await writePlanFiles();
+
+  const changedContracts = plan.summaryJson.contracts.filter((contract) => contract.drift_type === "script_hash_only");
+  const hasUnsupportedDrift = plan.summaryJson.contracts.some(
+    (contract) => contract.drift_type === "settings_only" || contract.drift_type === "script_hash_and_settings"
+  );
+  if (changeAddress && cborUtxosJson && !hasUnsupportedDrift) {
+    const cborUtxos = JSON.parse(cborUtxosJson) as string[];
+    for (const [index, contractPlan] of changedContracts.entries()) {
+      const desiredContract = desired.contracts.find((contract) => contract.contractSlug === contractPlan.contract_slug);
+      const handleName = String(contractPlan.subhandle.value ?? "").trim();
+      if (!desiredContract || !handleName) {
+        throw new Error(`missing deployment target for ${contractPlan.contract_slug}`);
+      }
+      const txArtifact = await buildUnsignedDeploymentTxArtifact({
+        desired,
+        contract: desiredContract,
+        handleName,
+        changeAddress,
+        cborUtxos,
+      });
+      const fileName = `tx-${String(index + 1).padStart(2, "0")}.cbor`;
+      await fs.writeFile(path.join(args["artifacts-dir"], fileName), txArtifact.cborBytes);
+      await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${txArtifact.cborHex}\n`);
+      generatedArtifacts.push(fileName, `${fileName}.hex`);
+      transactionOrder.push(fileName);
+      txArtifactGenerated = true;
+    }
+    if (txArtifactGenerated) {
+      await writePlanFiles();
+    }
   }
 };
 

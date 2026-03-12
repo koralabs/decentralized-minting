@@ -5,7 +5,7 @@ This repo owns the desired on-chain deployment state for decentralized minting c
 
 The repo defines what should be live on `preview`, `preprod`, and `mainnet`. It should not be treated as the storage location for volatile live references such as current settings UTxO refs.
 
-Canonical slug naming for this repo follows the shared rule in `kora-bot/docs/spec/contract-deployment-pipeline.md`:
+Canonical slug naming for this repo follows the shared rule in `adahandle-deployments/docs/contract-deployment-pipeline.md`:
 - `<app><[ord|mnt|ref|roy]><[mpt]>`
 - this repo currently uses `demimntprx`, `demimntmpt`, `demimnt`, and `demiord`
 - `old_script_type` is legacy migration-only
@@ -91,12 +91,16 @@ The `mpt_root_hash` field changes frequently and is ignored by default for deplo
 - Existing legacy live handles can remain attached to older contracts during the transition.
 
 ## Artifact Contract
-The deployment workflow for this repo currently emits:
+The deployment workflow for this repo emits:
 - `deployment-plan.json`
 - `summary.md`
 - `summary.json`
 
-It does not emit `tx-XX.cbor` artifacts yet. The current rollout scope is informational drift detection for the four scripts plus the shared settings handles across `preview`, `preprod`, and `mainnet`.
+When the detected drift is script-hash-only and the planner is given both `change_address` and `cbor_utxos_json`, it also emits:
+- raw unsigned `tx-XX.cbor`
+- matching `tx-XX.cbor.hex` sidecars
+
+Unsigned tx generation is intentionally skipped when settings drift is present. The planner also estimates the signed tx size by adding one dummy witness and fails before artifact upload if that signed size would exceed protocol `maxTxSize`.
 
 ## Human Approval Boundary
 Automation prepares deployment transactions and summaries.

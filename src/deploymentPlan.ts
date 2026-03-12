@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { Buffer } from "node:buffer";
 
 import {
   makeAddress,
@@ -12,6 +13,7 @@ import {
 import { decodeUplcData } from "@helios-lang/uplc";
 
 import { LEGACY_POLICY_ID } from "./constants/index.js";
+import { buildReferenceScriptDeploymentTx } from "./deploymentTx.js";
 import { buildContracts } from "./contracts/config.js";
 import {
   decodeHandlePriceInfoDatum,
@@ -20,6 +22,7 @@ import {
   decodeSettingsV1Data,
 } from "./contracts/index.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
+import { fetchNetworkParameters } from "./utils/index.js";
 
 const REPO_NAME = "decentralized-minting";
 const DEMI_SETTINGS_HANDLE = "demi@handle_settings";
@@ -38,6 +41,18 @@ export interface LiveContractState {
   currentScriptHash: string;
   currentSubhandle: string | null;
 }
+
+export interface UnsignedDeploymentTxArtifact {
+  cborBytes: Buffer;
+  cborHex: string;
+  estimatedSignedTxSize: number;
+  maxTxSize: number;
+}
+
+export const renderTransactionOrderMarkdown = (transactionOrder: string[]) =>
+  transactionOrder.length > 0
+    ? transactionOrder.map((fileName) => `- \`${fileName}\``)
+    : ["- Planner can emit `tx-XX.cbor` artifacts when `--change-address` and `--cbor-utxos-json` are supplied."];
 
 export const discoverNextContractSubhandles = async ({
   network,
@@ -421,7 +436,7 @@ export const buildDeploymentPlan = ({
     ]),
     "",
     "## Transaction Order",
-    "- No transaction artifact is generated for this repo yet.",
+    ...renderTransactionOrderMarkdown([]),
   ].join("\n");
 
   return {
@@ -435,6 +450,54 @@ export const buildDeploymentPlan = ({
       contracts: contractEntries.map((entry) => entry.expected_post_deploy_state),
       transaction_order: [],
     },
+  };
+};
+
+export const buildUnsignedDeploymentTxArtifact = async ({
+  desired,
+  contract,
+  handleName,
+  changeAddress,
+  cborUtxos,
+  buildTxFn = buildReferenceScriptDeploymentTx,
+  fetchNetworkParametersFn = fetchNetworkParameters,
+}: {
+  desired: DesiredDeploymentState;
+  contract: DesiredContractTarget;
+  handleName: string;
+  changeAddress: string;
+  cborUtxos: string[];
+  buildTxFn?: typeof buildReferenceScriptDeploymentTx;
+  fetchNetworkParametersFn?: typeof fetchNetworkParameters;
+}): Promise<UnsignedDeploymentTxArtifact> => {
+  const tx = await buildTxFn({
+    desired,
+    contract,
+    handleName,
+    changeAddress,
+    cborUtxos,
+  });
+  tx.witnesses.addDummySignatures(1);
+  const estimatedSignedTxSize = tx.calcSize();
+  tx.witnesses.removeDummySignatures(1);
+
+  const networkParametersResult = await fetchNetworkParametersFn(desired.network);
+  if (!networkParametersResult.ok) {
+    throw new Error("Failed to fetch network parameter");
+  }
+  const maxTxSize = networkParametersResult.data.maxTxSize;
+  if (estimatedSignedTxSize > maxTxSize) {
+    throw new Error(
+      `unsigned deployment tx for ${handleName} is too large after adding 1 required signature: ${estimatedSignedTxSize} > ${maxTxSize}`
+    );
+  }
+
+  const cborBytes = Buffer.from(tx.toCbor());
+  return {
+    cborBytes,
+    cborHex: cborBytes.toString("hex"),
+    estimatedSignedTxSize,
+    maxTxSize,
   };
 };
 

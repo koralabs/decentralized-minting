@@ -9,6 +9,12 @@ on:
         description: Desired deployment YAML path
         required: false
         default: deploy/preview/decentralized-minting.yaml
+      change_address:
+        description: Optional deployer change address for unsigned tx generation
+        required: false
+      cbor_utxos_json:
+        description: Optional JSON array of deployer wallet input CBOR values for unsigned tx generation
+        required: false
 
 jobs:
   deployment-plan:
@@ -16,6 +22,8 @@ jobs:
     secrets: inherit
     with:
       desired_path: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.desired_path || '' }}
+      change_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.change_address || '' }}
+      cbor_utxos_json: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.cbor_utxos_json || '' }}
       node_version: "22.13"
       timeout_minutes: 15
       kora_user_agent: ${{ vars.KORA_USER_AGENT }}

@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
+import { Ok } from "ts-res";
 
 import {
   buildDeploymentPlan,
   buildExpectedContractStates,
+  buildUnsignedDeploymentTxArtifact,
   discoverNextContractSubhandles,
   fetchLiveContractStates,
   fetchLiveSettingsState,
+  renderTransactionOrderMarkdown,
 } from "../src/deploymentPlan.js";
 import type { DesiredDeploymentState } from "../src/deploymentState.js";
 
@@ -235,5 +238,80 @@ describe("decentralized minting deployment plan", () => {
       demimntprx: "demimntprx2@handlecontract",
       demimntmpt: "demimntmpt1@handlecontract",
     });
+  });
+
+  it("builds raw CBOR bytes and a matching hex artifact for the unsigned deployment tx", async () => {
+    // Feature: deployment artifacts must write raw CBOR bytes to `tx-XX.cbor` and keep hex in a sidecar file.
+    // Failure mode: wallets would reject the artifact because the `.cbor` file contained printable hex text instead of CBOR bytes.
+    const tx = {
+      witnessCount: 0,
+      witnesses: {
+        addDummySignatures: (count: number) => {
+          tx.witnessCount += count;
+        },
+        removeDummySignatures: (count: number) => {
+          tx.witnessCount -= count;
+        },
+      },
+      calcSize: () => (tx.witnessCount === 1 ? 222 : 111),
+      toCbor: () => [0x84, 0x01, 0x02],
+    };
+
+    const artifact = await buildUnsignedDeploymentTxArtifact({
+      desired: desiredState,
+      contract: desiredState.contracts[0],
+      handleName: "demimntprx2@handlecontract",
+      changeAddress: "addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej",
+      cborUtxos: ["abcd"],
+      buildTxFn: (async () => tx as never) as never,
+      fetchNetworkParametersFn: (async () => Ok({ maxTxSize: 300 } as never)) as never,
+    });
+
+    expect([...artifact.cborBytes]).toEqual([0x84, 0x01, 0x02]);
+    expect(artifact.cborHex).toBe("840102");
+    expect(artifact.estimatedSignedTxSize).toBe(222);
+    expect(artifact.maxTxSize).toBe(300);
+  });
+
+  it("rejects unsigned deployment tx artifacts that would exceed max tx size after signing", async () => {
+    // Feature: the planner must fail before uploading a tx artifact that becomes oversized once the signer adds its witness.
+    // Failure mode: ops would receive a CBOR file that imports locally but is rejected on submit because the signed tx exceeds protocol size limits.
+    const tx = {
+      witnessCount: 0,
+      witnesses: {
+        addDummySignatures: (count: number) => {
+          tx.witnessCount += count;
+        },
+        removeDummySignatures: (count: number) => {
+          tx.witnessCount -= count;
+        },
+      },
+      calcSize: () => (tx.witnessCount === 1 ? 301 : 200),
+      toCbor: () => [0x80],
+    };
+
+    await expect(
+      buildUnsignedDeploymentTxArtifact({
+        desired: desiredState,
+        contract: desiredState.contracts[0],
+        handleName: "demimntprx2@handlecontract",
+        changeAddress: "addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej",
+        cborUtxos: ["abcd"],
+        buildTxFn: (async () => tx as never) as never,
+        fetchNetworkParametersFn: (async () => Ok({ maxTxSize: 300 } as never)) as never,
+      })
+    ).rejects.toThrow(/too large after adding 1 required signature/i);
+  });
+
+  it("renders transaction order markdown from generated artifacts", () => {
+    // Feature: the human summary must show generated tx artifact names when the planner emits them.
+    // Failure mode: operators would read a stale summary claiming no tx artifacts exist even though the workflow uploaded them.
+    expect(renderTransactionOrderMarkdown(["tx-01.cbor", "tx-02.cbor"])).toEqual([
+      "- `tx-01.cbor`",
+      "- `tx-02.cbor`",
+    ]);
+    expect(renderTransactionOrderMarkdown([])).toEqual([
+      "- Planner can emit `tx-XX.cbor` artifacts when `--change-address` and `--cbor-utxos-json` are supplied.",
+    ]);
   });
 });
