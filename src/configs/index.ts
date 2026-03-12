@@ -45,19 +45,32 @@ const fetchCurrentAssetUtxo = async (assetId: string) => {
     `https://cardano-${network}.blockfrost.io/api/v0/txs/${latestTx.tx_hash}/utxos`,
     { headers }
   ).then((res) => res.json())) as {
-    outputs: { output_index: number; amount: { unit: string; quantity: string }[] }[];
+    outputs: {
+      output_index: number;
+      address: string;
+      amount: { unit: string; quantity: string }[];
+      inline_datum?: string;
+    }[];
   };
   const output = txUtxos.outputs.find((candidate) =>
     candidate.amount.some((amount) => amount.unit === assetId && amount.quantity !== "0")
   );
   if (!output) throw new Error("Minting Data UTxO Not Found");
 
-  return {
-    tx_id: latestTx.tx_hash,
-    index: output.output_index,
-    lovelace: output.amount.find((amount) => amount.unit === "lovelace")?.quantity || "0",
-  };
+  return { tx_id: latestTx.tx_hash, output };
 };
+
+const makeAssetsFromOutputAmounts = (
+  amounts: { unit: string; quantity: string }[]
+) =>
+  makeAssets(
+    amounts
+      .filter((amount) => amount.unit !== "lovelace" && BigInt(amount.quantity) > 0n)
+      .map((amount) => [
+        makeAssetClass(`${amount.unit.slice(0, 56)}.${amount.unit.slice(56)}`),
+        BigInt(amount.quantity),
+      ])
+  );
 
 const fetchSettings = async (
   network: NetworkName
@@ -119,33 +132,31 @@ const fetchSettings = async (
 const fetchMintingData = async (): Promise<
   Result<{ mintingData: MintingData; mintingDataAssetTxInput: TxInput }, string>
 > => {
-  const [mintingDataHandle, mintingDataHandleDatum] =
-    await Promise.all([
-      fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}`).then((res) => res.json()),
-      fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}/datum`, {
-        "Content-Type": "text/plain",
-      }).then((res) => res.text()),
-    ]);
-
-  if (!mintingDataHandleDatum) {
-    throw new Error("Minting Data Datum Not Found");
-  }
+  const mintingDataHandle = await fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}`).then((res) =>
+    res.json()
+  );
 
   const mintingDataUtxo = await fetchCurrentAssetUtxo(
     `${LEGACY_POLICY_ID}${mintingDataHandle.hex}`
   );
+  const mintingDataDatum = mintingDataUtxo.output.inline_datum;
+
+  if (!mintingDataDatum) {
+    throw new Error("Minting Data Datum Not Found");
+  }
 
   const mintingDataAssetTxInput = makeTxInput(
-    `${mintingDataUtxo.tx_id}#${mintingDataUtxo.index}`,
+    `${mintingDataUtxo.tx_id}#${mintingDataUtxo.output.output_index}`,
     makeTxOutput(
-      makeAddress(mintingDataHandle.resolved_addresses.ada),
+      makeAddress(mintingDataUtxo.output.address),
       makeValue(
-        BigInt(mintingDataUtxo.lovelace),
-        makeAssets([
-          [makeAssetClass(`${LEGACY_POLICY_ID}.${mintingDataHandle.hex}`), 1n],
-        ])
+        BigInt(
+          mintingDataUtxo.output.amount.find((amount) => amount.unit === "lovelace")
+            ?.quantity || "0"
+        ),
+        makeAssetsFromOutputAmounts(mintingDataUtxo.output.amount)
       ),
-      makeInlineTxOutputDatum(decodeUplcData(mintingDataHandleDatum))
+      makeInlineTxOutputDatum(decodeUplcData(mintingDataDatum))
     )
   );
 

@@ -188,12 +188,8 @@ describe("configs fetchers", () => {
       .mockResolvedValueOnce({
         json: async () => ({
           utxo: "minting-data-utxo-ref",
-          resolved_addresses: { ada: "addr_test1q..." },
           hex: "dcba",
         }),
-      })
-      .mockResolvedValueOnce({
-        text: async () => "minting-datum-cbor",
       });
     blockfrostFetch
       .mockResolvedValueOnce({
@@ -204,6 +200,8 @@ describe("configs fetchers", () => {
           outputs: [
             {
               output_index: 7,
+              address: "addr_test1live...",
+              inline_datum: "minting-datum-cbor",
               amount: [
                 { unit: "lovelace", quantity: "3000000" },
                 { unit: "policy-iddcba", quantity: "1" },
@@ -216,22 +214,19 @@ describe("configs fetchers", () => {
 
     const result = await module.fetchMintingData();
     expect(result.ok).toBe(true);
-    expect(fetchApi).toHaveBeenCalledTimes(2);
+    expect(fetchApi).toHaveBeenCalledTimes(1);
     expect(blockfrostFetch).toHaveBeenCalledTimes(2);
   });
 
-  it("uses the current minting data /utxo reference for the tx input", async () => {
-    const { module, fetchApi, blockfrostFetch } = await setupModule();
+  it("uses the current on-chain minting data output for the tx input", async () => {
+    const { module, fetchApi, blockfrostFetch, makeTxInput, makeTxOutput } = await setupModule();
     fetchApi
       .mockResolvedValueOnce({
         json: async () => ({
           utxo: "stale-utxo-ref",
-          resolved_addresses: { ada: "addr_test1q..." },
+          resolved_addresses: { ada: "addr_test1stale..." },
           hex: "dcba",
         }),
-      })
-      .mockResolvedValueOnce({
-        text: async () => "minting-datum-cbor",
       });
     blockfrostFetch
       .mockResolvedValueOnce({
@@ -242,6 +237,8 @@ describe("configs fetchers", () => {
           outputs: [
             {
               output_index: 7,
+              address: "addr_test1live...",
+              inline_datum: "live-datum-cbor",
               amount: [
                 { unit: "lovelace", quantity: "3000000" },
                 { unit: "policy-iddcba", quantity: "1" },
@@ -255,20 +252,40 @@ describe("configs fetchers", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.data.mintingDataAssetTxInput.utxo).toBe("live-tx-id#7");
+    expect(makeTxOutput).toHaveBeenCalledWith(
+      { bech32: "addr_test1live..." },
+      { lovelace: 3000000n, assets: [["policy-iddcba.", 1n]] },
+      { kind: "InlineTxOutputDatum", data: "decoded:live-datum-cbor" }
+    );
+    expect(makeTxInput).toHaveBeenCalledTimes(1);
   });
 
   it("fails minting data fetch when datum is missing", async () => {
-    const { module, fetchApi } = await setupModule();
+    const { module, fetchApi, blockfrostFetch } = await setupModule();
     fetchApi
       .mockResolvedValueOnce({
         json: async () => ({
           utxo: "minting-data-utxo-ref",
-          resolved_addresses: { ada: "addr_test1q..." },
           hex: "dcba",
         }),
+      });
+    blockfrostFetch
+      .mockResolvedValueOnce({
+        json: async () => [{ tx_hash: "live-tx-id" }],
       })
       .mockResolvedValueOnce({
-        text: async () => "",
+        json: async () => ({
+          outputs: [
+            {
+              output_index: 7,
+              address: "addr_test1live...",
+              amount: [
+                { unit: "lovelace", quantity: "3000000" },
+                { unit: "policy-iddcba", quantity: "1" },
+              ],
+            },
+          ],
+        }),
       });
 
     await expect(module.fetchMintingData()).rejects.toThrow(
@@ -282,12 +299,8 @@ describe("configs fetchers", () => {
       .mockResolvedValueOnce({
         json: async () => ({
           utxo: "minting-data-utxo-ref",
-          resolved_addresses: { ada: "addr_test1q..." },
           hex: "dcba",
         }),
-      })
-      .mockResolvedValueOnce({
-        text: async () => "minting-datum-cbor",
       });
     blockfrostFetch
       .mockResolvedValueOnce({
@@ -298,6 +311,8 @@ describe("configs fetchers", () => {
           outputs: [
             {
               output_index: 7,
+              address: "addr_test1live...",
+              inline_datum: "minting-datum-cbor",
               amount: [
                 { unit: "lovelace", quantity: "3000000" },
                 { unit: "policy-iddcba", quantity: "1" },
