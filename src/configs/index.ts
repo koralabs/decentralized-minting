@@ -186,34 +186,29 @@ const fetchHandlePriceInfoData = async (
     string
   >
 > => {
-  const [
-    handlePriceInfoHandle,
-    handlePriceInfoUtxo,
-    handlePriceInfoHandleDatum,
-  ] = await Promise.all([
-    fetchApi(`handles/${handlePriceAssetName}`).then((res) => res.json()),
-    fetchApi(`handles/${handlePriceAssetName}/utxo`).then((res) => res.json()),
-    fetchApi(`handles/${handlePriceAssetName}/datum`, {
-      "Content-Type": "text/plain",
-    }).then((res) => res.text()),
-  ]);
+  const handlePriceInfoHandle = await fetchApi(
+    `handles/${handlePriceAssetName}`
+  ).then((res) => res.json());
+  const handlePriceInfoUtxo = await fetchCurrentAssetUtxo(
+    `${LEGACY_POLICY_ID}${handlePriceInfoHandle.hex}`
+  );
+  const handlePriceInfoHandleDatum = handlePriceInfoUtxo.output.inline_datum;
 
   if (!handlePriceInfoHandleDatum) {
     throw new Error("Handle Price Info Datum Not Found");
   }
 
   const handlePriceInfoAssetTxInput = makeTxInput(
-    handlePriceInfoHandle.utxo,
+    `${handlePriceInfoUtxo.tx_id}#${handlePriceInfoUtxo.output.output_index}`,
     makeTxOutput(
-      makeAddress(handlePriceInfoHandle.resolved_addresses.ada),
+      makeAddress(handlePriceInfoUtxo.output.address),
       makeValue(
-        BigInt(handlePriceInfoUtxo.lovelace),
-        makeAssets([
-          [
-            makeAssetClass(`${LEGACY_POLICY_ID}.${handlePriceInfoHandle.hex}`),
-            1n,
-          ],
-        ])
+        BigInt(
+          handlePriceInfoUtxo.output.amount.find(
+            (amount) => amount.unit === "lovelace"
+          )?.quantity || "0"
+        ),
+        makeAssetsFromOutputAmounts(handlePriceInfoUtxo.output.amount)
       ),
       makeInlineTxOutputDatum(decodeUplcData(handlePriceInfoHandleDatum))
     )

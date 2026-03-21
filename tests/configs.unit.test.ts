@@ -331,20 +331,32 @@ describe("configs fetchers", () => {
   });
 
   it("fetches handle price info successfully", async () => {
-    const { module, fetchApi, decodeHandlePriceInfoDatum } = await setupModule();
+    const { module, fetchApi, decodeHandlePriceInfoDatum, blockfrostFetch } =
+      await setupModule();
     fetchApi
       .mockResolvedValueOnce({
         json: async () => ({
-          utxo: "price-utxo-ref",
-          resolved_addresses: { ada: "addr_test1q..." },
           hex: "9988",
         }),
+      });
+    blockfrostFetch
+      .mockResolvedValueOnce({
+        json: async () => [{ tx_hash: "price-tx" }],
       })
       .mockResolvedValueOnce({
-        json: async () => ({ lovelace: "5000000" }),
-      })
-      .mockResolvedValueOnce({
-        text: async () => "price-datum-cbor",
+        json: async () => ({
+          outputs: [
+            {
+              output_index: 1,
+              address: "addr_test1q...",
+              amount: [
+                { unit: "lovelace", quantity: "5000000" },
+                { unit: "policy-id9988", quantity: "1" },
+              ],
+              inline_datum: "price-datum-cbor",
+            },
+          ],
+        }),
       });
     decodeHandlePriceInfoDatum.mockReturnValue({
       current_data: [1n, 2n, 3n, 4n],
@@ -354,24 +366,33 @@ describe("configs fetchers", () => {
 
     const result = await module.fetchHandlePriceInfoData("price@handle_prices");
     expect(result.ok).toBe(true);
-    expect(fetchApi).toHaveBeenCalledTimes(3);
+    expect(fetchApi).toHaveBeenCalledTimes(1);
   });
 
   it("fails handle price fetch when datum is missing", async () => {
-    const { module, fetchApi } = await setupModule();
-    fetchApi
+    const { module, fetchApi, blockfrostFetch } = await setupModule();
+    fetchApi.mockResolvedValueOnce({
+      json: async () => ({
+        hex: "9988",
+      }),
+    });
+    blockfrostFetch
+      .mockResolvedValueOnce({
+        json: async () => [{ tx_hash: "price-tx" }],
+      })
       .mockResolvedValueOnce({
         json: async () => ({
-          utxo: "price-utxo-ref",
-          resolved_addresses: { ada: "addr_test1q..." },
-          hex: "9988",
+          outputs: [
+            {
+              output_index: 1,
+              address: "addr_test1q...",
+              amount: [
+                { unit: "lovelace", quantity: "5000000" },
+                { unit: "policy-id9988", quantity: "1" },
+              ],
+            },
+          ],
         }),
-      })
-      .mockResolvedValueOnce({
-        json: async () => ({ lovelace: "5000000" }),
-      })
-      .mockResolvedValueOnce({
-        text: async () => "",
       });
 
     await expect(
@@ -380,20 +401,31 @@ describe("configs fetchers", () => {
   });
 
   it("returns Err when handle price decode fails", async () => {
-    const { module, fetchApi, decodeHandlePriceInfoDatum } = await setupModule();
-    fetchApi
+    const { module, fetchApi, decodeHandlePriceInfoDatum, blockfrostFetch } =
+      await setupModule();
+    fetchApi.mockResolvedValueOnce({
+      json: async () => ({
+        hex: "9988",
+      }),
+    });
+    blockfrostFetch
+      .mockResolvedValueOnce({
+        json: async () => [{ tx_hash: "price-tx" }],
+      })
       .mockResolvedValueOnce({
         json: async () => ({
-          utxo: "price-utxo-ref",
-          resolved_addresses: { ada: "addr_test1q..." },
-          hex: "9988",
+          outputs: [
+            {
+              output_index: 1,
+              address: "addr_test1q...",
+              amount: [
+                { unit: "lovelace", quantity: "5000000" },
+                { unit: "policy-id9988", quantity: "1" },
+              ],
+              inline_datum: "price-datum-cbor",
+            },
+          ],
         }),
-      })
-      .mockResolvedValueOnce({
-        json: async () => ({ lovelace: "5000000" }),
-      })
-      .mockResolvedValueOnce({
-        text: async () => "price-datum-cbor",
       });
     decodeHandlePriceInfoDatum.mockImplementation(() => {
       throw new Error("bad-handle-price");
