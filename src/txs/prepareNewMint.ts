@@ -52,13 +52,26 @@ interface PrepareNewMintParams {
   blockfrostApiKey: string;
 }
 
+interface PrepareNewMintDeps {
+  fetchAllDeployedScriptsFn?: typeof fetchAllDeployedScripts;
+  fetchMintingDataFn?: typeof fetchMintingData;
+  fetchSettingsFn?: typeof fetchSettings;
+  fetchHandlePriceInfoDataFn?: typeof fetchHandlePriceInfoData;
+}
+
 /**
  * @description Mint New Handles from Order
  * @param {PrepareNewMintParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
 const prepareNewMintTransaction = async (
-  params: PrepareNewMintParams
+  params: PrepareNewMintParams,
+  {
+    fetchAllDeployedScriptsFn = fetchAllDeployedScripts,
+    fetchMintingDataFn = fetchMintingData,
+    fetchSettingsFn = fetchSettings,
+    fetchHandlePriceInfoDataFn = fetchHandlePriceInfoData,
+  }: PrepareNewMintDeps = {}
 ): Promise<
   Result<
     {
@@ -79,7 +92,7 @@ const prepareNewMintTransaction = async (
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
 
   // fetch deployed scripts
-  const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
+  const fetchedResult = await fetchAllDeployedScriptsFn(blockfrostV0Client);
   if (!fetchedResult.ok)
     return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const {
@@ -91,13 +104,13 @@ const prepareNewMintTransaction = async (
   } = fetchedResult.data;
 
   // fetch settings
-  const settingsResult = await fetchSettings(network);
+  const settingsResult = await fetchSettingsFn(network);
   if (!settingsResult.ok)
     return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
   const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
   const { allowed_minters, treasury_address } = settingsV1;
 
-  const mintingDataResult = await fetchMintingData();
+  const mintingDataResult = await fetchMintingDataFn();
   if (!mintingDataResult.ok)
     return Err(
       new Error(`Failed to fetch minting data: ${mintingDataResult.error}`)
@@ -107,7 +120,7 @@ const prepareNewMintTransaction = async (
   // NOTE:
   // we assume valid handle price asset is
   // "price@handle_settings" (koralab's)
-  const handlePriceInfoDataResult = await fetchHandlePriceInfoData(
+  const handlePriceInfoDataResult = await fetchHandlePriceInfoDataFn(
     HANDLE_PRICE_INFO_HANDLE_NAME
   );
   if (!handlePriceInfoDataResult.ok) {
