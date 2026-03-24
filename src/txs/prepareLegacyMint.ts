@@ -34,13 +34,22 @@ interface PrepareLegacyMintParams {
   blockfrostApiKey: string;
 }
 
+interface PrepareLegacyMintDeps {
+  fetchAllDeployedScriptsFn?: typeof fetchAllDeployedScripts;
+  fetchMintingDataFn?: typeof fetchMintingData;
+}
+
 /**
  * @description Mint Legacy Handles from Order
  * @param {PrepareLegacyMintParams} params
  * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
  */
 const prepareLegacyMintTransaction = async (
-  params: PrepareLegacyMintParams
+  params: PrepareLegacyMintParams,
+  {
+    fetchAllDeployedScriptsFn = fetchAllDeployedScripts,
+    fetchMintingDataFn = fetchMintingData,
+  }: PrepareLegacyMintDeps = {}
 ): Promise<
   Result<
     {
@@ -58,12 +67,12 @@ const prepareLegacyMintTransaction = async (
   const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
 
   // fetch deployed scripts
-  const fetchedResult = await fetchAllDeployedScripts(blockfrostV0Client);
+  const fetchedResult = await fetchAllDeployedScriptsFn(blockfrostV0Client);
   if (!fetchedResult.ok)
     return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const { mintingDataScriptTxInput } = fetchedResult.data;
 
-  const mintingDataResult = await fetchMintingData();
+  const mintingDataResult = await fetchMintingDataFn();
   if (!mintingDataResult.ok)
     return Err(
       new Error(`Failed to fetch minting data: ${mintingDataResult.error}`)
