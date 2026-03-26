@@ -10,6 +10,7 @@ import {
 } from "@helios-lang/ledger";
 import { NetworkName } from "@helios-lang/tx-utils";
 import { decodeUplcData } from "@helios-lang/uplc";
+import { fetch } from "cross-fetch";
 import { Err, Ok, Result } from "ts-res";
 
 import {
@@ -29,7 +30,6 @@ import {
   SettingsV1,
 } from "../contracts/index.js";
 import { fetchApi, getNetwork, mayFail } from "../helpers/index.js";
-import { fetch } from "cross-fetch";
 
 const fetchCurrentAssetUtxo = async (assetId: string) => {
   const network = getNetwork(BLOCKFROST_API_KEY);

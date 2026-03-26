@@ -1,5 +1,5 @@
-import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
+import crypto from "node:crypto";
 
 import {
   makeAddress,
@@ -13,7 +13,6 @@ import {
 import { decodeUplcData } from "@helios-lang/uplc";
 
 import { LEGACY_POLICY_ID } from "./constants/index.js";
-import { buildReferenceScriptDeploymentTx } from "./deploymentTx.js";
 import { buildContracts } from "./contracts/config.js";
 import {
   decodeHandlePriceInfoDatum,
@@ -22,6 +21,7 @@ import {
   decodeSettingsV1Data,
 } from "./contracts/index.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
+import { buildReferenceScriptDeploymentTx } from "./deploymentTx.js";
 import { fetchNetworkParameters } from "./utils/index.js";
 
 const REPO_NAME = "decentralized-minting";
