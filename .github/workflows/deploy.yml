@@ -9,6 +9,9 @@ jobs:
     if: github.repository_owner == 'koralabs'
     name: Deploying from ${{ github.ref_name }}
     environment: mainnet
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -33,7 +36,7 @@ jobs:
           VARS_CONTEXT: ${{ toJson(vars) }}
           GITHUB_CONTEXT: ${{ toJson(github) }}
           DEPLOYMENT_TYPE: npm-publish
-          NODE_VERSION: 20
+          NODE_VERSION: 24
           IS_PUBLIC: true
         run: |
           set -eu
