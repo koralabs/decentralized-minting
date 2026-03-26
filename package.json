@@ -1,6 +1,6 @@
 {
   "name": "@koralabs/handles-decentralized-minting",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "license": "MIT",
   "main": "lib/index.js",
   "type": "module",
@@ -11,6 +11,10 @@
     "test:aiken": "cd smart-contract &&  aiken check",
     "start:preview": "cd scripts/ && NODE_ENV=preview tsx ./run/index.ts",
     "start:preprod": "cd scripts/ && NODE_ENV=preprod tsx ./run/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/koralabs/decentralized-minting.git"
   },
   "dependencies": {
     "@aiken-lang/merkle-patricia-forestry": "^1.2.0",
