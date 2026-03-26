@@ -21,14 +21,14 @@ const desiredState: DesiredDeploymentState = {
     adminVerificationKeyHash: "admin",
   },
   assignedHandles: {
-    settings: ["demi@handle_settings", "handle_root@handle_settings", "kora@handle_prices"],
+    settings: ["hal@handle_settings", "hal_root@handle_settings", "kora@handle_prices"],
     scripts: ["demimntprx1@handlecontract", "demimntmpt1@handlecontract"],
   },
-  ignoredSettings: ["settings.values.handle_root@handle_settings.mpt_root_hash"],
+  ignoredSettings: ["settings.values.hal_root@handle_settings.mpt_root_hash"],
   settings: {
     type: "decentralized_minting_settings",
     values: {
-      "demi@handle_settings": {
+      "hal@handle_settings": {
         mint_governor: "0d2b729731ca4db1edf8305572a38a60ab12913e8b83a9f2121be41d",
         mint_version: 0,
         policy_id: "6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e",
@@ -40,7 +40,7 @@ const desiredState: DesiredDeploymentState = {
         order_script_hash: "24fe9a2abd4fa926677a65bc8424c755b054790599d4474911a06553",
         minting_data_script_hash: "553de54adecc5c9bfa806cbe0341de9c8a8f8ef13d28e86a81284333",
       },
-      "handle_root@handle_settings": {
+      "hal_root@handle_settings": {
         mpt_root_hash: "new-root",
       },
       "kora@handle_prices": {
@@ -148,12 +148,12 @@ describe("decentralized minting deployment plan", () => {
     });
 
     expect(live.currentSettingsUtxoRefs).toEqual({
-      "demi@handle_settings": "a".repeat(64) + "#0",
-      "handle_root@handle_settings": "b".repeat(64) + "#0",
+      "hal@handle_settings": "a".repeat(64) + "#0",
+      "hal_root@handle_settings": "b".repeat(64) + "#0",
       "kora@handle_prices": "c".repeat(64) + "#1",
     });
     expect(live.values).toEqual({
-      "demi@handle_settings": {
+      "hal@handle_settings": {
         mint_governor: "0d2b729731ca4db1edf8305572a38a60ab12913e8b83a9f2121be41d",
         mint_version: 0,
         policy_id: "6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e",
@@ -165,7 +165,7 @@ describe("decentralized minting deployment plan", () => {
         order_script_hash: "24fe9a2abd4fa926677a65bc8424c755b054790599d4474911a06553",
         minting_data_script_hash: "553de54adecc5c9bfa806cbe0341de9c8a8f8ef13d28e86a81284333",
       },
-      "handle_root@handle_settings": {
+      "hal_root@handle_settings": {
         mpt_root_hash: "c614162a20649af2093df773ec4bb1c7d957fe79a1d9d586ac5ce0a2506e2209",
       },
       "kora@handle_prices": {
@@ -190,7 +190,7 @@ describe("decentralized minting deployment plan", () => {
         currentSettingsUtxoRefs: {},
         values: {
           ...desiredState.settings.values,
-          "handle_root@handle_settings": { mpt_root_hash: "old-root" },
+          "hal_root@handle_settings": { mpt_root_hash: "old-root" },
           "kora@handle_prices": { current_data: [1, 2, 3, 4], prev_data: [4, 3, 2, 1] },
         },
       },

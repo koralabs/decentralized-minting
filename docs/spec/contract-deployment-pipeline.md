@@ -29,8 +29,8 @@ Each file carries:
 - the current assigned script Handles,
 - ignored settings paths,
 - normalized live-comparable settings values for:
-  - `demi@handle_settings`
-  - `handle_root@handle_settings`
+  - `hal@handle_settings`
+  - `hal_root@handle_settings`
   - `kora@handle_prices`
 
 Example shape:
@@ -44,18 +44,18 @@ build_parameters:
   admin_verification_key_hash: <pkh>
 assigned_handles:
   settings:
-    - demi@handle_settings
-    - handle_root@handle_settings
+    - hal@handle_settings
+    - hal_root@handle_settings
     - kora@handle_prices
   scripts:
     - demimntprx1@handlecontract
 ignored_settings:
-  - settings.values.handle_root@handle_settings.mpt_root_hash
+  - settings.values.hal_root@handle_settings.mpt_root_hash
 settings:
   type: decentralized_minting_settings
   values:
-    demi@handle_settings: {}
-    handle_root@handle_settings: {}
+    hal@handle_settings: {}
+    hal_root@handle_settings: {}
     kora@handle_prices: {}
 contracts:
   - contract_slug: demimntprx
@@ -73,15 +73,15 @@ Deployment automation should:
 - load desired YAML from this repo,
 - read live chain state for the shared settings Handles and deployed scripts,
 - decode the live CBOR datums into the same YAML-shaped settings values,
-- ignore configured paths such as `handle_root@handle_settings.mpt_root_hash`,
+- ignore configured paths such as `hal_root@handle_settings.mpt_root_hash`,
 - classify drift as `no_change`, `script_hash_only`, `settings_only`, or `script_hash_and_settings`.
 
 No deployment artifact should be created when desired and live state already match after ignored settings are removed.
 
 ## Settings Scope
 The comparable shared settings state in this repo is:
-- `demi@handle_settings`: mint governor plus settings-v1 payload
-- `handle_root@handle_settings`: minting-data datum
+- `hal@handle_settings`: mint governor plus settings-v1 payload
+- `hal_root@handle_settings`: minting-data datum
 - `kora@handle_prices`: handle price current/previous vectors
 
 The `mpt_root_hash` field changes frequently and is ignored by default for deployment drift.

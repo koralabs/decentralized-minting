@@ -12,8 +12,8 @@ describe("decentralized minting deployment state", () => {
     expect(preprod.network).toBe("preprod");
     expect(mainnet.network).toBe("mainnet");
     expect(preview.assignedHandles.settings).toEqual([
-      "demi@handle_settings",
-      "handle_root@handle_settings",
+      "hal@handle_settings",
+      "hal_root@handle_settings",
       "kora@handle_prices",
     ]);
     expect(mainnet.contracts.map((item) => item.contractSlug)).toEqual([
@@ -35,13 +35,13 @@ build_parameters:
   legacy_policy_id: aa
   admin_verification_key_hash: bb
 assigned_handles:
-  settings: [demi@handle_settings]
+  settings: [hal@handle_settings]
   scripts: []
 ignored_settings: []
 settings:
   type: decentralized_minting_settings
   values:
-    demi@handle_settings:
+    hal@handle_settings:
       mint_governor: aa
       mint_version: 0
       policy_id: bb
@@ -52,7 +52,7 @@ settings:
       pz_script_address: addr_test1def
       order_script_hash: cc
       minting_data_script_hash: dd
-    handle_root@handle_settings:
+    hal_root@handle_settings:
       mpt_root_hash: ee
     kora@handle_prices:
       current_data: [1]

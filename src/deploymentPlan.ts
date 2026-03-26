@@ -25,8 +25,8 @@ import { buildReferenceScriptDeploymentTx } from "./deploymentTx.js";
 import { fetchNetworkParameters } from "./utils/index.js";
 
 const REPO_NAME = "decentralized-minting";
-const DEMI_SETTINGS_HANDLE = "demi@handle_settings";
-const MINTING_DATA_HANDLE = "handle_root@handle_settings";
+const DEMI_SETTINGS_HANDLE = "hal@handle_settings";
+const MINTING_DATA_HANDLE = "hal_root@handle_settings";
 const HANDLE_PRICE_HANDLE = "kora@handle_prices";
 
 export interface ExpectedContractState {

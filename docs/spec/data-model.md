@@ -10,8 +10,8 @@
 | `PREFIX_444` | `001bc280` | Rich-fungible token label |
 | `PREFIX_000` | `00000000` | Virtual sub-handle label |
 | `PREFIX_001` | `00001070` | Root handle settings prefix |
-| `SETTINGS_HANDLE_NAME` | `demi@handle_settings` | Settings asset handle |
-| `MINTING_DATA_HANDLE_NAME` | `handle_root@handle_settings` | Minting-data asset handle |
+| `SETTINGS_HANDLE_NAME` | `hal@handle_settings` | Settings asset handle |
+| `MINTING_DATA_HANDLE_NAME` | `hal_root@handle_settings` | Minting-data asset handle |
 | `HANDLE_PRICE_INFO_HANDLE_NAME` | `kora@handle_prices` | Handle-price asset handle |
 
 Defined in `src/constants/index.ts`.
