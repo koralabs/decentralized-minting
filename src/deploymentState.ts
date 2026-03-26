@@ -24,8 +24,8 @@ const OBSERVED_ONLY_FIELDS = new Set([
   "last_deployed_tx_hash",
 ]);
 
-const DEMI_SETTINGS_HANDLE = "hal@handle_settings";
-const MINTING_DATA_HANDLE = "hal_root@handle_settings";
+const DEMI_SETTINGS_HANDLE = "demi@handle_settings";
+const MINTING_DATA_HANDLE = "demi_root@handle_settings";
 const HANDLE_PRICE_HANDLE = "kora@handle_prices";
 
 export interface DesiredContractTarget {
@@ -55,7 +55,7 @@ export interface DesiredDeploymentState {
   settings: {
     type: "decentralized_minting_settings";
     values: {
-      "hal@handle_settings": {
+      "demi@handle_settings": {
         mint_governor: string;
         mint_version: number;
         policy_id: string;
@@ -67,7 +67,7 @@ export interface DesiredDeploymentState {
         order_script_hash: string;
         minting_data_script_hash: string;
       };
-      "hal_root@handle_settings": {
+      "demi_root@handle_settings": {
         mpt_root_hash: string;
       };
       "kora@handle_prices": {

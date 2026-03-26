@@ -52,13 +52,13 @@ This GOD Role is used in Minting Data smart contract.
 
 `"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14064656d694068616e646c655f73657474696e6773"`
 
-This is Legacy handle `hal@handle_settings`
+This is Legacy handle `demi@handle_settings`
 
 - `MINTING_DATA_ASSET_CLASS`: The asset class of the minting data.
 
 `"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de14068616e646c655f726f6f744068616e646c655f73657474696e6773"`
 
-This is Legacy Handle `hal_root@handle_settings`
+This is Legacy Handle `demi_root@handle_settings`
 
 - `ALLOWED_MINTERS`: The list of allowed minters.
 
