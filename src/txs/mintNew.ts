@@ -76,6 +76,9 @@ const mintNewHandles = async (
   const preparedTxBuilderResult = await prepareNewMintTransaction({
     ...params,
     handles: orderedHandles,
+  }, {
+    includeMintProxyScriptRef: true,
+    includeOrdersScriptRef: true,
   });
 
   if (!preparedTxBuilderResult.ok) {
@@ -87,12 +90,10 @@ const mintNewHandles = async (
   }
   const { txBuilder, deployedScripts, settingsV1, handlePriceInfo } =
     preparedTxBuilderResult.data;
-  const { mintProxyScriptDetails, ordersScriptTxInput } = deployedScripts;
+  const { mintProxyScriptDetails } = deployedScripts;
   const newPolicyHash = makeMintingPolicyHash(
     mintProxyScriptDetails.validatorHash
   );
-
-  txBuilder.refer(ordersScriptTxInput);
 
   const mintingHandlesData = [];
   for (const orderTxInput of ordersTxInputs) {

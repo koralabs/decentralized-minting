@@ -57,6 +57,8 @@ interface PrepareNewMintDeps {
   fetchMintingDataFn?: typeof fetchMintingData;
   fetchSettingsFn?: typeof fetchSettings;
   fetchHandlePriceInfoDataFn?: typeof fetchHandlePriceInfoData;
+  includeMintProxyScriptRef?: boolean;
+  includeOrdersScriptRef?: boolean;
 }
 
 /**
@@ -71,6 +73,8 @@ const prepareNewMintTransaction = async (
     fetchMintingDataFn = fetchMintingData,
     fetchSettingsFn = fetchSettings,
     fetchHandlePriceInfoDataFn = fetchHandlePriceInfoData,
+    includeMintProxyScriptRef = false,
+    includeOrdersScriptRef = false,
   }: PrepareNewMintDeps = {}
 ): Promise<
   Result<
@@ -96,9 +100,11 @@ const prepareNewMintTransaction = async (
   if (!fetchedResult.ok)
     return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const {
+    mintProxyScriptTxInput,
     mintV1ScriptDetails,
     mintV1ScriptTxInput,
     mintingDataScriptTxInput,
+    ordersScriptTxInput,
   } = fetchedResult.data;
 
   // fetch settings
@@ -200,7 +206,12 @@ const prepareNewMintTransaction = async (
   txBuilder.refer(settingsAssetTxInput);
 
   // <-- attach deploy scripts
-  txBuilder.refer(mintV1ScriptTxInput, mintingDataScriptTxInput);
+  txBuilder.refer(
+    ...(includeMintProxyScriptRef ? [mintProxyScriptTxInput] : []),
+    mintV1ScriptTxInput,
+    mintingDataScriptTxInput,
+    ...(includeOrdersScriptRef ? [ordersScriptTxInput] : [])
+  );
 
   // <-- spend minting data utxo
   txBuilder.spendUnsafe(
