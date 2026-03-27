@@ -96,11 +96,9 @@ const prepareNewMintTransaction = async (
   if (!fetchedResult.ok)
     return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const {
-    mintProxyScriptTxInput,
-    mintingDataScriptTxInput,
     mintV1ScriptDetails,
     mintV1ScriptTxInput,
-    ordersScriptTxInput,
+    mintingDataScriptTxInput,
   } = fetchedResult.data;
 
   // fetch settings
@@ -202,12 +200,7 @@ const prepareNewMintTransaction = async (
   txBuilder.refer(settingsAssetTxInput);
 
   // <-- attach deploy scripts
-  txBuilder.refer(
-    mintProxyScriptTxInput,
-    mintV1ScriptTxInput,
-    mintingDataScriptTxInput,
-    ordersScriptTxInput
-  );
+  txBuilder.refer(mintV1ScriptTxInput, mintingDataScriptTxInput);
 
   // <-- spend minting data utxo
   txBuilder.spendUnsafe(
