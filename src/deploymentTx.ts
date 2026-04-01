@@ -43,22 +43,29 @@ export const resolveDeployerWallet = async ({
     network === "preprod" ? "https://preprod.api.handle.me" :
     "https://api.handle.me";
 
+  // The subhandle (e.g. demimntmpt1@handlecontract) sits at a script address.
+  // The deployer is the holder of the root handle (e.g. handlecontract).
+  const rootHandle = currentSubhandle.split("@").pop();
+  if (!rootHandle) {
+    throw new Error(`cannot extract root handle from ${currentSubhandle}`);
+  }
+
   const response = await fetchFn(
-    `${baseUrl}/handles/${encodeURIComponent(currentSubhandle)}`,
+    `${baseUrl}/handles/${encodeURIComponent(rootHandle)}`,
     { headers: { "User-Agent": userAgent } }
   );
   if (!response.ok) {
-    throw new Error(`failed to resolve deployer from ${currentSubhandle}: HTTP ${response.status}`);
+    throw new Error(`failed to resolve deployer from root handle ${rootHandle}: HTTP ${response.status}`);
   }
-  const handle = await response.json() as { resolved_addresses?: { ada?: string } };
-  const bech32 = handle.resolved_addresses?.ada;
+  const handle = await response.json() as { holder?: string; resolved_addresses?: { ada?: string } };
+  const bech32 = handle.resolved_addresses?.ada ?? handle.holder ?? "";
   if (!bech32) {
-    throw new Error(`handle ${currentSubhandle} has no resolved ADA address`);
+    throw new Error(`root handle ${rootHandle} has no resolved ADA address`);
   }
 
   const address = makeAddress(bech32);
   if (address.spendingCredential.kind !== "PubKeyHash") {
-    throw new Error(`deployer address from ${currentSubhandle} is not a PubKeyHash address`);
+    throw new Error(`deployer address from ${rootHandle} is not a PubKeyHash address`);
   }
 
   const client = getBlockfrostV0Client(blockfrostApiKey);
