@@ -74,7 +74,7 @@ jobs:
           echo "${NETWORK_UPPER}_POLICY_ID=$policy_id" >> "$GITHUB_ENV"
           echo "Decrypted KMS bundle keys: $(echo "$plaintext" | python3 -c "import sys,json; print(' '.join(sorted(json.load(sys.stdin).keys())))")"
 
-      - name: Generate deployment plan
+      - name: Generate deployment plan (initial)
         run: |
           set -eu
           mkdir -p artifacts/${{ matrix.network }}
@@ -104,6 +104,13 @@ jobs:
           NETWORK: ${{ matrix.network }}
         run: python3 ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
         continue-on-error: true
+
+      - name: Re-generate deployment plan (with subhandles)
+        run: |
+          set -eu
+          npx tsx scripts/generateDeploymentPlan.ts \
+            --desired ${{ matrix.desired_path }} \
+            --artifacts-dir artifacts/${{ matrix.network }}
 
       - name: Upload deployment plan artifacts
         uses: actions/upload-artifact@v4
