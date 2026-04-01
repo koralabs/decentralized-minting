@@ -19,6 +19,7 @@ jobs:
     env:
       KORA_USER_AGENT: ${{ vars.KORA_USER_AGENT }}
       DESIRED_PATH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.desired_path || '' }}
+      SECRETS_CONTEXT: ${{ toJson(secrets) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,11 +41,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Extract secrets
+        id: secrets
+        run: |
+          extract() { jq -jr ".$1 // empty" <<< "${SECRETS_CONTEXT}"; }
+          {
+            echo "DEPLOYMENT_ACCESS_TOKEN=$(extract DEPLOYMENT_ACCESS_TOKEN)"
+            echo "NPM_TOKEN=$(extract NPM_TOKEN)"
+            echo "POLICY_KEY=$(extract POLICY_KEY)"
+            echo "PREVIEW_POLICY_ID=$(extract PREVIEW_POLICY_ID)"
+            echo "PREPROD_POLICY_ID=$(extract PREPROD_POLICY_ID)"
+            echo "MAINNET_POLICY_ID=$(extract MAINNET_POLICY_ID)"
+            echo "PREVIEW_BLOCKFROST_API_KEY=$(extract PREVIEW_BLOCKFROST_API_KEY)"
+            echo "PREPROD_BLOCKFROST_API_KEY=$(extract PREPROD_BLOCKFROST_API_KEY)"
+            echo "MAINNET_BLOCKFROST_API_KEY=$(extract MAINNET_BLOCKFROST_API_KEY)"
+          } >> "$GITHUB_ENV"
+
       - name: Generate deployment artifacts
-        env:
-          PREVIEW_BLOCKFROST_API_KEY: ${{ secrets.PREVIEW_BLOCKFROST_API_KEY }}
-          PREPROD_BLOCKFROST_API_KEY: ${{ secrets.PREPROD_BLOCKFROST_API_KEY }}
-          MAINNET_BLOCKFROST_API_KEY: ${{ secrets.MAINNET_BLOCKFROST_API_KEY }}
         shell: bash
         run: |
           set -eu
@@ -64,37 +77,23 @@ jobs:
           done
 
       - name: Checkout minting engine
-        if: always()
         uses: actions/checkout@v4
         with:
           repository: koralabs/minting.handle.me
-          token: ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
+          token: ${{ env.DEPLOYMENT_ACCESS_TOKEN }}
           path: minting.handle.me
 
       - name: Install minting engine dependencies
-        if: always()
         run: npm ci
         working-directory: minting.handle.me
 
       - name: Fetch handlecontract session script
-        if: always()
-        env:
-          DEPLOYMENT_ACCESS_TOKEN: ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
         run: |
           curl -fsSL -H "Authorization: Bearer ${DEPLOYMENT_ACCESS_TOKEN}" \
             https://raw.githubusercontent.com/koralabs/adahandle-deployments/master/common/ensure_handlecontract_sessions.py \
             -o ensure_handlecontract_sessions.py
 
       - name: Ensure handlecontract sessions
-        if: always()
-        env:
-          POLICY_KEY: ${{ secrets.POLICY_KEY }}
-          PREVIEW_POLICY_ID: ${{ secrets.PREVIEW_POLICY_ID }}
-          PREPROD_POLICY_ID: ${{ secrets.PREPROD_POLICY_ID }}
-          MAINNET_POLICY_ID: ${{ secrets.MAINNET_POLICY_ID }}
-          PREVIEW_BLOCKFROST_API_KEY: ${{ secrets.PREVIEW_BLOCKFROST_API_KEY }}
-          PREPROD_BLOCKFROST_API_KEY: ${{ secrets.PREPROD_BLOCKFROST_API_KEY }}
-          MAINNET_BLOCKFROST_API_KEY: ${{ secrets.MAINNET_BLOCKFROST_API_KEY }}
         run: python3 ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
         continue-on-error: true
 
