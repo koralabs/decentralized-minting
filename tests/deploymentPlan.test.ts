@@ -257,12 +257,15 @@ describe("decentralized minting deployment plan", () => {
       toCbor: () => [0x84, 0x01, 0x02],
     };
 
+    const { makeAddress } = await import("@helios-lang/ledger");
     const artifact = await buildUnsignedDeploymentTxArtifact({
       desired: desiredState,
       contract: desiredState.contracts[0],
       handleName: "demimntprx2@handlecontract",
-      changeAddress: "addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej",
-      cborUtxos: ["abcd"],
+      deployer: {
+        address: makeAddress("addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej"),
+        utxos: [],
+      },
       buildTxFn: (async () => tx as never) as never,
       fetchNetworkParametersFn: (async () => Ok({ maxTxSize: 300 } as never)) as never,
     });
@@ -290,13 +293,16 @@ describe("decentralized minting deployment plan", () => {
       toCbor: () => [0x80],
     };
 
+    const { makeAddress } = await import("@helios-lang/ledger");
     await expect(
       buildUnsignedDeploymentTxArtifact({
         desired: desiredState,
         contract: desiredState.contracts[0],
         handleName: "demimntprx2@handlecontract",
-        changeAddress: "addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej",
-        cborUtxos: ["abcd"],
+        deployer: {
+          address: makeAddress("addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej"),
+          utxos: [],
+        },
         buildTxFn: (async () => tx as never) as never,
         fetchNetworkParametersFn: (async () => Ok({ maxTxSize: 300 } as never)) as never,
       })
@@ -311,7 +317,7 @@ describe("decentralized minting deployment plan", () => {
       "- `tx-02.cbor`",
     ]);
     expect(renderTransactionOrderMarkdown([])).toEqual([
-      "- Planner can emit `tx-XX.cbor` artifacts when `--change-address` and `--cbor-utxos-json` are supplied.",
+      "- No transaction artifacts generated (no drift detected or Blockfrost API key unavailable).",
     ]);
   });
 });

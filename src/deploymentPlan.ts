@@ -21,7 +21,7 @@ import {
   decodeSettingsV1Data,
 } from "./contracts/index.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
-import { buildReferenceScriptDeploymentTx } from "./deploymentTx.js";
+import { buildReferenceScriptDeploymentTx, type DeployerWallet } from "./deploymentTx.js";
 import { fetchNetworkParameters } from "./utils/index.js";
 
 const REPO_NAME = "decentralized-minting";
@@ -52,7 +52,7 @@ export interface UnsignedDeploymentTxArtifact {
 export const renderTransactionOrderMarkdown = (transactionOrder: string[]) =>
   transactionOrder.length > 0
     ? transactionOrder.map((fileName) => `- \`${fileName}\``)
-    : ["- Planner can emit `tx-XX.cbor` artifacts when `--change-address` and `--cbor-utxos-json` are supplied."];
+    : ["- No transaction artifacts generated (no drift detected or Blockfrost API key unavailable)."];
 
 export const discoverNextContractSubhandles = async ({
   network,
@@ -457,16 +457,14 @@ export const buildUnsignedDeploymentTxArtifact = async ({
   desired,
   contract,
   handleName,
-  changeAddress,
-  cborUtxos,
+  deployer,
   buildTxFn = buildReferenceScriptDeploymentTx,
   fetchNetworkParametersFn = fetchNetworkParameters,
 }: {
   desired: DesiredDeploymentState;
   contract: DesiredContractTarget;
   handleName: string;
-  changeAddress: string;
-  cborUtxos: string[];
+  deployer: DeployerWallet;
   buildTxFn?: typeof buildReferenceScriptDeploymentTx;
   fetchNetworkParametersFn?: typeof fetchNetworkParameters;
 }): Promise<UnsignedDeploymentTxArtifact> => {
@@ -474,8 +472,8 @@ export const buildUnsignedDeploymentTxArtifact = async ({
     desired,
     contract,
     handleName,
-    changeAddress,
-    cborUtxos,
+    changeAddress: deployer.address,
+    spareUtxos: [...deployer.utxos],
   });
   tx.witnesses.addDummySignatures(1);
   const estimatedSignedTxSize = tx.calcSize();

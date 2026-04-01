@@ -9,12 +9,6 @@ on:
         description: Desired deployment YAML path
         required: false
         default: deploy/preview/decentralized-minting.yaml
-      change_address:
-        description: Optional deployer change address for unsigned tx generation
-        required: false
-      cbor_utxos_json:
-        description: Optional JSON array of deployer wallet input CBOR values for unsigned tx generation
-        required: false
 
 jobs:
   deployment-plan:
@@ -23,8 +17,6 @@ jobs:
     env:
       KORA_USER_AGENT: ${{ vars.KORA_USER_AGENT }}
       DESIRED_PATH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.desired_path || '' }}
-      CHANGE_ADDRESS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.change_address || '' }}
-      CBOR_UTXOS_JSON: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.cbor_utxos_json || '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -47,6 +39,10 @@ jobs:
         run: npm ci
 
       - name: Generate deployment artifacts
+        env:
+          PREVIEW_BLOCKFROST_API_KEY: ${{ secrets.PREVIEW_BLOCKFROST_API_KEY }}
+          PREPROD_BLOCKFROST_API_KEY: ${{ secrets.PREPROD_BLOCKFROST_API_KEY }}
+          MAINNET_BLOCKFROST_API_KEY: ${{ secrets.MAINNET_BLOCKFROST_API_KEY }}
         shell: bash
         run: |
           set -eu
@@ -57,19 +53,48 @@ jobs:
             mapfile -t desired_paths < <(find deploy -mindepth 2 -maxdepth 2 -name '*.yaml' | sort)
           fi
 
-          if { [ -n "$CHANGE_ADDRESS" ] || [ -n "$CBOR_UTXOS_JSON" ]; } && { [ -z "$CHANGE_ADDRESS" ] || [ -z "$CBOR_UTXOS_JSON" ]; }; then
-            echo "change_address and cbor_utxos_json must be provided together" >&2
-            exit 1
-          fi
-
           for desired_path in "${desired_paths[@]}"; do
             network="$(basename "$(dirname "$desired_path")")"
-            args=(--desired "$desired_path" --artifacts-dir "artifacts/$network")
-            if [ -n "$CHANGE_ADDRESS" ]; then
-              args+=(--change-address "$CHANGE_ADDRESS" --cbor-utxos-json "$CBOR_UTXOS_JSON")
-            fi
-            npx tsx scripts/generateDeploymentPlan.ts "${args[@]}"
+            network_upper="$(echo "$network" | tr '[:lower:]' '[:upper:]')"
+            blockfrost_key_var="${network_upper}_BLOCKFROST_API_KEY"
+            export BLOCKFROST_API_KEY="${!blockfrost_key_var:-}"
+            npx tsx scripts/generateDeploymentPlan.ts --desired "$desired_path" --artifacts-dir "artifacts/$network"
           done
+
+      - name: Checkout minting engine
+        if: always()
+        uses: actions/checkout@v4
+        with:
+          repository: koralabs/minting.handle.me
+          token: ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
+          path: minting.handle.me
+
+      - name: Install minting engine dependencies
+        if: always()
+        run: npm ci
+        working-directory: minting.handle.me
+
+      - name: Fetch handlecontract session script
+        if: always()
+        env:
+          DEPLOYMENT_ACCESS_TOKEN: ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
+        run: |
+          curl -fsSL -H "Authorization: Bearer ${DEPLOYMENT_ACCESS_TOKEN}" \
+            https://raw.githubusercontent.com/koralabs/adahandle-deployments/master/common/ensure_handlecontract_sessions.py \
+            -o ensure_handlecontract_sessions.py
+
+      - name: Ensure handlecontract sessions
+        if: always()
+        env:
+          POLICY_KEY: ${{ secrets.POLICY_KEY }}
+          PREVIEW_POLICY_ID: ${{ secrets.PREVIEW_POLICY_ID }}
+          PREPROD_POLICY_ID: ${{ secrets.PREPROD_POLICY_ID }}
+          MAINNET_POLICY_ID: ${{ secrets.MAINNET_POLICY_ID }}
+          PREVIEW_BLOCKFROST_API_KEY: ${{ secrets.PREVIEW_BLOCKFROST_API_KEY }}
+          PREPROD_BLOCKFROST_API_KEY: ${{ secrets.PREPROD_BLOCKFROST_API_KEY }}
+          MAINNET_BLOCKFROST_API_KEY: ${{ secrets.MAINNET_BLOCKFROST_API_KEY }}
+        run: python3 ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
+        continue-on-error: true
 
       - name: Upload deployment plan artifacts
         uses: actions/upload-artifact@v4

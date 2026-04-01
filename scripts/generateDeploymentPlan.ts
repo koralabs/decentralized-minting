@@ -11,6 +11,7 @@ import {
   renderTransactionOrderMarkdown,
 } from "../src/deploymentPlan.js";
 import { loadDesiredDeploymentState } from "../src/deploymentState.js";
+import { resolveDeployerWallet } from "../src/deploymentTx.js";
 
 const parseArgs = (argv: string[]) => {
   const args: Record<string, string> = {};
@@ -42,14 +43,10 @@ const renderSummaryMarkdown = (summaryMarkdown: string, transactionOrder: string
 const main = async () => {
   const args = parseArgs(process.argv.slice(2));
   if (!args.desired || !args["artifacts-dir"]) {
-    throw new Error("usage: --desired <path> --artifacts-dir <dir> [--change-address <addr> --cbor-utxos-json <json>]");
-  }
-  const changeAddress = args["change-address"] ?? "";
-  const cborUtxosJson = args["cbor-utxos-json"] ?? "";
-  if (Boolean(changeAddress) !== Boolean(cborUtxosJson)) {
-    throw new Error("--change-address and --cbor-utxos-json must be provided together");
+    throw new Error("usage: --desired <path> --artifacts-dir <dir>");
   }
 
+  const blockfrostApiKey = (args["blockfrost-api-key"] || process.env.BLOCKFROST_API_KEY || "").trim();
   const desired = await loadDesiredDeploymentState(args.desired);
   const userAgent = (process.env.KORA_USER_AGENT || "kora-contract-deployments/1.0").trim();
   const expectedContracts = buildExpectedContractStates(desired);
@@ -99,35 +96,58 @@ const main = async () => {
   };
   await writePlanFiles();
 
-  const changedContracts = plan.summaryJson.contracts.filter((contract) => contract.drift_type === "script_hash_only");
-  const hasUnsupportedDrift = plan.summaryJson.contracts.some(
-    (contract) => contract.drift_type === "settings_only" || contract.drift_type === "script_hash_and_settings"
+  const changedContracts = plan.summaryJson.contracts.filter(
+    (contract) => contract.drift_type === "script_hash_only" || contract.drift_type === "script_hash_and_settings"
   );
-  if (changeAddress && cborUtxosJson && !hasUnsupportedDrift) {
-    const cborUtxos = JSON.parse(cborUtxosJson) as string[];
-    for (const [index, contractPlan] of changedContracts.entries()) {
-      const desiredContract = desired.contracts.find((contract) => contract.contractSlug === contractPlan.contract_slug);
-      const handleName = String(contractPlan.subhandle.value ?? "").trim();
-      if (!desiredContract || !handleName) {
-        throw new Error(`missing deployment target for ${contractPlan.contract_slug}`);
-      }
-      const txArtifact = await buildUnsignedDeploymentTxArtifact({
-        desired,
-        contract: desiredContract,
-        handleName,
-        changeAddress,
-        cborUtxos,
-      });
-      const fileName = `tx-${String(index + 1).padStart(2, "0")}.cbor`;
-      await fs.writeFile(path.join(args["artifacts-dir"], fileName), txArtifact.cborBytes);
-      await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${txArtifact.cborHex}\n`);
-      generatedArtifacts.push(fileName, `${fileName}.hex`);
-      transactionOrder.push(fileName);
-      txArtifactGenerated = true;
+  if (!changedContracts.length) {
+    return;
+  }
+  if (!blockfrostApiKey) {
+    console.log("Skipping unsigned tx generation: no Blockfrost API key available");
+    return;
+  }
+
+  // Discover deployer wallet from the first changed contract's current subhandle holder
+  const contractWithSubhandle = changedContracts.find(
+    (c) => liveContracts.find((lc) => lc.contractSlug === c.contract_slug)?.currentSubhandle
+  );
+  if (!contractWithSubhandle) {
+    console.log("Skipping unsigned tx generation: no existing deployment subhandle found to resolve deployer wallet");
+    return;
+  }
+  const currentSubhandle = liveContracts.find(
+    (lc) => lc.contractSlug === contractWithSubhandle.contract_slug
+  )!.currentSubhandle!;
+
+  const deployer = await resolveDeployerWallet({
+    network: desired.network,
+    currentSubhandle,
+    userAgent,
+    blockfrostApiKey,
+  });
+  console.log(`Resolved deployer from $${currentSubhandle}: ${deployer.address.toString()} (${deployer.utxos.length} UTxOs)`);
+
+  for (const [index, contractPlan] of changedContracts.entries()) {
+    const desiredContract = desired.contracts.find((contract) => contract.contractSlug === contractPlan.contract_slug);
+    const handleName = String(contractPlan.subhandle.value ?? "").trim();
+    if (!desiredContract || !handleName) {
+      throw new Error(`missing deployment target for ${contractPlan.contract_slug}`);
     }
-    if (txArtifactGenerated) {
-      await writePlanFiles();
-    }
+    const txArtifact = await buildUnsignedDeploymentTxArtifact({
+      desired,
+      contract: desiredContract,
+      handleName,
+      deployer,
+    });
+    const fileName = `tx-${String(index + 1).padStart(2, "0")}.cbor`;
+    await fs.writeFile(path.join(args["artifacts-dir"], fileName), txArtifact.cborBytes);
+    await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${txArtifact.cborHex}\n`);
+    generatedArtifacts.push(fileName, `${fileName}.hex`);
+    transactionOrder.push(fileName);
+    txArtifactGenerated = true;
+  }
+  if (txArtifactGenerated) {
+    await writePlanFiles();
   }
 };
 
