@@ -127,24 +127,31 @@ const main = async () => {
   });
   console.log(`Resolved deployer from $${currentSubhandle}: ${deployer.address.toString()} (${deployer.utxos.length} UTxOs)`);
 
-  for (const [index, contractPlan] of changedContracts.entries()) {
+  let txIndex = 0;
+  for (const contractPlan of changedContracts) {
     const desiredContract = desired.contracts.find((contract) => contract.contractSlug === contractPlan.contract_slug);
     const handleName = String(contractPlan.subhandle.value ?? "").trim();
     if (!desiredContract || !handleName) {
-      throw new Error(`missing deployment target for ${contractPlan.contract_slug}`);
+      console.log(`Skipping ${contractPlan.contract_slug}: missing deployment target`);
+      continue;
     }
-    const txArtifact = await buildUnsignedDeploymentTxArtifact({
-      desired,
-      contract: desiredContract,
-      handleName,
-      deployer,
-    });
-    const fileName = `tx-${String(index + 1).padStart(2, "0")}.cbor`;
-    await fs.writeFile(path.join(args["artifacts-dir"], fileName), txArtifact.cborBytes);
-    await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${txArtifact.cborHex}\n`);
-    generatedArtifacts.push(fileName, `${fileName}.hex`);
-    transactionOrder.push(fileName);
-    txArtifactGenerated = true;
+    try {
+      const txArtifact = await buildUnsignedDeploymentTxArtifact({
+        desired,
+        contract: desiredContract,
+        handleName,
+        deployer,
+      });
+      txIndex += 1;
+      const fileName = `tx-${String(txIndex).padStart(2, "0")}.cbor`;
+      await fs.writeFile(path.join(args["artifacts-dir"], fileName), txArtifact.cborBytes);
+      await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${txArtifact.cborHex}\n`);
+      generatedArtifacts.push(fileName, `${fileName}.hex`);
+      transactionOrder.push(fileName);
+      txArtifactGenerated = true;
+    } catch (error) {
+      console.log(`Skipping tx for ${contractPlan.contract_slug} ($${handleName}): ${error instanceof Error ? error.message : error}`);
+    }
   }
   if (txArtifactGenerated) {
     await writePlanFiles();
