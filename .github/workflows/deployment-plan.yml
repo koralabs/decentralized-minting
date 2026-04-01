@@ -12,6 +12,8 @@ on:
 
 jobs:
   deployment-plan:
+    if: github.repository_owner == 'koralabs'
+    environment: mainnet
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
