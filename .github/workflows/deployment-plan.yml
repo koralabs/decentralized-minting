@@ -103,11 +103,6 @@ jobs:
       node_version: "22.13"
       timeout_minutes: 15
       kora_user_agent: ${{ vars.KORA_USER_AGENT }}
-      setup_command: |
-        wget -q https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
-        sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
-        curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
-        ~/.aiken/bin/aikup install v1.0.29-alpha
-        sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
+      setup_command: "wget -q https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb && sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb && curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh && ~/.aiken/bin/aikup install v1.0.29-alpha && sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken"
       install_command: npm ci
       planner_command: npx tsx scripts/generateDeploymentPlan.ts
