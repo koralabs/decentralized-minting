@@ -93,16 +93,10 @@ jobs:
         run: npm ci
         working-directory: minting.handle.me
 
-      - name: Fetch handlecontract session script
-        run: |
-          curl -fsSL -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}" \
-            https://raw.githubusercontent.com/koralabs/adahandle-deployments/master/common/ensure_handlecontract_sessions.py \
-            -o ensure_handlecontract_sessions.py
-
       - name: Ensure handlecontract sessions
         env:
           NETWORK: ${{ matrix.network }}
-        run: python3 ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
+        run: python3 scripts/ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
         continue-on-error: true
 
       - name: Re-generate deployment plan (with subhandles)
