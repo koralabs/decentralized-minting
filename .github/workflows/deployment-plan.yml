@@ -18,15 +18,63 @@ on:
 
 jobs:
   deployment-plan:
-    uses: koralabs/adahandle-deployments/.github/workflows/contract-deployment-plan.yml@master
-    secrets: inherit
-    with:
-      desired_path: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.desired_path || '' }}
-      change_address: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.change_address || '' }}
-      cbor_utxos_json: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.cbor_utxos_json || '' }}
-      node_version: "22.13"
-      timeout_minutes: 15
-      kora_user_agent: ${{ vars.KORA_USER_AGENT }}
-      setup_command: "wget -q https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb && sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb && curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh && ~/.aiken/bin/aikup install v1.0.29-alpha && sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken"
-      install_command: npm ci
-      planner_command: npx tsx scripts/generateDeploymentPlan.ts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KORA_USER_AGENT: ${{ vars.KORA_USER_AGENT }}
+      DESIRED_PATH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.desired_path || '' }}
+      CHANGE_ADDRESS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.change_address || '' }}
+      CBOR_UTXOS_JSON: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.cbor_utxos_json || '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+          check-latest: true
+
+      - name: Install Libssl and Aiken
+        run: |
+          wget -q https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
+          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
+          curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
+          ~/.aiken/bin/aikup install v1.0.29-alpha
+          sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate deployment artifacts
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p artifacts
+          if [ -n "$DESIRED_PATH" ]; then
+            desired_paths=("$DESIRED_PATH")
+          else
+            mapfile -t desired_paths < <(find deploy -mindepth 2 -maxdepth 2 -name '*.yaml' | sort)
+          fi
+
+          if { [ -n "$CHANGE_ADDRESS" ] || [ -n "$CBOR_UTXOS_JSON" ]; } && { [ -z "$CHANGE_ADDRESS" ] || [ -z "$CBOR_UTXOS_JSON" ]; }; then
+            echo "change_address and cbor_utxos_json must be provided together" >&2
+            exit 1
+          fi
+
+          for desired_path in "${desired_paths[@]}"; do
+            network="$(basename "$(dirname "$desired_path")")"
+            args=(--desired "$desired_path" --artifacts-dir "artifacts/$network")
+            if [ -n "$CHANGE_ADDRESS" ]; then
+              args+=(--change-address "$CHANGE_ADDRESS" --cbor-utxos-json "$CBOR_UTXOS_JSON")
+            fi
+            npx tsx scripts/generateDeploymentPlan.ts "${args[@]}"
+          done
+
+      - name: Upload deployment plan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-plan-${{ github.run_id }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
