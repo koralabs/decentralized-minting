@@ -17,6 +17,82 @@ on:
         required: false
 
 jobs:
+  build-and-publish:
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    name: Build & Publish npm package
+    environment: mainnet
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+          check-latest: true
+
+      - name: Install Libssl
+        run: |
+          wget -q https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
+          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
+
+      - name: Install Aiken
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
+          ~/.aiken/bin/aikup install v1.0.29-alpha
+          sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run Aiken tests
+        run: npm run test:aiken
+
+      - name: Run Node tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build && cp package.json ./lib/package.json
+
+      - name: Publish to GitHub Packages
+        env:
+          DEPLOYMENT_ACCESS_TOKEN: ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
+        run: |
+          set -eu
+          npm config set //npm.pkg.github.com/:_authToken ${DEPLOYMENT_ACCESS_TOKEN}
+          set +e
+          publish_log=$(mktemp)
+          (cd ./lib && npm publish --@koralabs:registry='https://npm.pkg.github.com') >"${publish_log}" 2>&1
+          status=$?
+          set -e
+          cat "${publish_log}"
+          if [[ ${status} -ne 0 ]]; then
+            if grep -q "Cannot publish over existing version" "${publish_log}"; then
+              echo "GitHub package version already exists, continuing to public publish"
+            else
+              rm -f "${publish_log}"
+              exit ${status}
+            fi
+          fi
+          rm -f "${publish_log}"
+
+      - name: Publish to public npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -eu
+          npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
+          (cd ./lib && npm publish --access public --ignore-scripts --@koralabs:registry='https://registry.npmjs.org')
+
   deployment-plan:
     uses: koralabs/adahandle-deployments/.github/workflows/contract-deployment-plan.yml@master
     secrets: inherit
@@ -27,5 +103,11 @@ jobs:
       node_version: "22.13"
       timeout_minutes: 15
       kora_user_agent: ${{ vars.KORA_USER_AGENT }}
+      setup_command: |
+        wget -q https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
+        sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
+        curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
+        ~/.aiken/bin/aikup install v1.0.29-alpha
+        sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
       install_command: npm ci
       planner_command: npx tsx scripts/generateDeploymentPlan.ts
