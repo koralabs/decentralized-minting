@@ -114,7 +114,15 @@ def ensure_session(minting_repo: Path, network: str, handle: str) -> dict:
         if result.stderr.strip():
             print(f"  stderr: {result.stderr.strip()}", flush=True)
         result.check_returncode()
-    return json.loads(result.stdout.strip())
+    # The minting engine writes the JSON result as the last stdout line.
+    # Logger output may appear before it.
+    stdout_lines = [line for line in result.stdout.strip().splitlines() if line.strip()]
+    for line in reversed(stdout_lines):
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError:
+            continue
+    raise RuntimeError(f"ensure_session for {handle} produced no JSON output: {result.stdout[:500]}")
 
 
 def update_plan_files(network_dir: Path, summary: dict, deployment_plan: dict, results: list[dict]) -> None:
