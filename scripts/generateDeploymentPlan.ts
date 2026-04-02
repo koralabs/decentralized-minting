@@ -73,12 +73,14 @@ const main = async () => {
   const generatedArtifacts = ["summary.json", "summary.md", "deployment-plan.json"];
   let transactionOrder: string[] = [];
   let txArtifactGenerated = false;
+  let deployerAddress = "";
 
   await fs.mkdir(args["artifacts-dir"], { recursive: true });
   const writePlanFiles = async () => {
     for (const [name, payload] of Object.entries({
       "summary.json": JSON.stringify({
         ...plan.summaryJson,
+        deployer_address: deployerAddress,
         transaction_order: transactionOrder,
         tx_artifact_generated: txArtifactGenerated,
         artifact_files: generatedArtifacts,
@@ -86,6 +88,7 @@ const main = async () => {
       "summary.md": renderSummaryMarkdown(plan.summaryMarkdown, transactionOrder),
       "deployment-plan.json": JSON.stringify({
         ...plan.deploymentPlanJson,
+        deployer_address: deployerAddress,
         transaction_order: transactionOrder,
         tx_artifact_generated: txArtifactGenerated,
         artifact_files: generatedArtifacts,
@@ -125,7 +128,9 @@ const main = async () => {
     userAgent,
     blockfrostApiKey,
   });
-  console.log(`Resolved deployer from $${currentSubhandle}: ${deployer.address.toString()} (${deployer.utxos.length} UTxOs)`);
+  deployerAddress = deployer.address.toString();
+  console.log(`Resolved deployer from $${currentSubhandle}: ${deployerAddress} (${deployer.utxos.length} UTxOs)`);
+  await writePlanFiles();
 
   let txIndex = 0;
   for (const contractPlan of changedContracts) {

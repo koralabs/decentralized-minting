@@ -97,7 +97,7 @@ def network_env(network: str) -> dict[str, str]:
     return env
 
 
-def ensure_session(minting_repo: Path, network: str, handle: str) -> dict:
+def ensure_session(minting_repo: Path, network: str, handle: str, send_address: str = "") -> dict:
     cmd = [
         "node",
         "--import",
@@ -106,6 +106,8 @@ def ensure_session(minting_repo: Path, network: str, handle: str) -> dict:
         "--handle",
         handle,
     ]
+    if send_address:
+        cmd.extend(["--send-address", send_address])
     result = subprocess.run(cmd, text=True, capture_output=True, cwd=minting_repo, env=network_env(network))
     if result.returncode != 0:
         print(f"ensure_session failed for {handle} on {network} (exit {result.returncode}):", flush=True)
@@ -169,7 +171,8 @@ def main() -> None:
         network = network_dir.name
         deployment_plan_path = network_dir / "deployment-plan.json"
         deployment_plan = load_json(deployment_plan_path)
-        results = [ensure_session(minting_repo, network, handle) for handle in handles]
+        deployer_address = str(summary.get("deployer_address") or "").strip()
+        results = [ensure_session(minting_repo, network, handle, deployer_address) for handle in handles]
         update_plan_files(network_dir, summary, deployment_plan, results)
         print(json.dumps({"network": network, "items": results}))
 
