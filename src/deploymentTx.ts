@@ -110,32 +110,9 @@ export const buildReferenceScriptDeploymentTx = async ({
   );
   const handleValue = makeValue(1n, makeAssets([[handleAssetClass, 1n]]));
 
-  let handleInputIndex = spareUtxos.findIndex((utxo) => utxo.value.isGreaterOrEqual(handleValue));
+  const handleInputIndex = spareUtxos.findIndex((utxo) => utxo.value.isGreaterOrEqual(handleValue));
   if (handleInputIndex < 0) {
-    // Handle might be at a different address (e.g. minted to sendAddress).
-    // Look it up via Blockfrost using the asset class.
-    const client = getBlockfrostV0Client(
-      process.env.BLOCKFROST_API_KEY ?? ""
-    );
-    const assetUtxos = await client.getUtxosWithAssetClass(changeAddress, handleAssetClass);
-    if (assetUtxos.length === 0) {
-      // Try all addresses holding this asset
-      const holders = await client.getAddressesWithAssetClass(handleAssetClass);
-      for (const holder of holders) {
-        const holderUtxos = await client.getUtxosWithAssetClass(holder.address, handleAssetClass);
-        if (holderUtxos.length > 0) {
-          spareUtxos.push(...holderUtxos);
-          handleInputIndex = spareUtxos.length - holderUtxos.length;
-          break;
-        }
-      }
-    } else {
-      spareUtxos.push(...assetUtxos);
-      handleInputIndex = spareUtxos.length - assetUtxos.length;
-    }
-    if (handleInputIndex < 0) {
-      throw new Error(`Cannot find $${handleName} UTxO on-chain`);
-    }
+    throw new Error(`Deployer wallet does not hold $${handleName}`);
   }
 
   const handleInput = spareUtxos.splice(handleInputIndex, 1)[0];

@@ -143,6 +143,14 @@ jobs:
             done
           done
 
+      - name: Wait for Blockfrost indexing
+        run: |
+          sessions_file="artifacts/${{ matrix.network }}/handlecontract-sessions.json"
+          if [ -f "$sessions_file" ]; then
+            echo "Waiting 60s for Blockfrost to index new UTxOs..."
+            sleep 60
+          fi
+
       - name: Re-generate deployment plan (with subhandles)
         run: |
           set -eu
