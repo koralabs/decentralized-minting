@@ -83,23 +83,9 @@ jobs:
             --desired ${{ matrix.desired_path }} \
             --artifacts-dir artifacts/${{ matrix.network }}
 
-      - name: Checkout minting engine
-        uses: actions/checkout@v4
-        with:
-          repository: koralabs/minting.handle.me
-          token: ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
-          path: minting.handle.me
-
-      - name: Install minting engine dependencies
-        run: |
-          npm config set //npm.pkg.github.com/:_authToken ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
-          npm ci
-        working-directory: minting.handle.me
-
-      - name: Ensure handlecontract sessions
-        env:
-          NETWORK: ${{ matrix.network }}
-        run: python3 scripts/ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
+      # Subhandle minting is disabled until the deployment flow is validated
+      # end-to-end without creating unnecessary handles. The required subhandles
+      # must exist before the workflow runs.
 
       - name: Wait for subhandle mints to confirm
         run: |
