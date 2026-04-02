@@ -225,10 +225,11 @@ describe("decentralized minting deployment plan", () => {
       userAgent: "codex-test",
       fetchFn: vi.fn(async (url) => {
         const target = String(url);
-        if (target.includes("demimntprx1%40handlecontract")) return new Response(null, { status: 200 });
-        if (target.includes("demimntprx2%40handlecontract")) return new Response(null, { status: 200 });
+        const withScript = JSON.stringify({ script: { cbor: "abcd" } });
+        if (target.includes("demimntprx1%40handlecontract")) return new Response(withScript, { status: 200 });
+        if (target.includes("demimntprx2%40handlecontract")) return new Response(withScript, { status: 200 });
         if (target.includes("demimntprx3%40handlecontract")) return new Response(null, { status: 404 });
-        if (target.includes("demimntmpt1%40handlecontract")) return new Response(null, { status: 200 });
+        if (target.includes("demimntmpt1%40handlecontract")) return new Response(withScript, { status: 200 });
         if (target.includes("demimntmpt2%40handlecontract")) return new Response(null, { status: 404 });
         throw new Error(`unexpected url ${target}`);
       }) as typeof fetch,

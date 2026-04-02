@@ -124,7 +124,18 @@ const discoverNextContractSubhandle = async ({
     if (!response.ok) {
       throw new Error(`failed to probe SubHandle ${candidate}: HTTP ${response.status}`);
     }
-    existingOrdinals.push(ordinal);
+    // Only count as existing if the handle has a deployed reference script.
+    // Handles minted to the wrong address (no script) should be skipped.
+    let hasScript = false;
+    try {
+      const handleData = await response.json() as { script?: { cbor?: string } };
+      hasScript = !!handleData?.script?.cbor;
+    } catch {
+      // Response body may not be JSON — treat as existing without script data
+    }
+    if (hasScript) {
+      existingOrdinals.push(ordinal);
+    }
   }
 
   throw new Error(`no available SubHandle found for ${deploymentHandleSlug}${suffix}`);
