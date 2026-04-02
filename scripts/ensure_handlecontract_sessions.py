@@ -180,7 +180,11 @@ def main() -> None:
                 import time
                 print(f"Waiting 60s for fee wallet UTxO indexing before next session...", flush=True)
                 time.sleep(60)
-            results.append(ensure_session(minting_repo, network, handle, deployer_address))
+            print(f"Ensuring session for {handle}...", flush=True)
+            result = ensure_session(minting_repo, network, handle, deployer_address)
+            status = result.get("status", "unknown")
+            print(f"  {handle}: {status}" + (" (no mint needed)" if status != "session_created" else " (NEW MINT)"), flush=True)
+            results.append(result)
         update_plan_files(network_dir, summary, deployment_plan, results)
         print(json.dumps({"network": network, "items": results}))
 
