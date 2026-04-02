@@ -225,11 +225,10 @@ describe("decentralized minting deployment plan", () => {
       userAgent: "codex-test",
       fetchFn: vi.fn(async (url) => {
         const target = String(url);
-        const atWallet = JSON.stringify({ resolved_addresses: { ada: "addr_test1vqwg4hlph5k947cqt88xlryxk6ufl9qymac33dr4aenmhrqgs8ql0" } });
-        if (target.includes("demimntprx1%40handlecontract")) return new Response(atWallet, { status: 200 });
-        if (target.includes("demimntprx2%40handlecontract")) return new Response(atWallet, { status: 200 });
+        if (target.includes("demimntprx1%40handlecontract")) return new Response(null, { status: 200 });
+        if (target.includes("demimntprx2%40handlecontract")) return new Response(null, { status: 200 });
         if (target.includes("demimntprx3%40handlecontract")) return new Response(null, { status: 404 });
-        if (target.includes("demimntmpt1%40handlecontract")) return new Response(atWallet, { status: 200 });
+        if (target.includes("demimntmpt1%40handlecontract")) return new Response(null, { status: 200 });
         if (target.includes("demimntmpt2%40handlecontract")) return new Response(null, { status: 404 });
         throw new Error(`unexpected url ${target}`);
       }) as typeof fetch,
@@ -238,33 +237,6 @@ describe("decentralized minting deployment plan", () => {
     expect(subhandles).toEqual({
       demimntprx: "demimntprx2@handlecontract",
       demimntmpt: "demimntmpt1@handlecontract",
-    });
-  });
-
-  it("prefers handles at a wallet address over script-locked handles", async () => {
-    // Feature: discovery must pick the first handle at a spendable address, skipping script-locked ones.
-    // Failure mode: picking a script-locked handle blocks tx generation since it can't be spent without a redeemer.
-    const subhandles = await discoverNextContractSubhandles({
-      network: "preview",
-      contracts: [desiredState.contracts.find((c) => c.contractSlug === "demimntmpt")!],
-      liveContracts: [
-        { contractSlug: "demimntmpt", scriptType: "demimntmpt", currentScriptHash: "bb", currentSubhandle: "demimntmpt1@handlecontract" },
-      ],
-      userAgent: "codex-test",
-      fetchFn: vi.fn(async (url) => {
-        const target = String(url);
-        const atScript = JSON.stringify({ resolved_addresses: { ada: "addr_test1xp5gahy5jpx99p4vtnq2mfsmnjz84rfrqxyznqewp62mzy2tqcwlsq95pxz027092fzsjgpfzzaunne0qa9glmj38dfqafd0cf" } });
-        const atWallet = JSON.stringify({ resolved_addresses: { ada: "addr_test1vqwg4hlph5k947cqt88xlryxk6ufl9qymac33dr4aenmhrqgs8ql0" } });
-        if (target.includes("demimntmpt1%40handlecontract")) return new Response(atScript, { status: 200 });
-        if (target.includes("demimntmpt2%40handlecontract")) return new Response(atScript, { status: 200 });
-        if (target.includes("demimntmpt3%40handlecontract")) return new Response(atWallet, { status: 200 });
-        if (target.includes("demimntmpt4%40handlecontract")) return new Response(null, { status: 404 });
-        throw new Error(`unexpected url ${target}`);
-      }) as typeof fetch,
-    });
-
-    expect(subhandles).toEqual({
-      demimntmpt: "demimntmpt3@handlecontract",
     });
   });
 

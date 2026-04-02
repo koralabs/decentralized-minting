@@ -107,11 +107,10 @@ const discoverNextContractSubhandle = async ({
     /^[0-9]+$/.test(currentSubhandle.slice(deploymentHandleSlug.length, currentSubhandle.length - suffix.length))
       ? Number.parseInt(currentSubhandle.slice(deploymentHandleSlug.length, currentSubhandle.length - suffix.length), 10)
       : 0;
-  // Prefer existing handles at a spendable (non-script) address.
-  // Handles at script addresses (addr*1x...) are locked and unusable.
-  // Never mint a new handle if a usable one already exists.
-  const usableOrdinals: number[] = [];
-  const scriptLockedOrdinals: number[] = [];
+  // Reuse existing handles before minting new ones. A handle that exists
+  // on-chain is the intended deployment target — never skip it in favor
+  // of a new ordinal.
+  const existingOrdinals: number[] = [];
 
   for (let ordinal = 1; ordinal < 10000; ordinal += 1) {
     const candidate = `${deploymentHandleSlug}${ordinal}${suffix}`;
@@ -120,30 +119,15 @@ const discoverNextContractSubhandle = async ({
       { headers: { "User-Agent": userAgent } }
     );
     if (response.status === 404) {
-      // Pick the first usable ordinal > current, or the first script-locked
-      // ordinal > current (still better than minting new), or the new ordinal.
-      const usable = usableOrdinals.find((o) => o > currentOrdinal);
-      if (usable) return `${deploymentHandleSlug}${usable}${suffix}`;
-      const locked = scriptLockedOrdinals.find((o) => o > currentOrdinal);
-      if (locked) return `${deploymentHandleSlug}${locked}${suffix}`;
-      return candidate;
+      const existingReplacement = existingOrdinals.find((existingOrdinal) => existingOrdinal > currentOrdinal);
+      return existingReplacement
+        ? `${deploymentHandleSlug}${existingReplacement}${suffix}`
+        : candidate;
     }
     if (!response.ok) {
       throw new Error(`failed to probe SubHandle ${candidate}: HTTP ${response.status}`);
     }
-    try {
-      const handleData = await response.json() as { resolved_addresses?: { ada?: string } };
-      const addr = handleData?.resolved_addresses?.ada ?? "";
-      // Script addresses have the form addr[_test]1x... — these are locked
-      const isScriptLocked = /^addr(_test)?1x/.test(addr);
-      if (isScriptLocked) {
-        scriptLockedOrdinals.push(ordinal);
-      } else {
-        usableOrdinals.push(ordinal);
-      }
-    } catch {
-      usableOrdinals.push(ordinal);
-    }
+    existingOrdinals.push(ordinal);
   }
 
   throw new Error(`no available SubHandle found for ${deploymentHandleSlug}${suffix}`);
