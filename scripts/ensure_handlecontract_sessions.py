@@ -172,7 +172,15 @@ def main() -> None:
         deployment_plan_path = network_dir / "deployment-plan.json"
         deployment_plan = load_json(deployment_plan_path)
         deployer_address = str(summary.get("deployer_address") or "").strip()
-        results = [ensure_session(minting_repo, network, handle, deployer_address) for handle in handles]
+        results = []
+        for handle in handles:
+            if results and results[-1].get("status") == "session_created":
+                # Wait for Blockfrost to index the previous payment tx's change UTxOs
+                # before submitting the next payment to avoid double-spend conflicts.
+                import time
+                print(f"Waiting 60s for fee wallet UTxO indexing before next session...", flush=True)
+                time.sleep(60)
+            results.append(ensure_session(minting_repo, network, handle, deployer_address))
         update_plan_files(network_dir, summary, deployment_plan, results)
         print(json.dumps({"network": network, "items": results}))
 

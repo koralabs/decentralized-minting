@@ -26,7 +26,7 @@ jobs:
     name: ${{ matrix.network }}
     environment: ${{ matrix.network }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       KORA_USER_AGENT: ${{ vars.KORA_USER_AGENT }}
       AWS_ACCESS_KEY_ID: ${{ secrets.DEPLOYMENT_AWS_ACCESS_KEY_ID }}
@@ -123,8 +123,8 @@ jobs:
           fi
 
           api_base="${{ matrix.network == 'preview' && 'https://preview.api.handle.me' || matrix.network == 'preprod' && 'https://preprod.api.handle.me' || 'https://api.handle.me' }}"
-          max_attempts=40
-          sleep_seconds=15
+          max_attempts=60
+          sleep_seconds=30
 
           for handle in $handles; do
             echo "Waiting for $handle to appear on-chain..."
