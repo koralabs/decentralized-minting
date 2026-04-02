@@ -3,6 +3,7 @@ import path from "node:path";
 
 import {
   buildUnsignedDeploymentTxArtifact,
+  buildUnsignedSettingsUpdateTxArtifact,
   buildDeploymentPlan,
   buildExpectedContractStates,
   discoverNextContractSubhandles,
@@ -162,6 +163,34 @@ const main = async () => {
       console.log(`Skipping tx for ${contractPlan.contract_slug} ($${handleName}): ${error instanceof Error ? error.message : error}`);
     }
   }
+  // Generate settings update tx if settings changed
+  const hasSettingsDrift = plan.summaryJson.contracts.some(
+    (c) => c.drift_type === "settings_only" || c.drift_type === "script_hash_and_settings"
+  );
+  if (hasSettingsDrift) {
+    const settingsHandleName = "demi@handle_settings";
+    try {
+      const settingsTxArtifact = await buildUnsignedSettingsUpdateTxArtifact({
+        desired,
+        settingsHandleName,
+        deployer,
+        nativeScriptCborHex: nativeScriptCborHex || undefined,
+        blockfrostApiKey: blockfrostApiKey || undefined,
+        userAgent,
+      });
+      txIndex += 1;
+      const fileName = `tx-${String(txIndex).padStart(2, "0")}.cbor`;
+      await fs.writeFile(path.join(args["artifacts-dir"], fileName), settingsTxArtifact.cborBytes);
+      await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${settingsTxArtifact.cborHex}\n`);
+      generatedArtifacts.push(fileName, `${fileName}.hex`);
+      transactionOrder.push(fileName);
+      txArtifactGenerated = true;
+      console.log(`Generated settings update tx: ${fileName} for $${settingsHandleName}`);
+    } catch (error) {
+      console.log(`Skipping settings update tx: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+
   if (txArtifactGenerated) {
     await writePlanFiles();
   }

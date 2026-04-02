@@ -21,7 +21,7 @@ import {
   decodeSettingsV1Data,
 } from "./contracts/index.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
-import { buildReferenceScriptDeploymentTx, type DeployerWallet } from "./deploymentTx.js";
+import { buildReferenceScriptDeploymentTx, buildSettingsUpdateTx, type DeployerWallet } from "./deploymentTx.js";
 import { fetchNetworkParameters } from "./utils/index.js";
 
 const REPO_NAME = "decentralized-minting";
@@ -499,6 +499,58 @@ export const buildUnsignedDeploymentTxArtifact = async ({
   if (estimatedSignedTxSize > maxTxSize) {
     throw new Error(
       `unsigned deployment tx for ${handleName} is too large after adding 1 required signature: ${estimatedSignedTxSize} > ${maxTxSize}`
+    );
+  }
+
+  const cborBytes = Buffer.from(tx.toCbor());
+  return {
+    cborBytes,
+    cborHex: cborBytes.toString("hex"),
+    estimatedSignedTxSize,
+    maxTxSize,
+  };
+};
+
+export const buildUnsignedSettingsUpdateTxArtifact = async ({
+  desired,
+  settingsHandleName,
+  deployer,
+  nativeScriptCborHex,
+  blockfrostApiKey,
+  userAgent,
+  buildTxFn = buildSettingsUpdateTx,
+  fetchNetworkParametersFn = fetchNetworkParameters,
+}: {
+  desired: DesiredDeploymentState;
+  settingsHandleName: string;
+  deployer: DeployerWallet;
+  nativeScriptCborHex?: string;
+  blockfrostApiKey?: string;
+  userAgent?: string;
+  buildTxFn?: typeof buildSettingsUpdateTx;
+  fetchNetworkParametersFn?: typeof fetchNetworkParameters;
+}): Promise<UnsignedDeploymentTxArtifact> => {
+  const tx = await buildTxFn({
+    desired,
+    settingsHandleName,
+    changeAddress: deployer.address,
+    spareUtxos: [...deployer.utxos],
+    nativeScriptCborHex,
+    blockfrostApiKey,
+    userAgent,
+  });
+  tx.witnesses.addDummySignatures(1);
+  const estimatedSignedTxSize = tx.calcSize();
+  tx.witnesses.removeDummySignatures(1);
+
+  const networkParametersResult = await fetchNetworkParametersFn(desired.network);
+  if (!networkParametersResult.ok) {
+    throw new Error("Failed to fetch network parameter");
+  }
+  const maxTxSize = networkParametersResult.data.maxTxSize;
+  if (estimatedSignedTxSize > maxTxSize) {
+    throw new Error(
+      `unsigned settings update tx is too large after adding 1 required signature: ${estimatedSignedTxSize} > ${maxTxSize}`
     );
   }
 

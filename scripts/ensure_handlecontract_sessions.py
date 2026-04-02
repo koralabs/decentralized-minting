@@ -97,7 +97,7 @@ def network_env(network: str) -> dict[str, str]:
     return env
 
 
-def ensure_session(minting_repo: Path, network: str, handle: str, send_address: str = "") -> dict:
+def ensure_session(minting_repo: Path, network: str, handle: str) -> dict:
     cmd = [
         "node",
         "--import",
@@ -106,8 +106,6 @@ def ensure_session(minting_repo: Path, network: str, handle: str, send_address: 
         "--handle",
         handle,
     ]
-    if send_address:
-        cmd.extend(["--send-address", send_address])
     result = subprocess.run(cmd, text=True, capture_output=True, cwd=minting_repo, env=network_env(network))
     if result.returncode != 0:
         print(f"ensure_session failed for {handle} on {network} (exit {result.returncode}):", flush=True)
@@ -171,7 +169,6 @@ def main() -> None:
         network = network_dir.name
         deployment_plan_path = network_dir / "deployment-plan.json"
         deployment_plan = load_json(deployment_plan_path)
-        deployer_address = str(summary.get("deployer_address") or "").strip()
         results = []
         for handle in handles:
             if results and results[-1].get("status") == "session_created":
@@ -181,7 +178,7 @@ def main() -> None:
                 print(f"Waiting 60s for fee wallet UTxO indexing before next session...", flush=True)
                 time.sleep(60)
             print(f"Ensuring session for {handle}...", flush=True)
-            result = ensure_session(minting_repo, network, handle, deployer_address)
+            result = ensure_session(minting_repo, network, handle)
             status = result.get("status", "unknown")
             print(f"  {handle}: {status}" + (" (no mint needed)" if status != "session_created" else " (NEW MINT)"), flush=True)
             results.append(result)

@@ -16,6 +16,9 @@ import { makeTxBuilder } from "@helios-lang/tx-utils";
 import { decodeUplcData, decodeUplcProgramV2FromCbor } from "@helios-lang/uplc";
 
 import { PREFIX_222 } from "./constants/index.js";
+import { buildContracts } from "./contracts/config.js";
+import { buildSettingsData } from "./contracts/data/settings.js";
+import { buildSettingsV1Data } from "./contracts/data/settings-v1.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
 import { getBlockfrostV0Client } from "./helpers/blockfrost/client.js";
 import { deploy } from "./txs/deploy.js";
@@ -190,6 +193,104 @@ export const buildReferenceScriptDeploymentTx = async ({
     handleValue,
     deployData.datumCbor ? makeInlineTxOutputDatum(decodeUplcData(deployData.datumCbor)) : undefined,
     decodeUplcProgramV2FromCbor(deployData.optimizedCbor)
+  );
+  output.correctLovelace(networkParametersResult.data);
+  txBuilder.addOutput(output);
+
+  return await txBuilder.build({
+    changeAddress,
+    spareUtxos,
+  });
+};
+
+export const buildSettingsUpdateTx = async ({
+  desired,
+  settingsHandleName,
+  changeAddress,
+  spareUtxos,
+  nativeScriptCborHex,
+  blockfrostApiKey,
+  userAgent,
+}: {
+  desired: DesiredDeploymentState;
+  settingsHandleName: string;
+  changeAddress: Address;
+  spareUtxos: TxInput[];
+  nativeScriptCborHex?: string;
+  blockfrostApiKey?: string;
+  userAgent?: string;
+}): Promise<Tx> => {
+  const networkParametersResult = await fetchNetworkParameters(desired.network);
+  if (!networkParametersResult.ok) {
+    throw new Error("Failed to fetch network parameter");
+  }
+
+  const txBuilder = makeTxBuilder({ isMainnet: desired.network === "mainnet" });
+
+  if (nativeScriptCborHex) {
+    txBuilder.attachNativeScript(decodeNativeScript(Buffer.from(nativeScriptCborHex, "hex")));
+  }
+
+  // Build expected contract state to get new hashes
+  const built = buildContracts({
+    network: desired.network,
+    mint_version: BigInt(desired.buildParameters.mintVersion),
+    legacy_policy_id: desired.buildParameters.legacyPolicyId,
+    admin_verification_key_hash: desired.buildParameters.adminVerificationKeyHash,
+  });
+
+  // Build the new settings datum
+  const desiredSettings = desired.settings.values["demi@handle_settings"];
+  if (!desiredSettings) {
+    throw new Error("Missing demi@handle_settings in desired settings");
+  }
+
+  const settingsV1Data = buildSettingsV1Data({
+    policy_id: desiredSettings.policy_id as string,
+    allowed_minters: desiredSettings.allowed_minters as string[],
+    valid_handle_price_assets: desiredSettings.valid_handle_price_assets as string[],
+    treasury_address: makeAddress(desiredSettings.treasury_address as string),
+    treasury_fee_percentage: BigInt(desiredSettings.treasury_fee_percentage as number),
+    pz_script_address: makeAddress(desiredSettings.pz_script_address as string),
+    order_script_hash: built.orders.ordersValidatorHash.toHex(),
+    minting_data_script_hash: built.mintingData.mintingDataValidatorHash.toHex(),
+  });
+
+  const settingsData = buildSettingsData({
+    mint_governor: built.mintV1.mintV1ValidatorHash.toHex(),
+    mint_version: BigInt(desired.buildParameters.mintVersion),
+    data: settingsV1Data,
+  });
+
+  // Resolve the settings handle UTxO
+  const handleAssetClass = makeAssetClass(
+    `${desired.buildParameters.legacyPolicyId}.${PREFIX_222}${Buffer.from(settingsHandleName, "utf8").toString("hex")}`
+  );
+  const handleValue = makeValue(1n, makeAssets([[handleAssetClass, 1n]]));
+
+  let handleInputIndex = spareUtxos.findIndex((utxo) => utxo.value.isGreaterOrEqual(handleValue));
+  if (handleInputIndex < 0 && blockfrostApiKey && userAgent) {
+    const handleUtxo = await resolveHandleUtxo({
+      network: desired.network,
+      handleName: settingsHandleName,
+      userAgent,
+      blockfrostApiKey,
+    });
+    spareUtxos.push(handleUtxo);
+    handleInputIndex = spareUtxos.length - 1;
+  }
+  if (handleInputIndex < 0) {
+    throw new Error(`Cannot find $${settingsHandleName} UTxO`);
+  }
+
+  const handleInput = spareUtxos.splice(handleInputIndex, 1)[0];
+  txBuilder.spendUnsafe(handleInput);
+
+  const outputAddress = handleInput.address ?? changeAddress;
+  const output = makeTxOutput(
+    outputAddress,
+    handleValue,
+    makeInlineTxOutputDatum(settingsData)
   );
   output.correctLovelace(networkParametersResult.data);
   txBuilder.addOutput(output);
