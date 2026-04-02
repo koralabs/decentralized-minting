@@ -107,6 +107,9 @@ const discoverNextContractSubhandle = async ({
     /^[0-9]+$/.test(currentSubhandle.slice(deploymentHandleSlug.length, currentSubhandle.length - suffix.length))
       ? Number.parseInt(currentSubhandle.slice(deploymentHandleSlug.length, currentSubhandle.length - suffix.length), 10)
       : 0;
+  // Reuse existing handles before minting new ones. A handle that exists
+  // on-chain without a deployed script is the intended deployment target —
+  // never skip it in favor of a new ordinal.
   const existingOrdinals: number[] = [];
 
   for (let ordinal = 1; ordinal < 10000; ordinal += 1) {
@@ -124,18 +127,7 @@ const discoverNextContractSubhandle = async ({
     if (!response.ok) {
       throw new Error(`failed to probe SubHandle ${candidate}: HTTP ${response.status}`);
     }
-    // Only count as existing if the handle has a deployed reference script.
-    // Handles minted to the wrong address (no script) should be skipped.
-    let hasScript = false;
-    try {
-      const handleData = await response.json() as { script?: { cbor?: string } };
-      hasScript = !!handleData?.script?.cbor;
-    } catch {
-      // Response body may not be JSON — treat as existing without script data
-    }
-    if (hasScript) {
-      existingOrdinals.push(ordinal);
-    }
+    existingOrdinals.push(ordinal);
   }
 
   throw new Error(`no available SubHandle found for ${deploymentHandleSlug}${suffix}`);
