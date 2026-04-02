@@ -25,7 +25,7 @@ jobs:
     name: ${{ matrix.network }}
     environment: ${{ matrix.network }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       KORA_USER_AGENT: ${{ vars.KORA_USER_AGENT }}
       AWS_ACCESS_KEY_ID: ${{ secrets.DEPLOYMENT_AWS_ACCESS_KEY_ID }}
@@ -97,7 +97,48 @@ jobs:
         env:
           NETWORK: ${{ matrix.network }}
         run: python3 scripts/ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
-        continue-on-error: true
+
+      - name: Wait for subhandle mints to confirm
+        run: |
+          set -eu
+          sessions_file="artifacts/${{ matrix.network }}/handlecontract-sessions.json"
+          if [ ! -f "$sessions_file" ]; then
+            echo "No sessions file, skipping wait"
+            exit 0
+          fi
+
+          handles=$(python3 -c "
+          import json, sys
+          sessions = json.load(open('$sessions_file'))
+          for item in sessions.get('items', []):
+              if item.get('status') in ('session_created', 'existing_session'):
+                  print(item['handle'])
+          ")
+          if [ -z "$handles" ]; then
+            echo "No pending handles to wait for"
+            exit 0
+          fi
+
+          api_base="${{ matrix.network == 'preview' && 'https://preview.api.handle.me' || matrix.network == 'preprod' && 'https://preprod.api.handle.me' || 'https://api.handle.me' }}"
+          max_attempts=40
+          sleep_seconds=15
+
+          for handle in $handles; do
+            echo "Waiting for $handle to appear on-chain..."
+            for attempt in $(seq 1 $max_attempts); do
+              status=$(curl -s -o /dev/null -w "%{http_code}" "$api_base/handles/$(python3 -c "import urllib.parse; print(urllib.parse.quote('$handle'))")")
+              if [ "$status" = "200" ]; then
+                echo "$handle confirmed on-chain (attempt $attempt)"
+                break
+              fi
+              if [ "$attempt" = "$max_attempts" ]; then
+                echo "WARNING: $handle not found after $max_attempts attempts, proceeding anyway"
+              else
+                echo "  attempt $attempt/$max_attempts: HTTP $status, waiting ${sleep_seconds}s..."
+                sleep $sleep_seconds
+              fi
+            done
+          done
 
       - name: Re-generate deployment plan (with subhandles)
         run: |
