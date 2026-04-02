@@ -76,6 +76,8 @@ jobs:
           echo "Decrypted KMS bundle keys: $(echo "$plaintext" | python3 -c "import sys,json; print(' '.join(sorted(json.load(sys.stdin).keys())))")"
 
       - name: Generate deployment plan (initial)
+        env:
+          HANDLECONTRACT_NATIVE_SCRIPT_CBOR: ${{ vars[format('HANDLECONTRACT_NATIVE_SCRIPT_CBOR_{0}', matrix.network == 'preview' && 'PREVIEW' || matrix.network == 'preprod' && 'PREPROD' || 'MAINNET')] }}
         run: |
           set -eu
           mkdir -p artifacts/${{ matrix.network }}
@@ -138,6 +140,8 @@ jobs:
           fi
 
       - name: Re-generate deployment plan (with subhandles)
+        env:
+          HANDLECONTRACT_NATIVE_SCRIPT_CBOR: ${{ vars[format('HANDLECONTRACT_NATIVE_SCRIPT_CBOR_{0}', matrix.network == 'preview' && 'PREVIEW' || matrix.network == 'preprod' && 'PREPROD' || 'MAINNET')] }}
         run: |
           set -eu
           npx tsx scripts/generateDeploymentPlan.ts \

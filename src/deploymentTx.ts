@@ -3,6 +3,7 @@ import { Buffer } from "node:buffer";
 import {
   type Address,
   type TxInput,
+  decodeNativeScript,
   makeAddress,
   makeAssetClass,
   makeAssets,
@@ -77,18 +78,61 @@ export const resolveDeployerWallet = async ({
   return { address, utxos };
 };
 
+export const resolveHandleUtxo = async ({
+  network,
+  handleName,
+  userAgent,
+  blockfrostApiKey,
+  fetchFn = fetch,
+}: {
+  network: "preview" | "preprod" | "mainnet";
+  handleName: string;
+  userAgent: string;
+  blockfrostApiKey: string;
+  fetchFn?: typeof fetch;
+}): Promise<TxInput> => {
+  const baseUrl =
+    network === "preview" ? "https://preview.api.handle.me" :
+    network === "preprod" ? "https://preprod.api.handle.me" :
+    "https://api.handle.me";
+
+  const response = await fetchFn(
+    `${baseUrl}/handles/${encodeURIComponent(handleName)}`,
+    { headers: { "User-Agent": userAgent } }
+  );
+  if (!response.ok) {
+    throw new Error(`failed to look up handle ${handleName}: HTTP ${response.status}`);
+  }
+  const handleData = await response.json() as { utxo?: string };
+  const utxoRef = handleData?.utxo;
+  if (!utxoRef) {
+    throw new Error(`handle ${handleName} has no UTxO`);
+  }
+
+  const [txHash, txIndexStr] = utxoRef.split("#");
+  const { makeTxOutputId, makeTxId } = await import("@helios-lang/ledger");
+  const client = getBlockfrostV0Client(blockfrostApiKey);
+  return client.getUtxo(makeTxOutputId(makeTxId(txHash), Number.parseInt(txIndexStr, 10)));
+};
+
 export const buildReferenceScriptDeploymentTx = async ({
   desired,
   contract,
   handleName,
   changeAddress,
   spareUtxos,
+  nativeScriptCborHex,
+  blockfrostApiKey,
+  userAgent,
 }: {
   desired: DesiredDeploymentState;
   contract: DesiredContractTarget;
   handleName: string;
   changeAddress: Address;
   spareUtxos: TxInput[];
+  nativeScriptCborHex?: string;
+  blockfrostApiKey?: string;
+  userAgent?: string;
 }): Promise<Tx> => {
   const networkParametersResult = await fetchNetworkParameters(desired.network);
   if (!networkParametersResult.ok) {
@@ -96,6 +140,12 @@ export const buildReferenceScriptDeploymentTx = async ({
   }
 
   const txBuilder = makeTxBuilder({ isMainnet: desired.network === "mainnet" });
+
+  // Attach the native script so helios allows spending from the script address
+  if (nativeScriptCborHex) {
+    const nativeScript = decodeNativeScript(Buffer.from(nativeScriptCborHex, "hex"));
+    txBuilder.attachNativeScript(nativeScript);
+  }
 
   const deployData = await deploy({
     network: desired.network,
@@ -110,16 +160,33 @@ export const buildReferenceScriptDeploymentTx = async ({
   );
   const handleValue = makeValue(1n, makeAssets([[handleAssetClass, 1n]]));
 
-  const handleInputIndex = spareUtxos.findIndex((utxo) => utxo.value.isGreaterOrEqual(handleValue));
+  // Look for the handle in the deployer's UTxOs first
+  let handleInputIndex = spareUtxos.findIndex((utxo) => utxo.value.isGreaterOrEqual(handleValue));
+
+  if (handleInputIndex < 0 && blockfrostApiKey && userAgent) {
+    // Handle is at the sendAddress (native script address) — fetch it by UTxO ref
+    const handleUtxo = await resolveHandleUtxo({
+      network: desired.network,
+      handleName,
+      userAgent,
+      blockfrostApiKey,
+    });
+    spareUtxos.push(handleUtxo);
+    handleInputIndex = spareUtxos.length - 1;
+  }
+
   if (handleInputIndex < 0) {
-    throw new Error(`Deployer wallet does not hold $${handleName}`);
+    throw new Error(`Cannot find $${handleName} UTxO`);
   }
 
   const handleInput = spareUtxos.splice(handleInputIndex, 1)[0];
   txBuilder.spendUnsafe(handleInput);
 
+  // Send the output back to the handle's current address (the sendAddress)
+  // with the new reference script and datum
+  const outputAddress = handleInput.address ?? changeAddress;
   const output = makeTxOutput(
-    changeAddress,
+    outputAddress,
     handleValue,
     deployData.datumCbor ? makeInlineTxOutputDatum(decodeUplcData(deployData.datumCbor)) : undefined,
     decodeUplcProgramV2FromCbor(deployData.optimizedCbor)

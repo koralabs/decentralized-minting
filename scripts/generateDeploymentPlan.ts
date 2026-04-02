@@ -47,6 +47,7 @@ const main = async () => {
   }
 
   const blockfrostApiKey = (args["blockfrost-api-key"] || process.env.BLOCKFROST_API_KEY || "").trim();
+  const nativeScriptCborHex = (process.env.HANDLECONTRACT_NATIVE_SCRIPT_CBOR || "").trim();
   const desired = await loadDesiredDeploymentState(args.desired);
   const userAgent = (process.env.KORA_USER_AGENT || "kora-contract-deployments/1.0").trim();
   const expectedContracts = buildExpectedContractStates(desired);
@@ -146,6 +147,9 @@ const main = async () => {
         contract: desiredContract,
         handleName,
         deployer,
+        nativeScriptCborHex: nativeScriptCborHex || undefined,
+        blockfrostApiKey: blockfrostApiKey || undefined,
+        userAgent,
       });
       txIndex += 1;
       const fileName = `tx-${String(txIndex).padStart(2, "0")}.cbor`;

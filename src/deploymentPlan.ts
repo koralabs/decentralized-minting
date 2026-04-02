@@ -461,6 +461,9 @@ export const buildUnsignedDeploymentTxArtifact = async ({
   contract,
   handleName,
   deployer,
+  nativeScriptCborHex,
+  blockfrostApiKey,
+  userAgent,
   buildTxFn = buildReferenceScriptDeploymentTx,
   fetchNetworkParametersFn = fetchNetworkParameters,
 }: {
@@ -468,6 +471,9 @@ export const buildUnsignedDeploymentTxArtifact = async ({
   contract: DesiredContractTarget;
   handleName: string;
   deployer: DeployerWallet;
+  nativeScriptCborHex?: string;
+  blockfrostApiKey?: string;
+  userAgent?: string;
   buildTxFn?: typeof buildReferenceScriptDeploymentTx;
   fetchNetworkParametersFn?: typeof fetchNetworkParameters;
 }): Promise<UnsignedDeploymentTxArtifact> => {
@@ -477,6 +483,9 @@ export const buildUnsignedDeploymentTxArtifact = async ({
     handleName,
     changeAddress: deployer.address,
     spareUtxos: [...deployer.utxos],
+    nativeScriptCborHex,
+    blockfrostApiKey,
+    userAgent,
   });
   tx.witnesses.addDummySignatures(1);
   const estimatedSignedTxSize = tx.calcSize();
