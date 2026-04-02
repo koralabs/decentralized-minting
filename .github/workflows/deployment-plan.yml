@@ -91,7 +91,9 @@ jobs:
           path: minting.handle.me
 
       - name: Install minting engine dependencies
-        run: npm ci
+        run: |
+          npm config set //npm.pkg.github.com/:_authToken ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
+          npm ci
         working-directory: minting.handle.me
 
       - name: Ensure handlecontract sessions
