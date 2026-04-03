@@ -220,7 +220,9 @@ const buildUnsignedTxForFee = ({
     id: transactionHashFromCore({ body: bodyWithHash.body } as any) as CardanoTypes.TransactionId,
     body: bodyWithHash.body,
     witness: {
-      signatures: buildPlaceholderSignatures(1),
+      // Use 2 placeholders to account for minor CBOR encoding differences
+      // between our serialization and the wallet's final signed tx.
+      signatures: buildPlaceholderSignatures(2),
       ...(nativeScript ? { scripts: [nativeScript] } : {}),
     },
   };
@@ -230,8 +232,8 @@ export const buildReferenceScriptDeploymentTx = async ({
   desired,
   contract,
   handleName,
-  changeAddress,
-  spareUtxos,
+  changeAddress: _changeAddress,
+  spareUtxos: _spareUtxos,
   nativeScriptCborHex,
   blockfrostApiKey,
   userAgent,
@@ -245,8 +247,8 @@ export const buildReferenceScriptDeploymentTx = async ({
   blockfrostApiKey?: string;
   userAgent?: string;
 }): Promise<BuiltTransaction> => {
-  if (!blockfrostApiKey) {
-    throw new Error("blockfrostApiKey is required for building deployment transactions");
+  if (!blockfrostApiKey || !userAgent) {
+    throw new Error("blockfrostApiKey and userAgent are required for building deployment transactions");
   }
 
   const buildContext = await getBlockfrostBuildContext(desired.network, blockfrostApiKey);
@@ -265,33 +267,24 @@ export const buildReferenceScriptDeploymentTx = async ({
     Cardano.PolicyId(desired.buildParameters.legacyPolicyId as HexBlob),
     Cardano.AssetName(`${PREFIX_222}${handleHex}` as HexBlob),
   );
+
+  // Resolve the handle UTxO and its script address
+  const handleUtxo = await resolveHandleUtxo({
+    network: desired.network,
+    handleName,
+    userAgent,
+    blockfrostApiKey,
+  });
+  const scriptAddress = handleUtxo[1].address;
+
+  // All inputs and change stay within the script address — only the native script
+  // signer is needed (no deployer wallet signature required).
+  const allScriptUtxos = await fetchBlockfrostUtxos(scriptAddress as string, blockfrostApiKey, desired.network);
+
   const handleValue: CardanoTypes.Value = {
     coins: 0n,
     assets: new Map([[handleAssetId, 1n]]),
   };
-
-  // Find the handle in the deployer's UTxOs
-  let handleUtxo = spareUtxos.find(([, txOut]) =>
-    txOut.value.assets?.get(handleAssetId) === 1n
-  );
-
-  if (!handleUtxo && userAgent) {
-    // Handle is at the sendAddress (native script address) — fetch it by UTxO ref
-    handleUtxo = await resolveHandleUtxo({
-      network: desired.network,
-      handleName,
-      userAgent,
-      blockfrostApiKey,
-    });
-    spareUtxos = [...spareUtxos, handleUtxo];
-  }
-
-  if (!handleUtxo) {
-    throw new Error(`Cannot find $${handleName} UTxO`);
-  }
-
-  // The output goes back to the handle's current address (the sendAddress)
-  const outputAddress = handleUtxo[1].address;
 
   // Build the reference script (PlutusV2)
   const scriptReference: CardanoTypes.Script = Serialization.PlutusV2Script.fromCbor(
@@ -306,7 +299,7 @@ export const buildReferenceScriptDeploymentTx = async ({
   // Build the output
   const minimumCoinQuantity = computeMinimumCoinQuantity(buildContext.protocolParameters.coinsPerUtxoByte);
   const handleOutput: CardanoTypes.TxOut = {
-    address: outputAddress,
+    address: scriptAddress,
     value: handleValue,
     ...(datum ? { datum } : {}),
     scriptReference,
@@ -319,16 +312,16 @@ export const buildReferenceScriptDeploymentTx = async ({
   const requestedOutputs = [handleOutput];
   const nativeScript = nativeScriptCborHex ? parseNativeScript(nativeScriptCborHex) : undefined;
 
-  // Remove the handle UTxO from spare set — it's pre-selected
+  // Pre-select the handle UTxO; remaining script address UTxOs cover fees
   const handleUtxoRef = toUtxoRef(handleUtxo);
   const selectedUtxos = [handleUtxo];
-  const remainingUtxos = spareUtxos.filter((u) => toUtxoRef(u) !== handleUtxoRef);
+  const remainingUtxos = allScriptUtxos.filter((u) => toUtxoRef(u) !== handleUtxoRef);
 
   return buildAndSerializeTx({
     selectedUtxos,
     remainingUtxos,
     requestedOutputs,
-    changeAddress,
+    changeAddress: scriptAddress as string,
     buildContext,
     nativeScript,
   });
@@ -337,8 +330,8 @@ export const buildReferenceScriptDeploymentTx = async ({
 export const buildSettingsUpdateTx = async ({
   desired,
   settingsHandleName,
-  changeAddress,
-  spareUtxos,
+  changeAddress: _changeAddress,
+  spareUtxos: _spareUtxos,
   nativeScriptCborHex,
   blockfrostApiKey,
   userAgent,
@@ -351,8 +344,8 @@ export const buildSettingsUpdateTx = async ({
   blockfrostApiKey?: string;
   userAgent?: string;
 }): Promise<BuiltTransaction> => {
-  if (!blockfrostApiKey) {
-    throw new Error("blockfrostApiKey is required for building settings update transactions");
+  if (!blockfrostApiKey || !userAgent) {
+    throw new Error("blockfrostApiKey and userAgent are required for building settings update transactions");
   }
 
   const buildContext = await getBlockfrostBuildContext(desired.network, blockfrostApiKey);
@@ -392,7 +385,19 @@ export const buildSettingsUpdateTx = async ({
   const settingsDatumCbor = Buffer.from(settingsData.toCbor()).toString("hex");
   const datum = Serialization.PlutusData.fromCbor(settingsDatumCbor as HexBlob).toCore();
 
-  // Resolve the settings handle UTxO
+  // Resolve the settings handle UTxO and its script address
+  const handleUtxo = await resolveHandleUtxo({
+    network: desired.network,
+    handleName: settingsHandleName,
+    userAgent,
+    blockfrostApiKey,
+  });
+  const scriptAddress = handleUtxo[1].address;
+
+  // All inputs and change stay within the script address — only the native script
+  // signer is needed (no deployer wallet signature required).
+  const allScriptUtxos = await fetchBlockfrostUtxos(scriptAddress as string, blockfrostApiKey, desired.network);
+
   const handleHex = Buffer.from(settingsHandleName, "utf8").toString("hex");
   const handleAssetId = Cardano.AssetId.fromParts(
     Cardano.PolicyId(desired.buildParameters.legacyPolicyId as HexBlob),
@@ -403,28 +408,9 @@ export const buildSettingsUpdateTx = async ({
     assets: new Map([[handleAssetId, 1n]]),
   };
 
-  let handleUtxo = spareUtxos.find(([, txOut]) =>
-    txOut.value.assets?.get(handleAssetId) === 1n
-  );
-
-  if (!handleUtxo && userAgent) {
-    handleUtxo = await resolveHandleUtxo({
-      network: desired.network,
-      handleName: settingsHandleName,
-      userAgent,
-      blockfrostApiKey,
-    });
-    spareUtxos = [...spareUtxos, handleUtxo];
-  }
-
-  if (!handleUtxo) {
-    throw new Error(`Cannot find $${settingsHandleName} UTxO`);
-  }
-
-  const outputAddress = handleUtxo[1].address;
   const minimumCoinQuantity = computeMinimumCoinQuantity(buildContext.protocolParameters.coinsPerUtxoByte);
   const handleOutput: CardanoTypes.TxOut = {
-    address: outputAddress,
+    address: scriptAddress,
     value: handleValue,
     datum,
   };
@@ -438,13 +424,13 @@ export const buildSettingsUpdateTx = async ({
 
   const handleUtxoRef = toUtxoRef(handleUtxo);
   const selectedUtxos = [handleUtxo];
-  const remainingUtxos = spareUtxos.filter((u) => toUtxoRef(u) !== handleUtxoRef);
+  const remainingUtxos = allScriptUtxos.filter((u) => toUtxoRef(u) !== handleUtxoRef);
 
   return buildAndSerializeTx({
     selectedUtxos,
     remainingUtxos,
     requestedOutputs,
-    changeAddress,
+    changeAddress: scriptAddress as string,
     buildContext,
     nativeScript,
   });

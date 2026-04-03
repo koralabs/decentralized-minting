@@ -156,10 +156,8 @@ const buildValidityInterval = (
 ): CardanoTypes.ValidityInterval => {
   const slotLength = Math.max(toNumber(genesis.slot_length, "genesis.slot_length"), 1);
   const slotOffset = (seconds: number) => Math.max(1, Math.ceil(seconds / slotLength));
-  return {
-    invalidBefore: Cardano.Slot(Math.max(tip.slot - slotOffset(90), 0)),
-    invalidHereafter: Cardano.Slot(tip.slot + slotOffset(5 * 60)),
-  };
+  // Deployment txs are built offline and signed manually — no expiry needed.
+  return {};
 };
 
 export const getBlockfrostBuildContext = async (
