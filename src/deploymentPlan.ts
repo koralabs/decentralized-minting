@@ -22,7 +22,6 @@ import {
 } from "./contracts/index.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
 import { buildReferenceScriptDeploymentTx, buildSettingsUpdateTx, type DeployerWallet } from "./deploymentTx.js";
-import { fetchNetworkParameters } from "./utils/index.js";
 
 const REPO_NAME = "decentralized-minting";
 const DEMI_SETTINGS_HANDLE = "demi@handle_settings";
@@ -465,7 +464,7 @@ export const buildUnsignedDeploymentTxArtifact = async ({
   blockfrostApiKey,
   userAgent,
   buildTxFn = buildReferenceScriptDeploymentTx,
-  fetchNetworkParametersFn = fetchNetworkParameters,
+  maxTxSize: maxTxSizeOverride,
 }: {
   desired: DesiredDeploymentState;
   contract: DesiredContractTarget;
@@ -475,9 +474,9 @@ export const buildUnsignedDeploymentTxArtifact = async ({
   blockfrostApiKey?: string;
   userAgent?: string;
   buildTxFn?: typeof buildReferenceScriptDeploymentTx;
-  fetchNetworkParametersFn?: typeof fetchNetworkParameters;
+  maxTxSize?: number;
 }): Promise<UnsignedDeploymentTxArtifact> => {
-  const tx = await buildTxFn({
+  const { cborHex, estimatedSignedTxSize } = await buildTxFn({
     desired,
     contract,
     handleName,
@@ -487,25 +486,20 @@ export const buildUnsignedDeploymentTxArtifact = async ({
     blockfrostApiKey,
     userAgent,
   });
-  tx.witnesses.addDummySignatures(1);
-  const estimatedSignedTxSize = tx.calcSize();
-  tx.witnesses.removeDummySignatures(1);
 
-  const networkParametersResult = await fetchNetworkParametersFn(desired.network);
-  if (!networkParametersResult.ok) {
-    throw new Error("Failed to fetch network parameter");
-  }
-  const maxTxSize = networkParametersResult.data.maxTxSize;
+  // maxTxSize comes from protocol parameters; the tx builder already fetches them,
+  // so accept an override or default to the Conway-era maximum.
+  const maxTxSize = maxTxSizeOverride ?? 16384;
   if (estimatedSignedTxSize > maxTxSize) {
     throw new Error(
       `unsigned deployment tx for ${handleName} is too large after adding 1 required signature: ${estimatedSignedTxSize} > ${maxTxSize}`
     );
   }
 
-  const cborBytes = Buffer.from(tx.toCbor());
+  const cborBytes = Buffer.from(cborHex, "hex");
   return {
     cborBytes,
-    cborHex: cborBytes.toString("hex"),
+    cborHex,
     estimatedSignedTxSize,
     maxTxSize,
   };
@@ -519,7 +513,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
   blockfrostApiKey,
   userAgent,
   buildTxFn = buildSettingsUpdateTx,
-  fetchNetworkParametersFn = fetchNetworkParameters,
+  maxTxSize: maxTxSizeOverride,
 }: {
   desired: DesiredDeploymentState;
   settingsHandleName: string;
@@ -528,9 +522,9 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
   blockfrostApiKey?: string;
   userAgent?: string;
   buildTxFn?: typeof buildSettingsUpdateTx;
-  fetchNetworkParametersFn?: typeof fetchNetworkParameters;
+  maxTxSize?: number;
 }): Promise<UnsignedDeploymentTxArtifact> => {
-  const tx = await buildTxFn({
+  const { cborHex, estimatedSignedTxSize } = await buildTxFn({
     desired,
     settingsHandleName,
     changeAddress: deployer.address,
@@ -539,144 +533,21 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
     blockfrostApiKey,
     userAgent,
   });
-  tx.witnesses.addDummySignatures(1);
-  const estimatedSignedTxSize = tx.calcSize();
-  tx.witnesses.removeDummySignatures(1);
 
-  const networkParametersResult = await fetchNetworkParametersFn(desired.network);
-  if (!networkParametersResult.ok) {
-    throw new Error("Failed to fetch network parameter");
-  }
-  const maxTxSize = networkParametersResult.data.maxTxSize;
+  const maxTxSize = maxTxSizeOverride ?? 16384;
   if (estimatedSignedTxSize > maxTxSize) {
     throw new Error(
       `unsigned settings update tx is too large after adding 1 required signature: ${estimatedSignedTxSize} > ${maxTxSize}`
     );
   }
 
-  const cborBytes = Buffer.from(tx.toCbor());
+  const cborBytes = Buffer.from(cborHex, "hex");
   return {
     cborBytes,
-    cborHex: cborBytes.toString("hex"),
+    cborHex,
     estimatedSignedTxSize,
     maxTxSize,
   };
-};
-
-/**
- * Helios does not include attached native scripts in the serialized CBOR witnesses.
- * This function parses the tx CBOR, adds the native script to the witness set (key 0),
- * and re-encodes. The tx body hash is unaffected since witnesses are separate.
- */
-const injectNativeScriptWitness = async (txCbor: Buffer, nativeScriptCborHex: string): Promise<Buffer> => {
-  // Byte-level CBOR injection to preserve helios's exact encoding.
-  // The tx is: 84 <body> <witnesses> <isValid> <aux>
-  // The witnesses map starts with a1 (1-entry map) or a0 (empty map).
-  // We need to increment the map entry count and prepend the native script entry.
-  //
-  // Native script witness entry: key 0, value [<script>]
-  // CBOR: 00 81 <script_bytes>
-  // (00 = unsigned int 0, 81 = 1-element array, then the script)
-
-  const scriptCbor = Buffer.from(nativeScriptCborHex, "hex");
-  // Wrap in: key=0, value=array(1, script)
-  // CBOR key 0 = 0x00
-  // CBOR array(1) = 0x81
-  const nativeScriptEntry = Buffer.concat([
-    Buffer.from([0x00, 0x81]),
-    scriptCbor,
-  ]);
-
-  // Find the witness map in the tx CBOR.
-  // tx = 84 <body> <witnesses_map> <bool> <aux>
-  // We need to skip past the body to find the witnesses map start.
-  // The body is a CBOR map (starts with a_ or b_).
-  // Use a simple CBOR skip to find where the body ends.
-
-  let pos = 1; // skip 0x84 (4-element array)
-
-  // Skip the body (element 0)
-  pos = skipCborValue(txCbor, pos);
-
-  // Now at the witnesses map
-  const witnessMapStart = pos;
-  const witnessMapHeader = txCbor[witnessMapStart];
-
-  // The map header is a_ where _ is the entry count (for maps with <= 23 entries)
-  // a0 = 0 entries, a1 = 1 entry, a2 = 2 entries, etc.
-  if ((witnessMapHeader & 0xe0) !== 0xa0) {
-    throw new Error(`unexpected witness map header: ${witnessMapHeader.toString(16)}`);
-  }
-  const currentEntries = witnessMapHeader & 0x1f;
-  const newHeader = 0xa0 | (currentEntries + 1);
-
-  // Build the new CBOR: prefix + new map header + native script entry + existing map entries + suffix
-  const beforeWitnesses = txCbor.subarray(0, witnessMapStart);
-  const existingMapEntries = txCbor.subarray(witnessMapStart + 1); // skip old header, rest includes map entries + isValid + aux
-
-  // We need to split existingMapEntries into: map entries | isValid | aux
-  // Skip all map entries to find where they end
-  let entryPos = witnessMapStart + 1;
-  for (let i = 0; i < currentEntries; i++) {
-    entryPos = skipCborValue(txCbor, entryPos); // skip key
-    entryPos = skipCborValue(txCbor, entryPos); // skip value
-  }
-  const mapEntriesBytes = txCbor.subarray(witnessMapStart + 1, entryPos);
-  const afterWitnesses = txCbor.subarray(entryPos);
-
-  return Buffer.concat([
-    beforeWitnesses,
-    Buffer.from([newHeader]),
-    nativeScriptEntry,  // key 0 first (canonical order)
-    mapEntriesBytes,    // existing entries (key 1+)
-    afterWitnesses,     // isValid + aux
-  ]);
-};
-
-/** Skip a single CBOR value and return the position after it. */
-const skipCborValue = (buf: Buffer, pos: number): number => {
-  const major = (buf[pos] >> 5) & 0x07;
-  const minor = buf[pos] & 0x1f;
-  pos += 1;
-
-  let length: number;
-  if (minor < 24) {
-    length = minor;
-  } else if (minor === 24) {
-    length = buf[pos]; pos += 1;
-  } else if (minor === 25) {
-    length = buf.readUInt16BE(pos); pos += 2;
-  } else if (minor === 26) {
-    length = buf.readUInt32BE(pos); pos += 4;
-  } else if (minor === 27) {
-    // 8-byte length — just read as number (safe for reasonable sizes)
-    length = Number(buf.readBigUInt64BE(pos)); pos += 8;
-  } else {
-    throw new Error(`unsupported CBOR minor type ${minor} at offset ${pos - 1}`);
-  }
-
-  switch (major) {
-    case 0: // unsigned int
-    case 1: // negative int
-    case 7: // simple/float
-      return pos;
-    case 2: // byte string
-    case 3: // text string
-      return pos + length;
-    case 4: // array
-      for (let i = 0; i < length; i++) pos = skipCborValue(buf, pos);
-      return pos;
-    case 5: // map
-      for (let i = 0; i < length; i++) {
-        pos = skipCborValue(buf, pos); // key
-        pos = skipCborValue(buf, pos); // value
-      }
-      return pos;
-    case 6: // tag
-      return skipCborValue(buf, pos); // skip tagged value
-    default:
-      throw new Error(`unsupported CBOR major type ${major}`);
-  }
 };
 
 const classifyDrift = (scriptHashChanged: boolean, settingsChanged: boolean) => {

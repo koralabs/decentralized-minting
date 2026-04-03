@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { Ok } from "ts-res";
 
 import {
   buildDeploymentPlan,
@@ -243,31 +242,16 @@ describe("decentralized minting deployment plan", () => {
   it("builds raw CBOR bytes and a matching hex artifact for the unsigned deployment tx", async () => {
     // Feature: deployment artifacts must write raw CBOR bytes to `tx-XX.cbor` and keep hex in a sidecar file.
     // Failure mode: wallets would reject the artifact because the `.cbor` file contained printable hex text instead of CBOR bytes.
-    const tx = {
-      witnessCount: 0,
-      witnesses: {
-        addDummySignatures: (count: number) => {
-          tx.witnessCount += count;
-        },
-        removeDummySignatures: (count: number) => {
-          tx.witnessCount -= count;
-        },
-      },
-      calcSize: () => (tx.witnessCount === 1 ? 222 : 111),
-      toCbor: () => [0x84, 0x01, 0x02],
-    };
-
-    const { makeAddress } = await import("@helios-lang/ledger");
     const artifact = await buildUnsignedDeploymentTxArtifact({
       desired: desiredState,
       contract: desiredState.contracts[0],
       handleName: "demimntprx2@handlecontract",
       deployer: {
-        address: makeAddress("addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej"),
+        address: "addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej",
         utxos: [],
       },
-      buildTxFn: (async () => tx as never) as never,
-      fetchNetworkParametersFn: (async () => Ok({ maxTxSize: 300 } as never)) as never,
+      buildTxFn: (async () => ({ cborHex: "840102", estimatedSignedTxSize: 222 })) as never,
+      maxTxSize: 300,
     });
 
     expect([...artifact.cborBytes]).toEqual([0x84, 0x01, 0x02]);
@@ -279,32 +263,17 @@ describe("decentralized minting deployment plan", () => {
   it("rejects unsigned deployment tx artifacts that would exceed max tx size after signing", async () => {
     // Feature: the planner must fail before uploading a tx artifact that becomes oversized once the signer adds its witness.
     // Failure mode: ops would receive a CBOR file that imports locally but is rejected on submit because the signed tx exceeds protocol size limits.
-    const tx = {
-      witnessCount: 0,
-      witnesses: {
-        addDummySignatures: (count: number) => {
-          tx.witnessCount += count;
-        },
-        removeDummySignatures: (count: number) => {
-          tx.witnessCount -= count;
-        },
-      },
-      calcSize: () => (tx.witnessCount === 1 ? 301 : 200),
-      toCbor: () => [0x80],
-    };
-
-    const { makeAddress } = await import("@helios-lang/ledger");
     await expect(
       buildUnsignedDeploymentTxArtifact({
         desired: desiredState,
         contract: desiredState.contracts[0],
         handleName: "demimntprx2@handlecontract",
         deployer: {
-          address: makeAddress("addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej"),
+          address: "addr_test1qpzxs06vn7qagrqsm7wtquul8s5drxzk82wwr9qx3886m8lv7yv3mukuwdkne3v3va8dgd3xjkzqv90pu9gsc8hrl2xs9yqkej",
           utxos: [],
         },
-        buildTxFn: (async () => tx as never) as never,
-        fetchNetworkParametersFn: (async () => Ok({ maxTxSize: 300 } as never)) as never,
+        buildTxFn: (async () => ({ cborHex: "80", estimatedSignedTxSize: 301 })) as never,
+        maxTxSize: 300,
       })
     ).rejects.toThrow(/too large after adding 1 required signature/i);
   });

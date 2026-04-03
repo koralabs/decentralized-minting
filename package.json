@@ -19,6 +19,9 @@
   "dependencies": {
     "@aiken-lang/merkle-patricia-forestry": "^1.2.0",
     "@blockfrost/blockfrost-js": "^6.0.0",
+    "@cardano-sdk/core": "^0.46.12",
+    "@cardano-sdk/input-selection": "file:./cardano-sdk-input-selection-0.14.28.tgz",
+    "@cardano-sdk/tx-construction": "file:./cardano-sdk-tx-construction-0.28.10.tgz",
     "@helios-lang/codec-utils": "^0.3.4",
     "@helios-lang/compiler": "^0.17.19",
     "@helios-lang/crypto": "^0.2.3",
