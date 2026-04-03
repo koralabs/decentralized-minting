@@ -144,12 +144,10 @@ export const buildReferenceScriptDeploymentTx = async ({
 
   const txBuilder = makeTxBuilder({ isMainnet: desired.network === "mainnet" });
 
-  // Attach the native script so helios allows spending/sending at the script address
-  const nativeScript = nativeScriptCborHex
-    ? decodeNativeScript(Buffer.from(nativeScriptCborHex, "hex"))
-    : undefined;
-  if (nativeScript) {
-    txBuilder.attachNativeScript(nativeScript);
+  // Attach the native script so helios recognizes the script address
+  // for both spending inputs and sending outputs.
+  if (nativeScriptCborHex) {
+    txBuilder.attachNativeScript(decodeNativeScript(Buffer.from(nativeScriptCborHex, "hex")));
   }
 
   const deployData = await deploy({
@@ -199,19 +197,10 @@ export const buildReferenceScriptDeploymentTx = async ({
   output.correctLovelace(networkParametersResult.data);
   txBuilder.addOutput(output);
 
-  const tx = await txBuilder.buildUnsafe({
+  return await txBuilder.build({
     changeAddress,
     spareUtxos,
   });
-
-  // Helios strips native scripts from witnesses even with buildUnsafe.
-  // Re-add it so the signed tx includes the script witness needed for
-  // spending from the native script sendAddress.
-  if (nativeScript && tx.witnesses.nativeScripts.length === 0) {
-    tx.witnesses.nativeScripts.push(nativeScript);
-  }
-
-  return tx;
 };
 
 export const buildSettingsUpdateTx = async ({
@@ -238,11 +227,8 @@ export const buildSettingsUpdateTx = async ({
 
   const txBuilder = makeTxBuilder({ isMainnet: desired.network === "mainnet" });
 
-  const nativeScript = nativeScriptCborHex
-    ? decodeNativeScript(Buffer.from(nativeScriptCborHex, "hex"))
-    : undefined;
-  if (nativeScript) {
-    txBuilder.attachNativeScript(nativeScript);
+  if (nativeScriptCborHex) {
+    txBuilder.attachNativeScript(decodeNativeScript(Buffer.from(nativeScriptCborHex, "hex")));
   }
 
   // Build expected contract state to get new hashes
