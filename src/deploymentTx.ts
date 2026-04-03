@@ -295,14 +295,8 @@ export const buildSettingsUpdateTx = async ({
   output.correctLovelace(networkParametersResult.data);
   txBuilder.addOutput(output);
 
-  const tx = await txBuilder.buildUnsafe({
+  return await txBuilder.build({
     changeAddress,
     spareUtxos,
   });
-
-  if (nativeScript && tx.witnesses.nativeScripts.length === 0) {
-    tx.witnesses.nativeScripts.push(nativeScript);
-  }
-
-  return tx;
 };
