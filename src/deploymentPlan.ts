@@ -502,10 +502,7 @@ export const buildUnsignedDeploymentTxArtifact = async ({
     );
   }
 
-  let cborBytes = Buffer.from(tx.toCbor());
-  if (nativeScriptCborHex) {
-    cborBytes = await injectNativeScriptWitness(cborBytes, nativeScriptCborHex);
-  }
+  const cborBytes = Buffer.from(tx.toCbor());
   return {
     cborBytes,
     cborHex: cborBytes.toString("hex"),
@@ -557,10 +554,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
     );
   }
 
-  let cborBytes = Buffer.from(tx.toCbor());
-  if (nativeScriptCborHex) {
-    cborBytes = await injectNativeScriptWitness(cborBytes, nativeScriptCborHex);
-  }
+  const cborBytes = Buffer.from(tx.toCbor());
   return {
     cborBytes,
     cborHex: cborBytes.toString("hex"),
