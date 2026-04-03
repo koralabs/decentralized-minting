@@ -504,7 +504,7 @@ export const buildUnsignedDeploymentTxArtifact = async ({
 
   let cborBytes = Buffer.from(tx.toCbor());
   if (nativeScriptCborHex) {
-    cborBytes = injectNativeScriptWitness(cborBytes, nativeScriptCborHex);
+    cborBytes = await injectNativeScriptWitness(cborBytes, nativeScriptCborHex);
   }
   return {
     cborBytes,
@@ -559,7 +559,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
 
   let cborBytes = Buffer.from(tx.toCbor());
   if (nativeScriptCborHex) {
-    cborBytes = injectNativeScriptWitness(cborBytes, nativeScriptCborHex);
+    cborBytes = await injectNativeScriptWitness(cborBytes, nativeScriptCborHex);
   }
   return {
     cborBytes,
@@ -574,12 +574,15 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
  * This function parses the tx CBOR, adds the native script to the witness set (key 0),
  * and re-encodes. The tx body hash is unaffected since witnesses are separate.
  */
-const injectNativeScriptWitness = (txCbor: Buffer, nativeScriptCborHex: string): Buffer => {
-  // Use dynamic import of cbor to avoid adding a top-level dependency
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+const injectNativeScriptWitness = async (txCbor: Buffer, nativeScriptCborHex: string): Promise<Buffer> => {
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
   const cbor = require("cbor");
+
   const tx = cbor.decodeFirstSync(txCbor);
-  const witnesses = tx[1] instanceof Map ? tx[1] : new Map(Object.entries(tx[1]).map(([k, v]) => [Number(k), v]));
+  const witnesses = tx[1] instanceof Map
+    ? tx[1]
+    : new Map(Object.entries(tx[1]).map(([k, v]: [string, unknown]) => [Number(k), v]));
   const nativeScript = cbor.decodeFirstSync(Buffer.from(nativeScriptCborHex, "hex"));
   witnesses.set(0, [nativeScript]);
   tx[1] = witnesses;
