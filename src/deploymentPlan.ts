@@ -502,7 +502,10 @@ export const buildUnsignedDeploymentTxArtifact = async ({
     );
   }
 
-  const cborBytes = Buffer.from(tx.toCbor());
+  let cborBytes = Buffer.from(tx.toCbor());
+  if (nativeScriptCborHex) {
+    cborBytes = injectNativeScriptWitness(cborBytes, nativeScriptCborHex);
+  }
   return {
     cborBytes,
     cborHex: cborBytes.toString("hex"),
@@ -554,13 +557,33 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
     );
   }
 
-  const cborBytes = Buffer.from(tx.toCbor());
+  let cborBytes = Buffer.from(tx.toCbor());
+  if (nativeScriptCborHex) {
+    cborBytes = injectNativeScriptWitness(cborBytes, nativeScriptCborHex);
+  }
   return {
     cborBytes,
     cborHex: cborBytes.toString("hex"),
     estimatedSignedTxSize,
     maxTxSize,
   };
+};
+
+/**
+ * Helios does not include attached native scripts in the serialized CBOR witnesses.
+ * This function parses the tx CBOR, adds the native script to the witness set (key 0),
+ * and re-encodes. The tx body hash is unaffected since witnesses are separate.
+ */
+const injectNativeScriptWitness = (txCbor: Buffer, nativeScriptCborHex: string): Buffer => {
+  // Use dynamic import of cbor to avoid adding a top-level dependency
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const cbor = require("cbor");
+  const tx = cbor.decodeFirstSync(txCbor);
+  const witnesses = tx[1] instanceof Map ? tx[1] : new Map(Object.entries(tx[1]).map(([k, v]) => [Number(k), v]));
+  const nativeScript = cbor.decodeFirstSync(Buffer.from(nativeScriptCborHex, "hex"));
+  witnesses.set(0, [nativeScript]);
+  tx[1] = witnesses;
+  return Buffer.from(cbor.encodeOne(tx));
 };
 
 const classifyDrift = (scriptHashChanged: boolean, settingsChanged: boolean) => {
