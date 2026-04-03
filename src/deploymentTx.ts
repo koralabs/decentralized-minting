@@ -197,7 +197,7 @@ export const buildReferenceScriptDeploymentTx = async ({
   output.correctLovelace(networkParametersResult.data);
   txBuilder.addOutput(output);
 
-  return await txBuilder.build({
+  return await txBuilder.buildUnsafe({
     changeAddress,
     spareUtxos,
   });
@@ -295,7 +295,7 @@ export const buildSettingsUpdateTx = async ({
   output.correctLovelace(networkParametersResult.data);
   txBuilder.addOutput(output);
 
-  return await txBuilder.build({
+  return await txBuilder.buildUnsafe({
     changeAddress,
     spareUtxos,
   });
