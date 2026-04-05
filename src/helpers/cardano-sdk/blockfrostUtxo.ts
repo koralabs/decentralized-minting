@@ -58,11 +58,16 @@ const blockfrostUtxoToCore = (
   return [txIn, txOut];
 };
 
+export interface FetchBlockfrostUtxosOptions {
+  excludeWithReferenceScripts?: boolean;
+}
+
 export const fetchBlockfrostUtxos = async (
   address: string,
   apiKey: string,
   network: "preview" | "preprod" | "mainnet",
   fetchFn: typeof fetch = fetch,
+  options: FetchBlockfrostUtxosOptions = {},
 ): Promise<CardanoTypes.Utxo[]> => {
   const host = `https://cardano-${network}.blockfrost.io/api/v0`;
   const allUtxos: CardanoTypes.Utxo[] = [];
@@ -80,6 +85,7 @@ export const fetchBlockfrostUtxos = async (
     const items = (await response.json()) as BlockfrostUtxoItem[];
     if (items.length === 0) break;
     for (const item of items) {
+      if (options.excludeWithReferenceScripts && item.reference_script_hash) continue;
       allUtxos.push(blockfrostUtxoToCore(item, address));
     }
     if (items.length < 100) break;

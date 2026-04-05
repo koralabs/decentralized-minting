@@ -220,8 +220,6 @@ const buildUnsignedTxForFee = ({
     id: transactionHashFromCore({ body: bodyWithHash.body } as any) as CardanoTypes.TransactionId,
     body: bodyWithHash.body,
     witness: {
-      // Use 2 placeholders to account for minor CBOR encoding differences
-      // between our serialization and the wallet's final signed tx.
       signatures: buildPlaceholderSignatures(2),
       ...(nativeScript ? { scripts: [nativeScript] } : {}),
     },
@@ -279,7 +277,12 @@ export const buildReferenceScriptDeploymentTx = async ({
 
   // All inputs and change stay within the script address — only the native script
   // signer is needed (no deployer wallet signature required).
-  const allScriptUtxos = await fetchBlockfrostUtxos(scriptAddress as string, blockfrostApiKey, desired.network);
+  // Exclude UTxOs with reference scripts — spending them adds their script
+  // size to the tx fee via minFeeRefScriptCostPerByte (Conway tiered pricing).
+  const allScriptUtxos = await fetchBlockfrostUtxos(
+    scriptAddress as string, blockfrostApiKey, desired.network, fetch,
+    { excludeWithReferenceScripts: true },
+  );
 
   const handleValue: CardanoTypes.Value = {
     coins: 0n,
@@ -396,7 +399,12 @@ export const buildSettingsUpdateTx = async ({
 
   // All inputs and change stay within the script address — only the native script
   // signer is needed (no deployer wallet signature required).
-  const allScriptUtxos = await fetchBlockfrostUtxos(scriptAddress as string, blockfrostApiKey, desired.network);
+  // Exclude UTxOs with reference scripts — spending them adds their script
+  // size to the tx fee via minFeeRefScriptCostPerByte (Conway tiered pricing).
+  const allScriptUtxos = await fetchBlockfrostUtxos(
+    scriptAddress as string, blockfrostApiKey, desired.network, fetch,
+    { excludeWithReferenceScripts: true },
+  );
 
   const handleHex = Buffer.from(settingsHandleName, "utf8").toString("hex");
   const handleAssetId = Cardano.AssetId.fromParts(
@@ -487,14 +495,20 @@ const buildAndSerializeTx = async ({
     }),
   });
 
-  // Build the final tx
+  // Build the final tx using the fee from coin selection (which was computed
+  // from the full estimation tx including placeholder signatures and native script).
+  // createTransactionInternals recalculates the fee from the bare body, which
+  // underestimates because it doesn't include witness overhead. Use the
+  // selection's fee instead.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const finalTxBodyWithHash = createTransactionInternals({ inputSelection: selection.selection, validityInterval: buildContext.validityInterval, outputs: requestedOutputs } as any);
+
+  const selectionFee = selection.selection.fee;
 
   // Unsigned tx with native script witness (no signatures — Eternl will sign)
   const unsignedTx: CardanoTypes.Tx = {
     id: finalTxBodyWithHash.hash,
-    body: finalTxBodyWithHash.body,
+    body: { ...finalTxBodyWithHash.body, fee: selectionFee },
     witness: {
       signatures: new Map(),
       ...(nativeScript ? { scripts: [nativeScript] } : {}),
