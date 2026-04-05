@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import crypto from "node:crypto";
 
+import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import {
   makeAddress,
   makeAssetClass,
@@ -21,12 +22,84 @@ import {
   decodeSettingsV1Data,
 } from "./contracts/index.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
-import { buildReferenceScriptDeploymentTx, buildSettingsUpdateTx, type DeployerWallet } from "./deploymentTx.js";
+import { buildReferenceScriptDeploymentTx, buildSettingsUpdateTx, type BuiltTransaction, type DeployerWallet } from "./deploymentTx.js";
 
 const REPO_NAME = "decentralized-minting";
 const DEMI_SETTINGS_HANDLE = "demi@handle_settings";
 const MINTING_DATA_HANDLE = "handle_root@handle_settings";
 const HANDLE_PRICE_HANDLE = "kora@handle_prices";
+
+/**
+ * Compute the MPT root hash by fetching all handles from the API and
+ * building a fresh trie. No ghost handles — the migration is the
+ * opportunity to set the on-chain root to match the real handle set.
+ */
+export const computeMptRootHash = async ({
+  network,
+  userAgent,
+  fetchFn = fetch,
+}: {
+  network: "preview" | "preprod" | "mainnet";
+  userAgent: string;
+  fetchFn?: typeof fetch;
+}): Promise<string> => {
+  const baseUrl = handlesApiBaseUrlForNetwork(network);
+  const handles: string[] = [];
+  let page = 1;
+  let searchTotal = 0;
+
+  while (handles.length < searchTotal || page === 1) {
+    const response = await fetchFn(
+      `${baseUrl}/handles?records_per_page=50000&page=${page}&sort=asc`,
+      { headers: { Accept: "text/plain", "User-Agent": userAgent } }
+    );
+    if (!response.ok) {
+      throw new Error(`failed to fetch handles page ${page}: HTTP ${response.status}`);
+    }
+    const text = await response.text();
+    const pageHandles = text.split("\n").filter(Boolean);
+    handles.push(...pageHandles);
+
+    const totalHeader = response.headers.get("x-handles-search-total");
+    searchTotal = totalHeader && Number.isFinite(Number(totalHeader)) ? Number(totalHeader) : handles.length;
+    if (!pageHandles.length) break;
+    page++;
+  }
+
+  const trieList = handles.map((h) => ({ key: h, value: "" }));
+  const trie = await Trie.fromList(trieList);
+  return trie.hash.toString("hex");
+};
+
+/**
+ * Fetch the old (currently deployed) validator script CBOR from the Handle
+ * API's /script endpoint for the given deployment subhandle.
+ */
+export const fetchOldValidatorCbor = async ({
+  network,
+  currentSubhandle,
+  userAgent,
+  fetchFn = fetch,
+}: {
+  network: "preview" | "preprod" | "mainnet";
+  currentSubhandle: string;
+  userAgent: string;
+  fetchFn?: typeof fetch;
+}): Promise<string> => {
+  const baseUrl = handlesApiBaseUrlForNetwork(network);
+  const response = await fetchFn(
+    `${baseUrl}/handles/${encodeURIComponent(currentSubhandle)}/script`,
+    { headers: { "User-Agent": userAgent } }
+  );
+  if (!response.ok) {
+    throw new Error(`failed to fetch script for ${currentSubhandle}: HTTP ${response.status}`);
+  }
+  const payload = await response.json() as { cbor?: string };
+  if (!payload.cbor) {
+    throw new Error(`no CBOR in script response for ${currentSubhandle}`);
+  }
+  return payload.cbor;
+};
 
 export interface ExpectedContractState {
   contractSlug: string;
@@ -150,7 +223,7 @@ interface LiveSettingsState {
   values: DesiredDeploymentState["settings"]["values"] | null;
 }
 
-const handlesApiBaseUrlForNetwork = (network: string): string => {
+export const handlesApiBaseUrlForNetwork = (network: string): string => {
   if (network === "preview") return "https://preview.api.handle.me";
   if (network === "preprod") return "https://preprod.api.handle.me";
   return "https://api.handle.me";

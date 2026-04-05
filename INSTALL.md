@@ -41,3 +41,15 @@ The settings are attached to `settings_asset` as datum.
 - Check `blueprints` are same as the ones under `/src/contracts/*-blueprints.ts`
 
   `*-blueprints.ts` is simply `default export`ing `blueprints` from `plutus.json`
+
+### Generating the deployment plan
+
+After updating blueprints, run the automated deployment plan to detect drift and generate unsigned transaction artifacts. See [scripts/README.md](scripts/README.md) for details.
+
+```bash
+npx tsx scripts/generateDeploymentPlan.ts \
+  --desired deploy/<network>/decentralized-minting.yaml \
+  --artifacts-dir tmp/<network>-deploy
+```
+
+The plan handles reference script deployment, settings updates, and MPT root handle migration when the `demimntmpt.spend` validator changes.

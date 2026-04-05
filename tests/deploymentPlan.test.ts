@@ -4,9 +4,11 @@ import {
   buildDeploymentPlan,
   buildExpectedContractStates,
   buildUnsignedDeploymentTxArtifact,
+  computeMptRootHash,
   discoverNextContractSubhandles,
   fetchLiveContractStates,
   fetchLiveSettingsState,
+  fetchOldValidatorCbor,
   renderTransactionOrderMarkdown,
 } from "../src/deploymentPlan.js";
 import type { DesiredDeploymentState } from "../src/deploymentState.js";
@@ -276,6 +278,54 @@ describe("decentralized minting deployment plan", () => {
         maxTxSize: 300,
       })
     ).rejects.toThrow(/too large after adding 1 required signature/i);
+  });
+
+  it("computes MPT root hash from the API handle set", async () => {
+    // Feature: the plan must compute the MPT root hash from the real handle set — no ghost handles.
+    // Failure mode: hash mismatch if the trie is built from a stale or augmented handle list.
+    const handles = ["alice", "bob", "charlie"];
+
+    const hash = await computeMptRootHash({
+      network: "preview",
+      userAgent: "test",
+      fetchFn: vi.fn(async () =>
+        new Response(handles.join("\n"), {
+          status: 200,
+          headers: { "x-handles-search-total": String(handles.length) },
+        })
+      ) as typeof fetch,
+    });
+
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+
+    // Different handle set must produce a different hash
+    const hash2 = await computeMptRootHash({
+      network: "preview",
+      userAgent: "test",
+      fetchFn: vi.fn(async () =>
+        new Response([...handles, "dave"].join("\n"), {
+          status: 200,
+          headers: { "x-handles-search-total": "4" },
+        })
+      ) as typeof fetch,
+    });
+    expect(hash2).not.toBe(hash);
+  });
+
+  it("fetches old validator CBOR from Handle API script endpoint", async () => {
+    // Feature: the plan must fetch the currently deployed (old) validator script for migration.
+    // Failure mode: migration tx would include wrong script witness, failing on-chain validation.
+    const fakeCbor = "deadbeef";
+    const cbor = await fetchOldValidatorCbor({
+      network: "preview",
+      currentSubhandle: "demimntmpt1@handlecontract",
+      userAgent: "test",
+      fetchFn: vi.fn(async () =>
+        new Response(JSON.stringify({ type: "PlutusScriptV2", cbor: fakeCbor }), { status: 200 })
+      ) as typeof fetch,
+    });
+
+    expect(cbor).toBe(fakeCbor);
   });
 
   it("renders transaction order markdown from generated artifacts", () => {

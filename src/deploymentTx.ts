@@ -9,13 +9,33 @@ import {
   GreedyTxEvaluator,
 } from "@cardano-sdk/tx-construction";
 import type { HexBlob } from "@cardano-sdk/util";
-import { makeAddress } from "@helios-lang/ledger";
+import { bytesToHex } from "@helios-lang/codec-utils";
+import {
+  makeAddress,
+  makeAssetClass,
+  makeAssets,
+  makeInlineTxOutputDatum,
+  makePubKeyHash,
+  makeTxInput,
+  makeTxOutput,
+  makeValidatorHash,
+  makeValue,
+} from "@helios-lang/ledger";
+import { makeTxBuilder, makeBlockfrostV0Client } from "@helios-lang/tx-utils";
+import {
+  decodeUplcData,
+  decodeUplcProgramV2FromCbor,
+  makeByteArrayData,
+  makeConstrData,
+} from "@helios-lang/uplc";
+import { fetch as crossFetch } from "cross-fetch";
 
-import { PREFIX_222 } from "./constants/index.js";
+import { LEGACY_POLICY_ID, PREFIX_222 } from "./constants/index.js";
 import { buildContracts } from "./contracts/config.js";
 import { buildSettingsData } from "./contracts/data/settings.js";
 import { buildSettingsV1Data } from "./contracts/data/settings-v1.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
+import { handlesApiBaseUrlForNetwork } from "./deploymentPlan.js";
 import { type BlockfrostBuildContext, getBlockfrostBuildContext } from "./helpers/cardano-sdk/blockfrostContext.js";
 import { fetchBlockfrostUtxos } from "./helpers/cardano-sdk/blockfrostUtxo.js";
 import {
@@ -537,3 +557,130 @@ const buildAndSerializeTx = async ({
 
   return { cborHex, estimatedSignedTxSize };
 };
+
+/**
+ * Build an unsigned tx that migrates the handle_root@handle_settings UTxO
+ * from the old minting data script address to the new one, updating the
+ * MPT root hash datum. Requires admin/policy key signature (not native script).
+ *
+ * The old validator CBOR should be the already-parameterized script as fetched
+ * from the Handle API's /script endpoint for the current deployment subhandle.
+ */
+export const buildMptRootMigrationTx = async ({
+  desired,
+  newMptRootHash,
+  oldValidatorCborHex,
+  blockfrostApiKey,
+  userAgent,
+}: {
+  desired: DesiredDeploymentState;
+  newMptRootHash: string;
+  oldValidatorCborHex: string;
+  blockfrostApiKey: string;
+  userAgent: string;
+}): Promise<BuiltTransaction> => {
+  const isMainnet = desired.network === "mainnet";
+  const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
+
+  // Decode old validator (already parameterized)
+  const oldProgram = decodeUplcProgramV2FromCbor(oldValidatorCborHex);
+  const oldHash = makeValidatorHash(oldProgram.hash());
+
+  // Build new script address from current code
+  const built = buildContracts({
+    network: desired.network,
+    mint_version: BigInt(desired.buildParameters.mintVersion),
+    legacy_policy_id: desired.buildParameters.legacyPolicyId,
+    admin_verification_key_hash: adminKeyHash,
+  });
+  const newScriptAddress = built.mintingData.mintingDataValidatorAddress;
+
+  // Fetch handle_root UTxO from Blockfrost
+  const handleName = "handle_root@handle_settings";
+  const baseUrl = handlesApiBaseUrlForNetwork(desired.network);
+  const handleRes = await crossFetch(
+    `${baseUrl}/handles/${encodeURIComponent(handleName)}`,
+    { headers: { "User-Agent": userAgent } }
+  );
+  if (!handleRes.ok) throw new Error(`failed to fetch ${handleName}: HTTP ${handleRes.status}`);
+  const handleData = await handleRes.json() as { utxo?: string; resolved_addresses?: { ada?: string } };
+  if (!handleData.utxo || !handleData.resolved_addresses?.ada) {
+    throw new Error(`${handleName} missing utxo or address`);
+  }
+
+  const [txHash, txIdxStr] = handleData.utxo.split("#");
+  const txIdx = parseInt(txIdxStr, 10);
+  const host = `https://cardano-${desired.network}.blockfrost.io/api/v0`;
+  const utxoRes = await crossFetch(
+    `${host}/txs/${txHash}/utxos`,
+    { headers: { "Content-Type": "application/json", project_id: blockfrostApiKey } }
+  );
+  if (!utxoRes.ok) throw new Error(`failed to fetch UTxO ${handleData.utxo}: HTTP ${utxoRes.status}`);
+  const txUtxos = await utxoRes.json() as {
+    outputs: Array<{ output_index: number; amount: { unit: string; quantity: string }[]; inline_datum?: string }>;
+  };
+  const output = txUtxos.outputs.find((o) => o.output_index === txIdx);
+  if (!output) throw new Error(`UTxO ${handleData.utxo} not found`);
+
+  const handleHex = Buffer.from(handleName, "utf8").toString("hex");
+  const handleAssetClass = makeAssetClass(`${LEGACY_POLICY_ID}.${PREFIX_222}${handleHex}`);
+  const lovelace = BigInt(output.amount.find((a) => a.unit === "lovelace")?.quantity ?? "0");
+
+  const handleUtxo = makeTxInput(
+    handleData.utxo,
+    makeTxOutput(
+      makeAddress(handleData.resolved_addresses.ada),
+      makeValue(lovelace, makeAssets([[handleAssetClass, 1n]])),
+      output.inline_datum
+        ? makeInlineTxOutputDatum(decodeUplcData(Buffer.from(output.inline_datum, "hex")))
+        : undefined
+    )
+  );
+
+  // UpdateMPT redeemer (constructor index 2, no fields)
+  const redeemer = makeConstrData(2, []);
+
+  // New datum with computed MPT root hash
+  const newDatum = makeConstrData(0, [makeByteArrayData(newMptRootHash)]);
+
+  // Build tx with helios TxBuilder
+  const txBuilder = makeTxBuilder({ isMainnet });
+  txBuilder.attachUplcProgram(oldProgram);
+  txBuilder.spendUnsafe(handleUtxo, redeemer);
+  txBuilder.payUnsafe(
+    newScriptAddress,
+    makeValue(lovelace, makeAssets([[handleAssetClass, 1n]])),
+    makeInlineTxOutputDatum(newDatum)
+  );
+  txBuilder.addSigners(makePubKeyHash(adminKeyHash));
+
+  // Fetch admin wallet UTxOs for fees and collateral
+  const adminAddress = makeAddress(!isMainnet, makePubKeyHash(adminKeyHash));
+  const blockfrostClient = makeBlockfrostV0Client(desired.network, blockfrostApiKey);
+  const adminUtxos = await blockfrostClient.getUtxos(adminAddress);
+
+  // Pre-set collateral from a clean (ADA-only) UTxO
+  const cleanUtxos = adminUtxos.filter((u) => u.value.assets.isZero());
+  if (cleanUtxos.length > 0) {
+    const collateral = cleanUtxos.sort((a, b) => Number(b.value.lovelace - a.value.lovelace))[0];
+    txBuilder.addCollateral(collateral);
+  }
+
+  const tx = await txBuilder.buildUnsafe({
+    networkParams: blockfrostClient.parameters,
+    changeAddress: adminAddress,
+    spareUtxos: adminUtxos,
+    allowDirtyChangeOutput: true,
+  });
+
+  if (tx.hasValidationError) {
+    throw new Error(`MPT root migration tx validation error: ${tx.hasValidationError}`);
+  }
+
+  const cborHex = bytesToHex(tx.toCbor());
+  // Estimate signed size: the admin adds 1 signature (~100 bytes)
+  const estimatedSignedTxSize = Math.ceil(cborHex.length / 2) + 104;
+
+  return { cborHex, estimatedSignedTxSize };
+};
+

@@ -6,13 +6,15 @@ import {
   buildUnsignedSettingsUpdateTxArtifact,
   buildDeploymentPlan,
   buildExpectedContractStates,
+  computeMptRootHash,
   discoverNextContractSubhandles,
   fetchLiveContractStates,
   fetchLiveSettingsState,
+  fetchOldValidatorCbor,
   renderTransactionOrderMarkdown,
 } from "../src/deploymentPlan.js";
 import { loadDesiredDeploymentState } from "../src/deploymentState.js";
-import { resolveDeployerWallet } from "../src/deploymentTx.js";
+import { buildMptRootMigrationTx, resolveDeployerWallet } from "../src/deploymentTx.js";
 
 const parseArgs = (argv: string[]) => {
   const args: Record<string, string> = {};
@@ -188,6 +190,57 @@ const main = async () => {
       console.log(`Generated settings update tx: ${fileName} for $${settingsHandleName}`);
     } catch (error) {
       console.log(`Skipping settings update tx: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+
+  // Generate MPT root migration tx if demimntmpt has script hash drift
+  const mptContract = plan.summaryJson.contracts.find(
+    (c) => c.contract_slug === "demimntmpt" &&
+      (c.drift_type === "script_hash_only" || c.drift_type === "script_hash_and_settings")
+  );
+  if (mptContract && blockfrostApiKey) {
+    const currentMptSubhandle = liveContracts.find(
+      (lc) => lc.contractSlug === "demimntmpt"
+    )?.currentSubhandle;
+
+    if (!currentMptSubhandle) {
+      console.log("Skipping MPT root migration: no current demimntmpt subhandle found");
+    } else {
+      try {
+        console.log("Computing MPT root hash from API handle set...");
+        const newMptRootHash = await computeMptRootHash({
+          network: desired.network,
+          userAgent,
+        });
+        console.log(`Computed MPT root hash: ${newMptRootHash}`);
+
+        console.log(`Fetching old validator script from $${currentMptSubhandle}...`);
+        const oldValidatorCborHex = await fetchOldValidatorCbor({
+          network: desired.network,
+          currentSubhandle: currentMptSubhandle,
+          userAgent,
+        });
+
+        const migrationTx = await buildMptRootMigrationTx({
+          desired,
+          newMptRootHash,
+          oldValidatorCborHex,
+          blockfrostApiKey,
+          userAgent,
+        });
+
+        txIndex += 1;
+        const fileName = `tx-${String(txIndex).padStart(2, "0")}-mpt-migration.cbor`;
+        const cborBytes = Buffer.from(migrationTx.cborHex, "hex");
+        await fs.writeFile(path.join(args["artifacts-dir"], fileName), cborBytes);
+        await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${migrationTx.cborHex}\n`);
+        generatedArtifacts.push(fileName, `${fileName}.hex`);
+        transactionOrder.push(fileName);
+        txArtifactGenerated = true;
+        console.log(`Generated MPT root migration tx: ${fileName} (requires admin/policy key signature)`);
+      } catch (error) {
+        console.log(`Skipping MPT root migration tx: ${error instanceof Error ? error.message : error}`);
+      }
     }
   }
 
