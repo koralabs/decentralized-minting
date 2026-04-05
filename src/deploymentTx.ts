@@ -315,10 +315,17 @@ export const buildReferenceScriptDeploymentTx = async ({
   const requestedOutputs = [handleOutput];
   const nativeScript = nativeScriptCborHex ? parseNativeScript(nativeScriptCborHex) : undefined;
 
-  // Pre-select the handle UTxO; remaining script address UTxOs cover fees
+  // Pre-select the handle UTxO; remaining script address UTxOs cover fees.
+  // Only use UTxOs without handle tokens as fee inputs — handles assigned to
+  // settings or contracts must reside alone in their UTxO, never bundled
+  // into a change output with other handles.
   const handleUtxoRef = toUtxoRef(handleUtxo);
   const selectedUtxos = [handleUtxo];
-  const remainingUtxos = allScriptUtxos.filter((u) => toUtxoRef(u) !== handleUtxoRef);
+  const remainingUtxos = allScriptUtxos.filter((u) => {
+    if (toUtxoRef(u) === handleUtxoRef) return false;
+    const hasHandleToken = u[1].value.assets?.size ?? 0;
+    return !hasHandleToken;
+  });
 
   return buildAndSerializeTx({
     selectedUtxos,

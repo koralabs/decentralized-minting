@@ -89,6 +89,7 @@ The `mpt_root_hash` field changes frequently and is ignored by default for deplo
 ## SubHandle Rules
 - A script hash change uses the committed `deployment_handle_slug` values and allocates the next `<slug><ordinal>@handlecontract` name.
 - Existing legacy live handles can remain attached to older contracts during the transition.
+- Handles assigned to settings or contracts must reside alone in their UTxO — never bundled with other handles. Each settings/contract handle carries its own inline datum and optionally a reference script; combining handles in a single UTxO loses per-handle datum association and complicates downstream UTxO selection.
 
 ## Artifact Contract
 The deployment workflow for this repo emits:
