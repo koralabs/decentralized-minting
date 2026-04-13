@@ -559,6 +559,86 @@ const buildAndSerializeTx = async ({
 };
 
 /**
+ * Build an unsigned preparation tx that funds the admin address from the
+ * script address. This is needed when the admin wallet has insufficient ADA
+ * for the MPT root migration tx (which requires fees + collateral).
+ *
+ * Returns null if the admin address already has enough funds.
+ */
+export const buildPreparationTx = async ({
+  desired,
+  nativeScriptCborHex,
+  blockfrostApiKey,
+  userAgent,
+  targetLovelace = 10_000_000n,
+}: {
+  desired: DesiredDeploymentState;
+  nativeScriptCborHex?: string;
+  blockfrostApiKey: string;
+  userAgent: string;
+  targetLovelace?: bigint;
+}): Promise<BuiltTransaction | null> => {
+  const isMainnet = desired.network === "mainnet";
+  const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
+  const adminAddress = makeAddress(!isMainnet, makePubKeyHash(adminKeyHash));
+
+  // Check current admin balance
+  const blockfrostClient = makeBlockfrostV0Client(desired.network, blockfrostApiKey);
+  const adminUtxos = await blockfrostClient.getUtxos(adminAddress);
+  const adminBalance = adminUtxos.reduce(
+    (sum, u) => sum + u.value.lovelace, 0n
+  );
+
+  if (adminBalance >= targetLovelace) {
+    return null;
+  }
+
+  const needed = targetLovelace - adminBalance;
+
+  // Find a script address to source funds from — use the first settings handle's address
+  const settingsHandleName = "demi@handle_settings";
+  const handleUtxo = await resolveHandleUtxo({
+    network: desired.network,
+    handleName: settingsHandleName,
+    userAgent,
+    blockfrostApiKey,
+  });
+  const scriptAddress = handleUtxo[1].address as string;
+
+  const buildContext = await getBlockfrostBuildContext(desired.network, blockfrostApiKey);
+
+  // Get clean (no-token, no-ref-script) UTxOs from the script address for fee inputs
+  const allScriptUtxos = await fetchBlockfrostUtxos(
+    scriptAddress, blockfrostApiKey, desired.network, fetch,
+    { excludeWithReferenceScripts: true },
+  );
+  const cleanUtxos = allScriptUtxos.filter((u) => {
+    const hasTokens = u[1].value.assets?.size ?? 0;
+    return !hasTokens;
+  });
+  if (cleanUtxos.length === 0) {
+    throw new Error("no clean UTxOs at script address to fund admin wallet");
+  }
+
+  const adminAddressBech32 = asPaymentAddress(adminAddress.toBech32());
+  const output: CardanoTypes.TxOut = {
+    address: adminAddressBech32,
+    value: { coins: needed },
+  };
+
+  const nativeScript = nativeScriptCborHex ? parseNativeScript(nativeScriptCborHex) : undefined;
+
+  return buildAndSerializeTx({
+    selectedUtxos: [],
+    remainingUtxos: cleanUtxos,
+    requestedOutputs: [output],
+    changeAddress: scriptAddress,
+    buildContext,
+    nativeScript,
+  });
+};
+
+/**
  * Build an unsigned tx that migrates the handle_root@handle_settings UTxO
  * from the old minting data script address to the new one, updating the
  * MPT root hash datum. Requires admin/policy key signature (not native script).

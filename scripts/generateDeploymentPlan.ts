@@ -14,7 +14,7 @@ import {
   renderTransactionOrderMarkdown,
 } from "../src/deploymentPlan.js";
 import { loadDesiredDeploymentState } from "../src/deploymentState.js";
-import { buildMptRootMigrationTx, resolveDeployerWallet } from "../src/deploymentTx.js";
+import { buildMptRootMigrationTx, buildPreparationTx, resolveDeployerWallet } from "../src/deploymentTx.js";
 
 const parseArgs = (argv: string[]) => {
   const args: Record<string, string> = {};
@@ -207,6 +207,25 @@ const main = async () => {
       console.log("Skipping MPT root migration: no current demimntmpt subhandle found");
     } else {
       try {
+        // Check if admin wallet needs funding and generate a prep tx
+        const prepTx = await buildPreparationTx({
+          desired,
+          nativeScriptCborHex: nativeScriptCborHex || undefined,
+          blockfrostApiKey,
+          userAgent,
+        });
+        if (prepTx) {
+          txIndex += 1;
+          const prepFileName = `tx-${String(txIndex).padStart(2, "0")}-admin-funding.cbor`;
+          const prepCborBytes = Buffer.from(prepTx.cborHex, "hex");
+          await fs.writeFile(path.join(args["artifacts-dir"], prepFileName), prepCborBytes);
+          await fs.writeFile(path.join(args["artifacts-dir"], `${prepFileName}.hex`), `${prepTx.cborHex}\n`);
+          generatedArtifacts.push(prepFileName, `${prepFileName}.hex`);
+          transactionOrder.push(prepFileName);
+          txArtifactGenerated = true;
+          console.log(`Generated admin funding tx: ${prepFileName} (sign and submit before MPT migration)`);
+        }
+
         console.log("Computing MPT root hash from API handle set...");
         const newMptRootHash = await computeMptRootHash({
           network: desired.network,
