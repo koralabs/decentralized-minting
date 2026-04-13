@@ -464,9 +464,16 @@ export const buildSettingsUpdateTx = async ({
   const requestedOutputs = [handleOutput];
   const nativeScript = nativeScriptCborHex ? parseNativeScript(nativeScriptCborHex) : undefined;
 
+  // Pre-select the settings handle UTxO; remaining clean UTxOs cover fees.
+  // Only use UTxOs without tokens as fee inputs — other handles at this address
+  // (e.g. hal_pz@handle_settings) must not be consumed as fee inputs.
   const handleUtxoRef = toUtxoRef(handleUtxo);
   const selectedUtxos = [handleUtxo];
-  const remainingUtxos = allScriptUtxos.filter((u) => toUtxoRef(u) !== handleUtxoRef);
+  const remainingUtxos = allScriptUtxos.filter((u) => {
+    if (toUtxoRef(u) === handleUtxoRef) return false;
+    const hasTokens = u[1].value.assets?.size ?? 0;
+    return !hasTokens;
+  });
 
   return buildAndSerializeTx({
     selectedUtxos,
