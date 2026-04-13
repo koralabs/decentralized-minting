@@ -16,24 +16,27 @@ on:
           - mainnet
 
 jobs:
+  setup:
+    if: github.repository_owner == 'koralabs'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            network="${{ inputs.network }}"
+            echo "matrix={\"include\":[{\"network\":\"${network}\",\"desired_path\":\"deploy/${network}/decentralized-minting.yaml\"}]}" >> "$GITHUB_OUTPUT"
+          else
+            echo 'matrix={"include":[{"network":"preview","desired_path":"deploy/preview/decentralized-minting.yaml"}]}' >> "$GITHUB_OUTPUT"
+          fi
+
   plan:
+    needs: setup
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - network: preview
-            desired_path: deploy/preview/decentralized-minting.yaml
-          - network: preprod
-            desired_path: deploy/preprod/decentralized-minting.yaml
-          - network: mainnet
-            desired_path: deploy/mainnet/decentralized-minting.yaml
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     name: ${{ matrix.network }}
-    # On push/PR only run preview; on workflow_dispatch only run the selected network
-    if: >-
-      github.repository_owner == 'koralabs' && (
-        (github.event_name != 'workflow_dispatch' && matrix.network == 'preview') ||
-        (github.event_name == 'workflow_dispatch' && matrix.network == inputs.network)
-      )
     environment: ${{ matrix.network }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
