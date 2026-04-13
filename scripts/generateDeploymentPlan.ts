@@ -106,18 +106,20 @@ const main = async () => {
   const changedContracts = plan.summaryJson.contracts.filter(
     (contract) => contract.drift_type === "script_hash_only" || contract.drift_type === "script_hash_and_settings"
   );
-  if (!changedContracts.length) {
-    return;
-  }
   if (!blockfrostApiKey) {
     console.log("Skipping unsigned tx generation: no Blockfrost API key available");
     return;
   }
 
   // Discover deployer wallet from the first changed contract's current subhandle holder
-  const contractWithSubhandle = changedContracts.find(
-    (c) => liveContracts.find((lc) => lc.contractSlug === c.contract_slug)?.currentSubhandle
-  );
+  // (or any contract with a subhandle if no contracts have script hash drift)
+  const contractWithSubhandle = changedContracts.length > 0
+    ? changedContracts.find(
+        (c) => liveContracts.find((lc) => lc.contractSlug === c.contract_slug)?.currentSubhandle
+      )
+    : plan.summaryJson.contracts.find(
+        (c) => liveContracts.find((lc) => lc.contractSlug === c.contract_slug)?.currentSubhandle
+      );
   if (!contractWithSubhandle) {
     console.log("Skipping unsigned tx generation: no existing deployment subhandle found to resolve deployer wallet");
     return;
