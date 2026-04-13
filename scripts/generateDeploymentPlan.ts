@@ -240,23 +240,31 @@ const main = async () => {
           userAgent,
         });
 
-        const migrationTx = await buildMptRootMigrationTx({
-          desired,
-          newMptRootHash,
-          oldValidatorCborHex,
-          blockfrostApiKey,
-          userAgent,
-        });
+        try {
+          const migrationTx = await buildMptRootMigrationTx({
+            desired,
+            newMptRootHash,
+            oldValidatorCborHex,
+            blockfrostApiKey,
+            userAgent,
+          });
 
-        txIndex += 1;
-        const fileName = `tx-${String(txIndex).padStart(2, "0")}-mpt-migration.cbor`;
-        const cborBytes = Buffer.from(migrationTx.cborHex, "hex");
-        await fs.writeFile(path.join(args["artifacts-dir"], fileName), cborBytes);
-        await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${migrationTx.cborHex}\n`);
-        generatedArtifacts.push(fileName, `${fileName}.hex`);
-        transactionOrder.push(fileName);
-        txArtifactGenerated = true;
-        console.log(`Generated MPT root migration tx: ${fileName} (requires admin/policy key signature)`);
+          txIndex += 1;
+          const fileName = `tx-${String(txIndex).padStart(2, "0")}-mpt-migration.cbor`;
+          const cborBytes = Buffer.from(migrationTx.cborHex, "hex");
+          await fs.writeFile(path.join(args["artifacts-dir"], fileName), cborBytes);
+          await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${migrationTx.cborHex}\n`);
+          generatedArtifacts.push(fileName, `${fileName}.hex`);
+          transactionOrder.push(fileName);
+          txArtifactGenerated = true;
+          console.log(`Generated MPT root migration tx: ${fileName} (requires admin/policy key signature)`);
+        } catch (migrationError) {
+          if (prepTx) {
+            console.log(`MPT root migration tx deferred: admin funding tx must be submitted first, then re-run this workflow`);
+          } else {
+            throw migrationError;
+          }
+        }
       } catch (error) {
         console.log(`Skipping MPT root migration tx: ${error instanceof Error ? error.message : error}`);
       }
