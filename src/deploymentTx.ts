@@ -56,6 +56,8 @@ export interface DeployerWallet {
 export interface BuiltTransaction {
   cborHex: string;
   estimatedSignedTxSize: number;
+  /** UTxO refs consumed as inputs (txHash#index), for excluding from subsequent txs */
+  consumedInputs: Set<string>;
 }
 
 export const resolveDeployerWallet = async ({
@@ -255,6 +257,7 @@ export const buildReferenceScriptDeploymentTx = async ({
   nativeScriptCborHex,
   blockfrostApiKey,
   userAgent,
+  excludeUtxoRefs,
 }: {
   desired: DesiredDeploymentState;
   contract: DesiredContractTarget;
@@ -264,6 +267,7 @@ export const buildReferenceScriptDeploymentTx = async ({
   nativeScriptCborHex?: string;
   blockfrostApiKey?: string;
   userAgent?: string;
+  excludeUtxoRefs?: Set<string>;
 }): Promise<BuiltTransaction> => {
   if (!blockfrostApiKey || !userAgent) {
     throw new Error("blockfrostApiKey and userAgent are required for building deployment transactions");
@@ -354,6 +358,7 @@ export const buildReferenceScriptDeploymentTx = async ({
     changeAddress: scriptAddress as string,
     buildContext,
     nativeScript,
+    excludeUtxoRefs,
   });
 };
 
@@ -365,6 +370,7 @@ export const buildSettingsUpdateTx = async ({
   nativeScriptCborHex,
   blockfrostApiKey,
   userAgent,
+  excludeUtxoRefs,
 }: {
   desired: DesiredDeploymentState;
   settingsHandleName: string;
@@ -373,6 +379,7 @@ export const buildSettingsUpdateTx = async ({
   nativeScriptCborHex?: string;
   blockfrostApiKey?: string;
   userAgent?: string;
+  excludeUtxoRefs?: Set<string>;
 }): Promise<BuiltTransaction> => {
   if (!blockfrostApiKey || !userAgent) {
     throw new Error("blockfrostApiKey and userAgent are required for building settings update transactions");
@@ -468,6 +475,7 @@ export const buildSettingsUpdateTx = async ({
     changeAddress: scriptAddress as string,
     buildContext,
     nativeScript,
+    excludeUtxoRefs,
   });
 };
 
@@ -478,6 +486,7 @@ const buildAndSerializeTx = async ({
   changeAddress,
   buildContext,
   nativeScript,
+  excludeUtxoRefs,
 }: {
   selectedUtxos: CardanoTypes.Utxo[];
   remainingUtxos: CardanoTypes.Utxo[];
@@ -485,7 +494,13 @@ const buildAndSerializeTx = async ({
   changeAddress: string;
   buildContext: BlockfrostBuildContext;
   nativeScript?: CardanoTypes.NativeScript;
+  excludeUtxoRefs?: Set<string>;
 }): Promise<BuiltTransaction> => {
+  // Filter out UTxOs consumed by previous txs in the same plan
+  if (excludeUtxoRefs?.size) {
+    selectedUtxos = selectedUtxos.filter((u) => !excludeUtxoRefs.has(toUtxoRef(u)));
+    remainingUtxos = remainingUtxos.filter((u) => !excludeUtxoRefs.has(toUtxoRef(u)));
+  }
   const changeAddressBech32 = asPaymentAddress(changeAddress);
 
   const inputSelector = roundRobinRandomImprove({
@@ -555,7 +570,13 @@ const buildAndSerializeTx = async ({
 
   const cborHex = transactionToCbor(unsignedTx);
 
-  return { cborHex, estimatedSignedTxSize };
+  // Collect all inputs consumed by this tx
+  const consumedInputs = new Set<string>();
+  for (const utxo of selection.selection.inputs) {
+    consumedInputs.add(toUtxoRef(utxo));
+  }
+
+  return { cborHex, estimatedSignedTxSize, consumedInputs };
 };
 
 /**
@@ -571,12 +592,14 @@ export const buildPreparationTx = async ({
   blockfrostApiKey,
   userAgent,
   targetLovelace = 10_000_000n,
+  excludeUtxoRefs,
 }: {
   desired: DesiredDeploymentState;
   nativeScriptCborHex?: string;
   blockfrostApiKey: string;
   userAgent: string;
   targetLovelace?: bigint;
+  excludeUtxoRefs?: Set<string>;
 }): Promise<BuiltTransaction | null> => {
   const isMainnet = desired.network === "mainnet";
   const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
@@ -635,6 +658,7 @@ export const buildPreparationTx = async ({
     changeAddress: scriptAddress,
     buildContext,
     nativeScript,
+    excludeUtxoRefs,
   });
 };
 
@@ -761,6 +785,13 @@ export const buildMptRootMigrationTx = async ({
   // Estimate signed size: the admin adds 1 signature (~100 bytes)
   const estimatedSignedTxSize = Math.ceil(cborHex.length / 2) + 104;
 
-  return { cborHex, estimatedSignedTxSize };
+  // MPT migration uses the helios tx builder which doesn't expose selection,
+  // but we can extract inputs from the built tx body
+  const consumedInputs = new Set<string>();
+  for (const input of tx.body.inputs) {
+    consumedInputs.add(`${input.id.txId.toHex()}#${input.id.index}`);
+  }
+
+  return { cborHex, estimatedSignedTxSize, consumedInputs };
 };
 

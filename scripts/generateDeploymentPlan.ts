@@ -136,6 +136,9 @@ const main = async () => {
   console.log(`Resolved deployer from $${currentSubhandle}: ${deployerAddress} (${deployer.utxos.length} UTxOs)`);
   await writePlanFiles();
 
+  // Track consumed UTxOs across all txs to prevent input conflicts
+  const consumedUtxoRefs = new Set<string>();
+
   let txIndex = 0;
   for (const contractPlan of changedContracts) {
     const desiredContract = desired.contracts.find((contract) => contract.contractSlug === contractPlan.contract_slug);
@@ -153,7 +156,9 @@ const main = async () => {
         nativeScriptCborHex: nativeScriptCborHex || undefined,
         blockfrostApiKey: blockfrostApiKey || undefined,
         userAgent,
+        excludeUtxoRefs: consumedUtxoRefs,
       });
+      for (const ref of txArtifact.consumedInputs) consumedUtxoRefs.add(ref);
       txIndex += 1;
       const fileName = `tx-${String(txIndex).padStart(2, "0")}.cbor`;
       await fs.writeFile(path.join(args["artifacts-dir"], fileName), txArtifact.cborBytes);
@@ -179,7 +184,9 @@ const main = async () => {
         nativeScriptCborHex: nativeScriptCborHex || undefined,
         blockfrostApiKey: blockfrostApiKey || undefined,
         userAgent,
+        excludeUtxoRefs: consumedUtxoRefs,
       });
+      for (const ref of settingsTxArtifact.consumedInputs) consumedUtxoRefs.add(ref);
       txIndex += 1;
       const fileName = `tx-${String(txIndex).padStart(2, "0")}.cbor`;
       await fs.writeFile(path.join(args["artifacts-dir"], fileName), settingsTxArtifact.cborBytes);
@@ -213,8 +220,10 @@ const main = async () => {
           nativeScriptCborHex: nativeScriptCborHex || undefined,
           blockfrostApiKey,
           userAgent,
+          excludeUtxoRefs: consumedUtxoRefs,
         });
         if (prepTx) {
+          for (const ref of prepTx.consumedInputs) consumedUtxoRefs.add(ref);
           txIndex += 1;
           const prepFileName = `tx-${String(txIndex).padStart(2, "0")}-admin-funding.cbor`;
           const prepCborBytes = Buffer.from(prepTx.cborHex, "hex");

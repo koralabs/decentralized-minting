@@ -119,6 +119,7 @@ export interface UnsignedDeploymentTxArtifact {
   cborHex: string;
   estimatedSignedTxSize: number;
   maxTxSize: number;
+  consumedInputs: Set<string>;
 }
 
 export const renderTransactionOrderMarkdown = (transactionOrder: string[]) =>
@@ -536,6 +537,7 @@ export const buildUnsignedDeploymentTxArtifact = async ({
   nativeScriptCborHex,
   blockfrostApiKey,
   userAgent,
+  excludeUtxoRefs,
   buildTxFn = buildReferenceScriptDeploymentTx,
   maxTxSize: maxTxSizeOverride,
 }: {
@@ -546,10 +548,11 @@ export const buildUnsignedDeploymentTxArtifact = async ({
   nativeScriptCborHex?: string;
   blockfrostApiKey?: string;
   userAgent?: string;
+  excludeUtxoRefs?: Set<string>;
   buildTxFn?: typeof buildReferenceScriptDeploymentTx;
   maxTxSize?: number;
 }): Promise<UnsignedDeploymentTxArtifact> => {
-  const { cborHex, estimatedSignedTxSize } = await buildTxFn({
+  const { cborHex, estimatedSignedTxSize, consumedInputs } = await buildTxFn({
     desired,
     contract,
     handleName,
@@ -558,6 +561,7 @@ export const buildUnsignedDeploymentTxArtifact = async ({
     nativeScriptCborHex,
     blockfrostApiKey,
     userAgent,
+    excludeUtxoRefs,
   });
 
   // maxTxSize comes from protocol parameters; the tx builder already fetches them,
@@ -575,6 +579,7 @@ export const buildUnsignedDeploymentTxArtifact = async ({
     cborHex,
     estimatedSignedTxSize,
     maxTxSize,
+    consumedInputs,
   };
 };
 
@@ -585,6 +590,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
   nativeScriptCborHex,
   blockfrostApiKey,
   userAgent,
+  excludeUtxoRefs,
   buildTxFn = buildSettingsUpdateTx,
   maxTxSize: maxTxSizeOverride,
 }: {
@@ -594,10 +600,11 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
   nativeScriptCborHex?: string;
   blockfrostApiKey?: string;
   userAgent?: string;
+  excludeUtxoRefs?: Set<string>;
   buildTxFn?: typeof buildSettingsUpdateTx;
   maxTxSize?: number;
 }): Promise<UnsignedDeploymentTxArtifact> => {
-  const { cborHex, estimatedSignedTxSize } = await buildTxFn({
+  const { cborHex, estimatedSignedTxSize, consumedInputs } = await buildTxFn({
     desired,
     settingsHandleName,
     changeAddress: deployer.address,
@@ -605,6 +612,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
     nativeScriptCborHex,
     blockfrostApiKey,
     userAgent,
+    excludeUtxoRefs,
   });
 
   const maxTxSize = maxTxSizeOverride ?? 16384;
@@ -620,6 +628,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
     cborHex,
     estimatedSignedTxSize,
     maxTxSize,
+    consumedInputs,
   };
 };
 
