@@ -200,12 +200,54 @@ const main = async () => {
     }
   }
 
-  // Generate MPT root migration tx if demimntmpt has script hash drift
+  // Generate MPT root migration tx if handle_root@handle_settings is at the wrong address.
+  // This can happen after a demimntmpt upgrade — the ref script is deployed but the
+  // handle_root UTxO still sits at the old validator address.
   const mptContract = plan.summaryJson.contracts.find(
-    (c) => c.contract_slug === "demimntmpt" &&
-      (c.drift_type === "script_hash_only" || c.drift_type === "script_hash_and_settings")
+    (c) => c.contract_slug === "demimntmpt"
   );
-  if (mptContract && blockfrostApiKey) {
+  const mptNeedsMigration = await (async () => {
+    if (!mptContract || !blockfrostApiKey) return false;
+    // If there's a script hash change, migration is always needed
+    if (mptContract.drift_type === "script_hash_only" || mptContract.drift_type === "script_hash_and_settings") return true;
+    // Check if handle_root@handle_settings is at the expected validator address
+    try {
+      const { fetch: crossFetch } = await import("cross-fetch");
+      const baseUrl = desired.network === "preview" ? "https://preview.api.handle.me" :
+        desired.network === "preprod" ? "https://preprod.api.handle.me" : "https://api.handle.me";
+      const rootRes = await crossFetch(`${baseUrl}/handles/${encodeURIComponent("handle_root@handle_settings")}`,
+        { headers: { "User-Agent": userAgent } });
+      if (!rootRes.ok) return false;
+      const rootHandle = await rootRes.json() as { resolved_addresses?: { ada?: string } };
+      const currentAddress = rootHandle.resolved_addresses?.ada ?? "";
+      // Get the expected address from the latest demimntmpt subhandle
+      const latestSub = mptContract.subhandle?.value ?? "";
+      if (!latestSub) return false;
+      const subRes = await crossFetch(`${baseUrl}/handles/${encodeURIComponent(latestSub)}`,
+        { headers: { "User-Agent": userAgent } });
+      if (!subRes.ok) return false;
+      const subHandle = await subRes.json() as { resolved_addresses?: { ada?: string } };
+      const expectedScriptAddress = subHandle.resolved_addresses?.ada ?? "";
+      // The handle_root should be at the validator address derived from the latest script hash,
+      // NOT at the subhandle's address. Compute expected from the built contracts.
+      const { buildContracts } = await import("../src/contracts/config.js");
+      const built = buildContracts({
+        network: desired.network,
+        mint_version: BigInt(desired.buildParameters.mintVersion),
+        legacy_policy_id: desired.buildParameters.legacyPolicyId,
+        admin_verification_key_hash: desired.buildParameters.adminVerificationKeyHash,
+      });
+      const expectedAddress = built.mintingData.mintingDataValidatorAddress.toBech32();
+      const needsMigration = currentAddress !== expectedAddress;
+      if (needsMigration) {
+        console.log(`handle_root@handle_settings is at ${currentAddress.slice(0, 30)}... but should be at ${expectedAddress.slice(0, 30)}...`);
+      }
+      return needsMigration;
+    } catch {
+      return false;
+    }
+  })();
+  if (mptNeedsMigration) {
     const currentMptSubhandle = liveContracts.find(
       (lc) => lc.contractSlug === "demimntmpt"
     )?.currentSubhandle;
