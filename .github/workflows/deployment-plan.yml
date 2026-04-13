@@ -2,19 +2,23 @@ name: Deployment Plan
 
 on:
   push:
+    branches: [master]
   pull_request:
   workflow_dispatch:
     inputs:
-      desired_path:
-        description: Desired deployment YAML path (leave empty for all networks)
-        required: false
+      network:
+        description: Target network
+        required: true
+        type: choice
+        options:
+          - preview
+          - preprod
+          - mainnet
 
 jobs:
   plan:
-    if: github.repository_owner == 'koralabs'
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         include:
           - network: preview
@@ -24,6 +28,12 @@ jobs:
           - network: mainnet
             desired_path: deploy/mainnet/decentralized-minting.yaml
     name: ${{ matrix.network }}
+    # On push/PR only run preview; on workflow_dispatch only run the selected network
+    if: >-
+      github.repository_owner == 'koralabs' && (
+        (github.event_name != 'workflow_dispatch' && matrix.network == 'preview') ||
+        (github.event_name == 'workflow_dispatch' && matrix.network == inputs.network)
+      )
     environment: ${{ matrix.network }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
