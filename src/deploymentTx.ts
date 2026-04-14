@@ -610,7 +610,7 @@ export const buildPreparationTx = async ({
 }): Promise<BuiltTransaction | null> => {
   const isMainnet = desired.network === "mainnet";
   const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
-  const adminAddress = makeAddress(!isMainnet, makePubKeyHash(adminKeyHash));
+  const adminAddress = makeAddress(isMainnet, makePubKeyHash(adminKeyHash));
 
   // Check current admin balance
   const blockfrostClient = makeBlockfrostV0Client(desired.network, blockfrostApiKey);
@@ -766,7 +766,7 @@ export const buildMptRootMigrationTx = async ({
   txBuilder.addSigners(makePubKeyHash(adminKeyHash));
 
   // Fetch admin wallet UTxOs for fees and collateral
-  const adminAddress = makeAddress(!isMainnet, makePubKeyHash(adminKeyHash));
+  const adminAddress = makeAddress(isMainnet, makePubKeyHash(adminKeyHash));
   const blockfrostClient = makeBlockfrostV0Client(desired.network, blockfrostApiKey);
   const adminUtxos = await blockfrostClient.getUtxos(adminAddress);
 
