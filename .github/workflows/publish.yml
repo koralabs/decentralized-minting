@@ -71,7 +71,11 @@ jobs:
           set -e
           cat "${publish_log}"
           if [[ ${status} -ne 0 ]]; then
-            if grep -q "Cannot publish over existing version" "${publish_log}"; then
+            # npm's wording for "already published" differs across versions:
+            # npm 10 used "Cannot publish over existing version";
+            # npm 11 uses "cannot publish over the previously published
+            # versions" — match the common tail.
+            if grep -qiE "publish over (the previously )?(existing|published) version" "${publish_log}"; then
               echo "GitHub package version already exists, continuing to public publish"
             else
               rm -f "${publish_log}"
