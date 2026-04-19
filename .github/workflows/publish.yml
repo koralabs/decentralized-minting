@@ -25,7 +25,14 @@ jobs:
         with:
           node-version: "22.14"
           check-latest: true
-          registry-url: "https://registry.npmjs.org"
+          # Intentionally NOT setting `registry-url` — setup-node pins a
+          # stale `_authToken=${NODE_AUTH_TOKEN}` in `.npmrc` which, with
+          # no real token set, becomes the literal placeholder
+          # `XXXXX-XXXXX-XXXXX-XXXXX`. npm then sends that garbage as the
+          # bearer and registry.npmjs.org responds 404. Trusted publishing
+          # needs `.npmrc` with no `_authToken` so npm 11 falls through to
+          # the OIDC exchange. The publish step sets `--registry=...`
+          # inline instead.
 
       - name: Upgrade npm CLI
         # Node 22.14 ships with npm 10.9.2, but npm's OIDC trusted-publisher
@@ -92,4 +99,4 @@ jobs:
         # attestation automatically.
         run: |
           set -eu
-          (cd ./lib && npm publish --access public --ignore-scripts --@koralabs:registry='https://registry.npmjs.org')
+          (cd ./lib && npm publish --access public --ignore-scripts --registry='https://registry.npmjs.org/')
