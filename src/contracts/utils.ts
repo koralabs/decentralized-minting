@@ -1,5 +1,4 @@
 import type { PlutusDataJson } from "../helpers/cardano-sdk/scriptParams.js";
-
 import {
   mkBytes,
   mkConstr,

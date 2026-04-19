@@ -7,6 +7,7 @@ import {
   MINTING_DATA_HANDLE_NAME,
   SETTINGS_HANDLE_NAME,
 } from "../constants/index.js";
+import { plutusDataFromCbor } from "../contracts/data/plutusData.js";
 import {
   decodeHandlePriceInfoDatum,
   decodeMintingDataDatum,
@@ -17,7 +18,6 @@ import {
   Settings,
   SettingsV1,
 } from "../contracts/index.js";
-import { plutusDataFromCbor } from "../contracts/data/plutusData.js";
 import { type NetworkName } from "../helpers/cardano-sdk/networkName.js";
 import { fetchApi, getNetwork, mayFail } from "../helpers/index.js";
 

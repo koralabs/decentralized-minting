@@ -1,10 +1,6 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
-import {
-  Address,
-  makeInlineTxOutputDatum,
-  makeValue,
-} from "@helios-lang/ledger";
-import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
+import type { Cardano as CardanoTypes } from "@cardano-sdk/core";
+import type { Ed25519KeyHashHex } from "@cardano-sdk/crypto";
 import { Err, Ok, Result } from "ts-res";
 
 import { fetchMintingData } from "../configs/index.js";
@@ -15,20 +11,23 @@ import {
   LegacyHandleProof,
   MintingData,
   parseMPTProofJSON,
+  plutusDataToCbor,
 } from "../contracts/index.js";
-import { getBlockfrostV0Client, getNetwork } from "../helpers/index.js";
+import { getBlockfrostBuildContext } from "../helpers/cardano-sdk/blockfrostContext.js";
+import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
+import { getNetwork } from "../helpers/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
+import type { TxPlan } from "./txPlan.js";
 
-/**
- * @interface
- * @typedef {object} PrepareLegacyMintParams
- * @property {Address} address Wallet Address to perform mint
- * @property {LegacyHandle[]} handles Legacy Handles to mint
- * @property {Trie} db Trie DB
- * @property {string} blockfrostApiKey Blockfrost API Key
- */
 interface PrepareLegacyMintParams {
-  address: Address;
+  /** Change address (bech32) of the minter wallet. */
+  changeAddress: string;
+  /** Payment-key-hash of the minter (required signer). */
+  minterKeyHash: string;
+  /** Wallet UTxOs available for fees. */
+  walletUtxos: CardanoTypes.Utxo[];
+  /** Collateral UTxO (ADA-only, ≥5 ADA). */
+  collateralUtxo?: CardanoTypes.Utxo;
   handles: LegacyHandle[];
   db: Trie;
   blockfrostApiKey: string;
@@ -40,61 +39,65 @@ interface PrepareLegacyMintDeps {
 }
 
 /**
- * @description Mint Legacy Handles from Order
- * @param {PrepareLegacyMintParams} params
- * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
+ * Prepare the minting-data spend component of a legacy mint transaction.
+ * Returns a partial `TxPlan` that captures the minting-data UTxO spend with
+ * the MintLegacyHandles redeemer + the updated MPT root datum output. The
+ * caller (`mintLegacyHandles`) adds the actual minted-handle outputs and
+ * mints before calling `finalizeTxPlan`.
  */
 const prepareLegacyMintTransaction = async (
   params: PrepareLegacyMintParams,
   {
     fetchAllDeployedScriptsFn = fetchAllDeployedScripts,
     fetchMintingDataFn = fetchMintingData,
-  }: PrepareLegacyMintDeps = {}
+  }: PrepareLegacyMintDeps = {},
 ): Promise<
   Result<
     {
-      txBuilder: TxBuilder;
+      plan: TxPlan;
       deployedScripts: DeployedScripts;
     },
     Error
   >
 > => {
-  const { address, handles, db, blockfrostApiKey } = params;
+  const {
+    changeAddress,
+    minterKeyHash,
+    walletUtxos,
+    collateralUtxo,
+    handles,
+    db,
+    blockfrostApiKey,
+  } = params;
   const network = getNetwork(blockfrostApiKey);
-  const isMainnet = network == "mainnet";
-  if (address.era == "Byron")
-    return Err(new Error("Byron Address not supported"));
-  const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
 
-  // fetch deployed scripts
-  const fetchedResult = await fetchAllDeployedScriptsFn(blockfrostV0Client);
-  if (!fetchedResult.ok)
+  const fetchedResult = await fetchAllDeployedScriptsFn();
+  if (!fetchedResult.ok) {
     return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
-  const { mintingDataScriptTxInput } = fetchedResult.data;
+  }
+  const { mintingDataScript } = fetchedResult.data;
 
   const mintingDataResult = await fetchMintingDataFn();
-  if (!mintingDataResult.ok)
+  if (!mintingDataResult.ok) {
     return Err(
-      new Error(`Failed to fetch minting data: ${mintingDataResult.error}`)
+      new Error(`Failed to fetch minting data: ${mintingDataResult.error}`),
     );
-  const { mintingData, mintingDataAssetTxInput } = mintingDataResult.data;
+  }
+  const { mintingData, mintingDataUtxo } = mintingDataResult.data;
 
-  // check if current db trie hash is same as minting data root hash
+  // Ensure local MPT matches on-chain root.
   if (
-    mintingData.mpt_root_hash.toLowerCase() !=
+    mintingData.mpt_root_hash.toLowerCase() !==
     (db.hash?.toString("hex") || Buffer.alloc(32).toString("hex")).toLowerCase()
   ) {
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
 
-  // make Proofs for Minting Data V1 Redeemer
+  // Compute MPT proofs as we insert each handle.
   const proofs: LegacyHandleProof[] = [];
   for (const handle of handles) {
     const { utf8Name, hexName, isVirtual } = handle;
-
     try {
-      // NOTE:
-      // Have to remove handles if transaction fails
       await db.insert(utf8Name, "");
       const mpfProof = await db.prove(utf8Name);
       proofs.push({
@@ -108,54 +111,94 @@ const prepareLegacyMintTransaction = async (
     }
   }
 
-  // update all handles in minting data
   const newMintingData: MintingData = {
     ...mintingData,
     mpt_root_hash: db.hash.toString("hex"),
   };
 
-  // minting data asset value
-  const mintingDataValue = makeValue(
-    mintingDataAssetTxInput.value.lovelace,
-    mintingDataAssetTxInput.value.assets
+  // Reconstruct the minting-data UTxO as a Core Utxo.
+  const mintingDataCoreUtxo = reconstructUtxo(mintingDataUtxo);
+
+  // Output: back to the same (minting-data) script address with updated datum.
+  const updatedDatum = Serialization.PlutusData.fromCbor(
+    plutusDataToCbor(buildMintingData(newMintingData)) as HexBlob,
+  ).toCore();
+  const mintingDataOutput: CardanoTypes.TxOut = {
+    address: mintingDataCoreUtxo[1].address,
+    value: mintingDataCoreUtxo[1].value,
+    datum: updatedDatum,
+  };
+
+  // Spend redeemer (constructor 1 = MintLegacyHandles).
+  const redeemerDataCbor = plutusDataToCbor(
+    buildMintingDataMintLegacyHandlesRedeemer(proofs),
   );
+  const spendRedeemer: CardanoTypes.Redeemer = {
+    data: Serialization.PlutusData.fromCbor(redeemerDataCbor as HexBlob).toCore(),
+    executionUnits: { memory: 0, steps: 0 },
+    index: 0,
+    purpose: Cardano.RedeemerPurpose.spend,
+  };
 
-  // NOTE:
-  // we assume that koralab's minter index is 0
-  // meaning we always use Koralab minter
-  // build proofs redeemer for minting data v1
-  const mintingDataMintLegacyHandlesRedeemer =
-    buildMintingDataMintLegacyHandlesRedeemer(proofs);
+  const buildContext = await getBlockfrostBuildContext(network, blockfrostApiKey);
 
-  // start building tx
-  const txBuilder = makeTxBuilder({
-    isMainnet,
-  });
+  const referenceInputs = new Set<CardanoTypes.TxIn>([
+    {
+      txId: Cardano.TransactionId(
+        mintingDataScript.refScriptUtxo.txHash as HexBlob,
+      ),
+      index: mintingDataScript.refScriptUtxo.outputIndex,
+    },
+  ]);
 
-  // <-- attach deploy scripts
-  txBuilder.refer(mintingDataScriptTxInput);
+  const plan: TxPlan = {
+    preSelectedUtxos: [mintingDataCoreUtxo],
+    spareUtxos: walletUtxos,
+    outputs: [mintingDataOutput],
+    referenceInputs,
+    redeemers: [spendRedeemer],
+    requiredSigners: [minterKeyHash as Ed25519KeyHashHex],
+    usedPlutusVersions: [Cardano.PlutusLanguageVersion.V2],
+    collateralUtxo,
+    changeAddress,
+    buildContext,
+  };
 
-  // <-- spend minting data utxo
-  txBuilder.spendUnsafe(
-    mintingDataAssetTxInput,
-    mintingDataMintLegacyHandlesRedeemer
-  );
+  return Ok({ plan, deployedScripts: fetchedResult.data });
+};
 
-  // <-- lock minting data value with new root hash
-  txBuilder.payUnsafe(
-    mintingDataAssetTxInput.address,
-    mintingDataValue,
-    makeInlineTxOutputDatum(buildMintingData(newMintingData))
-  );
-
-  // NOTE:
-  // After call this function
-  // using txBuilder (return value), they can continue with minting assets (e.g. ref and user asset)
-
-  return Ok({
-    txBuilder,
-    deployedScripts: fetchedResult.data,
-  });
+const reconstructUtxo = (
+  descriptor: import("../configs/index.js").UtxoDescriptor,
+): CardanoTypes.Utxo => {
+  const assets = new Map<CardanoTypes.AssetId, bigint>();
+  for (const [key, quantity] of descriptor.assets) {
+    const [policyId, assetName] = key.split(".");
+    const assetId = Cardano.AssetId.fromParts(
+      Cardano.PolicyId(policyId as HexBlob),
+      Cardano.AssetName(assetName as HexBlob),
+    );
+    assets.set(assetId, quantity);
+  }
+  const txIn: CardanoTypes.HydratedTxIn = {
+    txId: Cardano.TransactionId(descriptor.txHash as HexBlob),
+    index: descriptor.outputIndex,
+    address: descriptor.address as CardanoTypes.TxOut["address"],
+  };
+  const txOut: CardanoTypes.TxOut = {
+    address: descriptor.address as CardanoTypes.TxOut["address"],
+    value: {
+      coins: descriptor.lovelace,
+      ...(assets.size > 0 ? { assets } : {}),
+    },
+    ...(descriptor.inlineDatumCbor
+      ? {
+          datum: Serialization.PlutusData.fromCbor(
+            descriptor.inlineDatumCbor as HexBlob,
+          ).toCore(),
+        }
+      : {}),
+  };
+  return [txIn, txOut];
 };
 
 export type { PrepareLegacyMintParams };

@@ -1,14 +1,5 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
-import { ByteArrayLike, IntLike } from "@helios-lang/codec-utils";
-import {
-  Address,
-  makeAssetClass,
-  makeAssets,
-  makeMintingPolicyHash,
-  makeValue,
-  TxInput,
-} from "@helios-lang/ledger";
-import { TxBuilder } from "@helios-lang/tx-utils";
+import type { Cardano as CardanoTypes } from "@cardano-sdk/core";
 import { Err, Ok, Result } from "ts-res";
 
 import { PREFIX_100, PREFIX_222 } from "../constants/index.js";
@@ -16,158 +7,152 @@ import {
   buildOrderExecuteRedeemer,
   decodeOrderDatum,
   HandlePrices,
-  makeVoidData,
   NewHandle,
+  plutusDataToCbor,
 } from "../contracts/index.js";
+import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
 import { getNetwork, invariant } from "../helpers/index.js";
 import { calculateHandlePriceFromHandlePriceInfo } from "../utils/index.js";
 import { prepareNewMintTransaction } from "./prepareNewMint.js";
+import { type FinalizedTx, finalizeTxPlan, type TxPlan } from "./txPlan.js";
 
-/**
- * @interface
- * @typedef {object} MintNewHandlesParams
- * @property {Address} address Wallet Address to perform mint
- * @property {HandlePrices} latestHandlePrices Latest Handle Prices to update while minting
- * @property {TxInput[]} ordersTxInputs Orders UTxOs
- * @property {Trie} db Trie DB
- * @property {string} blockfrostApiKey Blockfrost API Key
- */
 interface MintNewHandlesParams {
-  address: Address;
+  changeAddress: string;
+  minterKeyHash: string;
   latestHandlePrices: HandlePrices;
-  ordersTxInputs: TxInput[];
+  ordersTxInputs: CardanoTypes.Utxo[];
+  walletUtxos: CardanoTypes.Utxo[];
+  collateralUtxo?: CardanoTypes.Utxo;
   db: Trie;
   blockfrostApiKey: string;
 }
 
 /**
- * @description Mint Handles from Order (only new handles)
- * @param {MintNewHandlesParams} params
- * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
+ * Mint new handles by consuming `ordersTxInputs` (UTxOs at the orders-spend
+ * script), extending the prepare-new-mint spec with the per-order mint ops
+ * (policy-tokens mint + ref/user handle outputs), and finalizing to unsigned
+ * CBOR.
  */
 const mintNewHandles = async (
-  params: MintNewHandlesParams
-): Promise<Result<TxBuilder, Error>> => {
+  params: MintNewHandlesParams,
+): Promise<Result<FinalizedTx, Error>> => {
   const { ordersTxInputs, blockfrostApiKey } = params;
   const network = getNetwork(blockfrostApiKey);
 
-  // refactor Orders Tx Inputs
-  // NOTE:
-  // sort orderUtxos before process
-  // because tx inputs is sorted lexicographically
-  // we have to insert handle in same order as tx inputs
-  ordersTxInputs.sort((a, b) => (a.id.toString() > b.id.toString() ? 1 : -1));
-  if (ordersTxInputs.length == 0) return Err(new Error("No Order requested"));
-  console.log(`${ordersTxInputs.length} Handles are ordered`);
+  ordersTxInputs.sort((a, b) =>
+    `${a[0].txId}#${a[0].index}` > `${b[0].txId}#${b[0].index}` ? 1 : -1,
+  );
+  if (ordersTxInputs.length === 0) {
+    return Err(new Error("No Order requested"));
+  }
 
   const orderedHandles: NewHandle[] = ordersTxInputs.map((order) => {
-    const decodedOrder = decodeOrderDatum(order.datum, network);
+    const datumCbor = coreInlineDatumToCbor(order[1].datum);
+    const decodedOrder = decodeOrderDatum(datumCbor, network);
     return {
-      utf8Name: Buffer.from(decodedOrder.requested_handle, "hex").toString(
-        "utf8"
-      ),
+      utf8Name: Buffer.from(decodedOrder.requested_handle, "hex").toString("utf8"),
       hexName: decodedOrder.requested_handle,
       destinationAddress: decodedOrder.destination_address,
-      treasuryFee: order.value.lovelace,
-      minterFee: order.value.lovelace,
+      treasuryFee: order[1].value.coins,
+      minterFee: order[1].value.coins,
     };
   });
 
-  const preparedTxBuilderResult = await prepareNewMintTransaction({
+  const preparedResult = await prepareNewMintTransaction({
     ...params,
     handles: orderedHandles,
   });
-
-  if (!preparedTxBuilderResult.ok) {
+  if (!preparedResult.ok) {
     return Err(
       new Error(
-        `Failed to prepare New Mint Transaction: ${preparedTxBuilderResult.error}`
-      )
+        `Failed to prepare New Mint Transaction: ${preparedResult.error}`,
+      ),
     );
   }
-  const { txBuilder, deployedScripts, settingsV1, handlePriceInfo } =
-    preparedTxBuilderResult.data;
-  const { mintProxyScriptDetails } = deployedScripts;
-  const newPolicyHash = makeMintingPolicyHash(
-    mintProxyScriptDetails.validatorHash
+
+  const { plan, deployedScripts, settingsV1, handlePriceInfo } =
+    preparedResult.data;
+  const mintProxyPolicyId = deployedScripts.mintProxyScript.details.validatorHash;
+
+  // Add each order as a pre-selected input with its OrderExecute redeemer.
+  const orderRedeemers: CardanoTypes.Redeemer[] = ordersTxInputs.map(
+    (_utxo, idx) => ({
+      data: Serialization.PlutusData.fromCbor(
+        plutusDataToCbor(buildOrderExecuteRedeemer()) as HexBlob,
+      ).toCore(),
+      executionUnits: { memory: 0, steps: 0 },
+      index: idx + 1, // 0 is the minting-data spend
+      purpose: Cardano.RedeemerPurpose.spend,
+    }),
   );
 
-  const mintingHandlesData = [];
-  for (const orderTxInput of ordersTxInputs) {
-    const decodedOrder = decodeOrderDatum(orderTxInput.datum, network);
+  // Build mint map + outputs for each handle.
+  const mint = plan.mint ?? new Map<CardanoTypes.AssetId, bigint>();
+  const newOutputs: CardanoTypes.TxOut[] = [];
+  for (let i = 0; i < ordersTxInputs.length; i++) {
+    const orderTxInput = ordersTxInputs[i];
+    const datumCbor = coreInlineDatumToCbor(orderTxInput[1].datum);
+    const decodedOrder = decodeOrderDatum(datumCbor, network);
     const { destination_address, requested_handle } = decodedOrder;
     const utf8Name = Buffer.from(requested_handle, "hex").toString("utf8");
 
-    const refHandleAssetClass = makeAssetClass(
-      newPolicyHash,
-      `${PREFIX_100}${requested_handle}`
+    const refAssetId = Cardano.AssetId.fromParts(
+      Cardano.PolicyId(mintProxyPolicyId as HexBlob),
+      Cardano.AssetName(`${PREFIX_100}${requested_handle}` as HexBlob),
     );
-    const userHandleAssetClass = makeAssetClass(
-      newPolicyHash,
-      `${PREFIX_222}${requested_handle}`
+    const userAssetId = Cardano.AssetId.fromParts(
+      Cardano.PolicyId(mintProxyPolicyId as HexBlob),
+      Cardano.AssetName(`${PREFIX_222}${requested_handle}` as HexBlob),
     );
 
-    const lovelace = orderTxInput.value.lovelace;
+    const lovelace = orderTxInput[1].value.coins;
     const handlePrice = calculateHandlePriceFromHandlePriceInfo(
       utf8Name,
-      handlePriceInfo
+      handlePriceInfo,
     );
-
-    // check order input lovelace is bigger than handle price
     invariant(lovelace >= handlePrice, "Order Input lovelace insufficient");
 
-    const refHandleValue = makeValue(
-      1n,
-      makeAssets([[refHandleAssetClass, 1n]])
-    );
-    const userHandleValue = makeValue(
-      1n,
-      makeAssets([[userHandleAssetClass, 1n]])
-    );
-    const destinationAddress = destination_address;
+    mint.set(refAssetId, 1n);
+    mint.set(userAssetId, 1n);
 
-    mintingHandlesData.push({
-      orderTxInput,
-      destinationAddress,
-      refHandleValue,
-      userHandleValue,
-      refHandleAssetClass,
-      userHandleAssetClass,
+    newOutputs.push({
+      address: settingsV1.pz_script_address as unknown as CardanoTypes.TxOut["address"],
+      value: { coins: 0n, assets: new Map([[refAssetId, 1n]]) },
+    });
+    newOutputs.push({
+      address: destination_address as unknown as CardanoTypes.TxOut["address"],
+      value: { coins: 0n, assets: new Map([[userAssetId, 1n]]) },
     });
   }
 
-  // <-- spend order utxos and mint handle
-  // and send minted handle to destination with datum
-  const mintingHandlesTokensValue: [ByteArrayLike, IntLike][] = [];
-  mintingHandlesData.forEach((mintingHandle) => {
-    const { refHandleAssetClass, userHandleAssetClass } = mintingHandle;
-    mintingHandlesTokensValue.push(
-      [refHandleAssetClass.tokenName, 1n],
-      [userHandleAssetClass.tokenName, 1n]
-    );
-  });
-  txBuilder.mintPolicyTokensUnsafe(
-    newPolicyHash,
-    mintingHandlesTokensValue,
-    makeVoidData()
-  );
-  for (const mintingHandle of mintingHandlesData) {
-    const {
-      orderTxInput,
-      refHandleValue,
-      userHandleValue,
-      destinationAddress,
-    } = mintingHandle;
+  // Mint redeemer (mint proxy is a native-style V2 script with an index 0
+  // redeemer that the validator inspects as a void).
+  const mintRedeemer: CardanoTypes.Redeemer = {
+    data: Serialization.PlutusData.fromCbor(
+      plutusDataToCbor({ constructor: 0n, fields: { items: [] } }) as HexBlob,
+    ).toCore(),
+    executionUnits: { memory: 0, steps: 0 },
+    index: 0,
+    purpose: Cardano.RedeemerPurpose.mint,
+  };
 
-    txBuilder
-      .spendUnsafe(orderTxInput, buildOrderExecuteRedeemer())
-      // TODO:
-      // Add Personalization Datum
-      .payUnsafe(settingsV1.pz_script_address, refHandleValue)
-      .payUnsafe(destinationAddress, userHandleValue);
-  }
+  const extendedPlan: TxPlan = {
+    ...plan,
+    preSelectedUtxos: [...plan.preSelectedUtxos, ...ordersTxInputs],
+    outputs: [...plan.outputs, ...newOutputs],
+    redeemers: [...(plan.redeemers ?? []), ...orderRedeemers, mintRedeemer],
+    mint,
+  };
 
-  return Ok(txBuilder);
+  return Ok(await finalizeTxPlan(extendedPlan));
+};
+
+const coreInlineDatumToCbor = (
+  datum: CardanoTypes.TxOut["datum"],
+): string | undefined => {
+  if (!datum) return undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (Serialization as any).PlutusData.fromCore(datum).toCbor() as string;
 };
 
 export type { MintNewHandlesParams };

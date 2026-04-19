@@ -154,11 +154,13 @@ const buildValidityInterval = (
   tip: BlockfrostLatestBlockResponse,
   genesis: BlockfrostGenesisResponse,
 ): CardanoTypes.ValidityInterval => {
-  const slotLength = Math.max(toNumber(genesis.slot_length, "genesis.slot_length"), 1);
-  const slotOffset = (seconds: number) => Math.max(1, Math.ceil(seconds / slotLength));
+  void slotLengthSanityCheck(genesis);
   // Deployment txs are built offline and signed manually — no expiry needed.
   return {};
 };
+
+const slotLengthSanityCheck = (genesis: BlockfrostGenesisResponse) =>
+  Math.max(toNumber(genesis.slot_length, "genesis.slot_length"), 1);
 
 export const getBlockfrostBuildContext = async (
   network: BlockfrostNetwork,

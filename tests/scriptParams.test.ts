@@ -1,19 +1,22 @@
-import { Buffer } from "node:buffer";
-
-import { decodeUplcProgramV2FromCbor } from "@helios-lang/uplc";
 import { describe, expect, it } from "vitest";
 
 import optimizedBlueprint from "../src/contracts/optimized-blueprint.js";
-import {
-  makeMintingDataUplcProgramParameter,
-  makeMintProxyUplcProgramParameter,
-  makeMintV1UplcProgramParameter,
-} from "../src/contracts/utils.js";
 import {
   applyParamsToScript,
   plutusV2ScriptHash,
   type PlutusDataJson,
 } from "../src/helpers/cardano-sdk/scriptParams.js";
+
+// Fixture hashes pinned from the last helios-backed run (commit 5860270).
+// They match byte-for-byte what UplcProgramV2.apply() produced, so if this
+// test ever goes red it means scalus's apply diverged from the on-chain
+// validator-hash expectations.
+const HELIOS_PINNED_HASHES = {
+  mintProxyIntV1: "c4d3329ac42cd35626f74d451a54b2d1ba1f9f380c9f88e3e7a9585b",
+  mintV1WithdrawBytesA56: "7a39effb031fb6dd2f680e7160debcd6fae93592ac9aab0d7c7d03d8",
+  mintingDataSpend2Bytes:
+    "b5d849c08470aa05329369e9e277b97a2176db84d0087cbfc03ceb7f",
+};
 
 const findValidator = (title: string) => {
   const validator = optimizedBlueprint.validators.find(
@@ -23,69 +26,33 @@ const findValidator = (title: string) => {
   return validator.compiledCode;
 };
 
-// Cross-validation: for the same parameters, scalus-based apply must
-// produce the same script hash as helios's UplcProgramV2.apply().
-const heliosApplyAndHash = (
-  compiledCode: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  heliosParams: any[],
-): string => {
-  const program = decodeUplcProgramV2FromCbor(compiledCode).apply(heliosParams);
-  // helios returns Uint8Array for the hash; normalize to hex.
-  const hashValue = program.hash();
-  if (typeof hashValue === "string") return hashValue;
-  return Buffer.from(hashValue as Uint8Array).toString("hex");
-};
-
 describe("applyParamsToScript (scalus)", () => {
-  it("matches helios hash for the mint proxy with an int param", () => {
+  it("matches the helios-era hash for the mint proxy with an int param", () => {
     const compiledCode = findValidator("demimntprx.mint");
-    const mintVersion = 1n;
-
-    const scalusHash = plutusV2ScriptHash(
-      applyParamsToScript(compiledCode, [
-        { int: Number(mintVersion) } as PlutusDataJson,
-      ]),
+    const hash = plutusV2ScriptHash(
+      applyParamsToScript(compiledCode, [{ int: 1 } as PlutusDataJson]),
     );
-    const heliosHash = heliosApplyAndHash(
-      compiledCode,
-      makeMintProxyUplcProgramParameter(mintVersion),
-    );
-
-    expect(scalusHash).toBe(heliosHash);
+    expect(hash).toBe(HELIOS_PINNED_HASHES.mintProxyIntV1);
   });
 
-  it("matches helios hash for mint v1 withdraw with a bytes param", () => {
+  it("matches the helios-era hash for mint v1 withdraw with a bytes param", () => {
     const compiledCode = findValidator("demimnt.withdraw");
-    const hash = "a".repeat(56);
-
-    const scalusHash = plutusV2ScriptHash(
-      applyParamsToScript(compiledCode, [{ bytes: hash } as PlutusDataJson]),
-    );
-    const heliosHash = heliosApplyAndHash(
-      compiledCode,
-      makeMintV1UplcProgramParameter(hash),
-    );
-
-    expect(scalusHash).toBe(heliosHash);
-  });
-
-  it("matches helios hash for minting data spend with two bytes params", () => {
-    const compiledCode = findValidator("demimntmpt.spend");
-    const legacyPolicyId = "b".repeat(56);
-    const adminKeyHash = "c".repeat(56);
-
-    const scalusHash = plutusV2ScriptHash(
+    const hash = plutusV2ScriptHash(
       applyParamsToScript(compiledCode, [
-        { bytes: legacyPolicyId } as PlutusDataJson,
-        { bytes: adminKeyHash } as PlutusDataJson,
+        { bytes: "a".repeat(56) } as PlutusDataJson,
       ]),
     );
-    const heliosHash = heliosApplyAndHash(
-      compiledCode,
-      makeMintingDataUplcProgramParameter(legacyPolicyId, adminKeyHash),
-    );
+    expect(hash).toBe(HELIOS_PINNED_HASHES.mintV1WithdrawBytesA56);
+  });
 
-    expect(scalusHash).toBe(heliosHash);
+  it("matches the helios-era hash for minting data spend with two bytes params", () => {
+    const compiledCode = findValidator("demimntmpt.spend");
+    const hash = plutusV2ScriptHash(
+      applyParamsToScript(compiledCode, [
+        { bytes: "b".repeat(56) } as PlutusDataJson,
+        { bytes: "c".repeat(56) } as PlutusDataJson,
+      ]),
+    );
+    expect(hash).toBe(HELIOS_PINNED_HASHES.mintingDataSpend2Bytes);
   });
 });

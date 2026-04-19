@@ -71,10 +71,10 @@ const desiredState: DesiredDeploymentState = {
 describe("decentralized minting deployment plan", () => {
   it("derives expected script hashes from buildContracts output", () => {
     const expected = buildExpectedContractStates(desiredState, vi.fn(() => ({
-      mintProxy: { mintProxyPolicyHash: { toHex: () => "aa" } },
-      mintingData: { mintingDataValidatorHash: { toHex: () => "bb" } },
-      mintV1: { mintV1ValidatorHash: { toHex: () => "cc" } },
-      orders: { ordersValidatorHash: { toHex: () => "dd" } },
+      mintProxy: { policyId: "aa" },
+      mintingData: { validatorHash: "bb" },
+      mintV1: { validatorHash: "cc" },
+      orders: { validatorHash: "dd" },
     })) as never);
 
     expect(expected).toEqual([

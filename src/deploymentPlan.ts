@@ -11,7 +11,7 @@ import {
   decodeSettingsV1Data,
 } from "./contracts/index.js";
 import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
-import { buildReferenceScriptDeploymentTx, buildSettingsUpdateTx, type BuiltTransaction, type DeployerWallet } from "./deploymentTx.js";
+import { buildReferenceScriptDeploymentTx, buildSettingsUpdateTx, type DeployerWallet } from "./deploymentTx.js";
 
 const REPO_NAME = "decentralized-minting";
 const DEMI_SETTINGS_HANDLE = "demi@handle_settings";

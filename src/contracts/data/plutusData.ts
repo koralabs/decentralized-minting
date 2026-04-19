@@ -4,8 +4,8 @@ import type { Cardano as CardanoTypes } from "@cardano-sdk/core";
 
 import {
   Cardano,
-  Serialization,
   type HexBlob,
+  Serialization,
 } from "../../helpers/cardano-sdk/index.js";
 
 /**
@@ -65,18 +65,23 @@ export const plutusDataFromCbor = (cbor: string): PlutusData =>
 export const isBytes = (data: PlutusData): data is Uint8Array =>
   data instanceof Uint8Array;
 
+// `"constructor" in obj` is true for every plain object (inherited from
+// Object.prototype), so the discriminators check for the *own* property.
+const hasOwn = (o: object, key: string) =>
+  Object.prototype.hasOwnProperty.call(o, key);
+
 export const isList = (data: PlutusData): data is CardanoTypes.PlutusList =>
   typeof data === "object" &&
   data !== null &&
   !isBytes(data) &&
-  "items" in data &&
-  !("constructor" in data);
+  hasOwn(data, "items") &&
+  !hasOwn(data, "constructor");
 
 export const isMap = (data: PlutusData): data is CardanoTypes.PlutusMap =>
   typeof data === "object" &&
   data !== null &&
   !isBytes(data) &&
-  "data" in data;
+  hasOwn(data, "data");
 
 export const isConstr = (
   data: PlutusData,
@@ -84,8 +89,8 @@ export const isConstr = (
   typeof data === "object" &&
   data !== null &&
   !isBytes(data) &&
-  "constructor" in data &&
-  "fields" in data;
+  hasOwn(data, "constructor") &&
+  hasOwn(data, "fields");
 
 export const expectConstr = (
   data: PlutusData,

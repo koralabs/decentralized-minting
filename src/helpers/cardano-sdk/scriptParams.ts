@@ -1,13 +1,13 @@
 import { Buffer } from "node:buffer";
 import { createRequire } from "node:module";
 
-import { Serialization } from "./index.js";
 import type { HexBlob } from "./index.js";
+import { Serialization } from "./index.js";
 
 // scalus ships as CJS with a namespace export; load via require for
 // a reliable ESM-interop shape.
 const require = createRequire(import.meta.url);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const { Scalus } = require("scalus") as {
   Scalus: {
     applyDataArgToScript: (doubleCborHex: string, dataJson: string) => string;

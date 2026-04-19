@@ -1,13 +1,6 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
-import {
-  Address,
-  makeInlineTxOutputDatum,
-  makePubKeyHash,
-  makeStakingAddress,
-  makeStakingValidatorHash,
-  makeValue,
-} from "@helios-lang/ledger";
-import { makeTxBuilder, TxBuilder } from "@helios-lang/tx-utils";
+import type { Cardano as CardanoTypes } from "@cardano-sdk/core";
+import type { Ed25519KeyHashHex } from "@cardano-sdk/crypto";
 import { Err, Ok, Result } from "ts-res";
 
 import {
@@ -24,30 +17,28 @@ import {
   convertHandlePricesToHandlePriceData,
   HandlePriceInfo,
   HandlePrices,
-  makeVoidData,
   MintingData,
   MPTProof,
   NewHandle,
   parseMPTProofJSON,
+  plutusDataToCbor,
   Settings,
   SettingsV1,
 } from "../contracts/index.js";
-import { getBlockfrostV0Client, getNetwork } from "../helpers/index.js";
+import { getBlockfrostBuildContext } from "../helpers/cardano-sdk/blockfrostContext.js";
+import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
+import { getNetwork } from "../helpers/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
+import type { TxPlan } from "./txPlan.js";
 
-/**
- * @interface
- * @typedef {object} PrepareNewMintParams
- * @property {Address} address Wallet Address to perform mint
- * @property {HandlePrices} latestHandlePrices Latest Handle Prices to update while minting
- * @property {NewHandle[]} handles New Handles to mint
- * @property {Trie} db Trie DB
- * @property {string} blockfrostApiKey Blockfrost API Key
- */
 interface PrepareNewMintParams {
-  address: Address;
+  changeAddress: string;
+  /** Payment-key-hash of the minter (required signer). */
+  minterKeyHash: string;
   latestHandlePrices: HandlePrices;
   handles: NewHandle[];
+  walletUtxos: CardanoTypes.Utxo[];
+  collateralUtxo?: CardanoTypes.Utxo;
   db: Trie;
   blockfrostApiKey: string;
 }
@@ -59,11 +50,6 @@ interface PrepareNewMintDeps {
   fetchHandlePriceInfoDataFn?: typeof fetchHandlePriceInfoData;
 }
 
-/**
- * @description Mint New Handles from Order
- * @param {PrepareNewMintParams} params
- * @returns {Promise<Result<TxBuilder,  Error>>} Transaction Result
- */
 const prepareNewMintTransaction = async (
   params: PrepareNewMintParams,
   {
@@ -71,11 +57,11 @@ const prepareNewMintTransaction = async (
     fetchMintingDataFn = fetchMintingData,
     fetchSettingsFn = fetchSettings,
     fetchHandlePriceInfoDataFn = fetchHandlePriceInfoData,
-  }: PrepareNewMintDeps = {}
+  }: PrepareNewMintDeps = {},
 ): Promise<
   Result<
     {
-      txBuilder: TxBuilder;
+      plan: TxPlan;
       deployedScripts: DeployedScripts;
       settings: Settings;
       settingsV1: SettingsV1;
@@ -84,75 +70,71 @@ const prepareNewMintTransaction = async (
     Error
   >
 > => {
-  const { address, handles, db, blockfrostApiKey, latestHandlePrices } = params;
-  const network = getNetwork(blockfrostApiKey);
-  const isMainnet = network == "mainnet";
-  if (address.era == "Byron")
-    return Err(new Error("Byron Address not supported"));
-  const blockfrostV0Client = getBlockfrostV0Client(blockfrostApiKey);
-
-  // fetch deployed scripts
-  const fetchedResult = await fetchAllDeployedScriptsFn(blockfrostV0Client);
-  if (!fetchedResult.ok)
-    return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   const {
-    mintProxyScriptTxInput,
-    mintingDataScriptTxInput,
-    mintV1ScriptDetails,
-    mintV1ScriptTxInput,
-    ordersScriptTxInput,
+    changeAddress,
+    minterKeyHash,
+    handles,
+    walletUtxos,
+    collateralUtxo,
+    db,
+    blockfrostApiKey,
+    latestHandlePrices,
+  } = params;
+  const network = getNetwork(blockfrostApiKey);
+
+  const fetchedResult = await fetchAllDeployedScriptsFn();
+  if (!fetchedResult.ok) {
+    return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
+  }
+  const {
+    mintProxyScript,
+    mintingDataScript,
+    mintV1Script,
+    ordersScript,
   } = fetchedResult.data;
 
-  // fetch settings
   const settingsResult = await fetchSettingsFn(network);
-  if (!settingsResult.ok)
+  if (!settingsResult.ok) {
     return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
-  const { settings, settingsV1, settingsAssetTxInput } = settingsResult.data;
-  const { allowed_minters, treasury_address } = settingsV1;
+  }
+  const { settings, settingsV1, settingsUtxo } = settingsResult.data;
+  const { treasury_address } = settingsV1;
 
   const mintingDataResult = await fetchMintingDataFn();
-  if (!mintingDataResult.ok)
+  if (!mintingDataResult.ok) {
     return Err(
-      new Error(`Failed to fetch minting data: ${mintingDataResult.error}`)
+      new Error(`Failed to fetch minting data: ${mintingDataResult.error}`),
     );
-  const { mintingData, mintingDataAssetTxInput } = mintingDataResult.data;
+  }
+  const { mintingData, mintingDataUtxo } = mintingDataResult.data;
 
-  // NOTE:
-  // we assume valid handle price asset is
-  // "price@handle_settings" (koralab's)
   const handlePriceInfoDataResult = await fetchHandlePriceInfoDataFn(
-    HANDLE_PRICE_INFO_HANDLE_NAME
+    HANDLE_PRICE_INFO_HANDLE_NAME,
   );
   if (!handlePriceInfoDataResult.ok) {
     return Err(
       new Error(
-        `Failed to fetch handle price info: ${handlePriceInfoDataResult.error}`
-      )
+        `Failed to fetch handle price info: ${handlePriceInfoDataResult.error}`,
+      ),
     );
   }
-  const { handlePriceInfo, handlePriceInfoAssetTxInput } =
+  const { handlePriceInfo, handlePriceInfoUtxo } =
     handlePriceInfoDataResult.data;
 
-  // check if current db trie hash is same as minting data root hash
   if (
-    mintingData.mpt_root_hash.toLowerCase() !=
+    mintingData.mpt_root_hash.toLowerCase() !==
     (db.hash?.toString("hex") || Buffer.alloc(32).toString("hex")).toLowerCase()
   ) {
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
 
-  // calculate total handle price
   const treasuryFee = handles.reduce((acc, cur) => acc + cur.treasuryFee, 0n);
   const minterFee = handles.reduce((acc, cur) => acc + cur.minterFee, 0n);
 
-  // make Proofs for Minting Data V1 Redeemer
   const proofs: MPTProof[] = [];
   for (const handle of handles) {
     const { utf8Name } = handle;
-
     try {
-      // NOTE:
-      // Have to remove handles if transaction fails
       await db.insert(utf8Name, "");
       const mpfProof = await db.prove(utf8Name);
       proofs.push(parseMPTProofJSON(mpfProof.toJSON()));
@@ -162,117 +144,175 @@ const prepareNewMintTransaction = async (
     }
   }
 
-  // update all handles in minting data
   const newMintingData: MintingData = {
     ...mintingData,
     mpt_root_hash: db.hash.toString("hex"),
   };
 
-  // minting data asset value
-  const mintingDataValue = makeValue(
-    mintingDataAssetTxInput.value.lovelace,
-    mintingDataAssetTxInput.value.assets
-  );
+  const mintingDataCoreUtxo = reconstructUtxo(mintingDataUtxo);
+  const handlePriceInfoCoreUtxo = reconstructUtxo(handlePriceInfoUtxo);
 
-  // handle price info asset value
-  const handlePriceInfoValue = makeValue(
-    handlePriceInfoAssetTxInput.value.lovelace,
-    handlePriceInfoAssetTxInput.value.assets
-  );
+  // Output 1: updated minting data back to same address
+  const updatedMintingDatum = Serialization.PlutusData.fromCbor(
+    plutusDataToCbor(buildMintingData(newMintingData)) as HexBlob,
+  ).toCore();
+  const mintingDataOutput: CardanoTypes.TxOut = {
+    address: mintingDataCoreUtxo[1].address,
+    value: mintingDataCoreUtxo[1].value,
+    datum: updatedMintingDatum,
+  };
 
-  // build redeemer for mint v1
-  const mintV1MintHandlesRedeemer = buildMintV1MintHandlesRedeemer();
-
-  // NOTE:
-  // we assume that koralab's minter index is 0
-  // meaning we always use Koralab minter
-  // build proofs redeemer for minting data v1
-  const mintingDataMintNewHandlesRedeemer =
-    buildMintingDataMintNewHandlesRedeemer(proofs, 0n);
-
-  // start building tx
-  const txBuilder = makeTxBuilder({
-    isMainnet,
-  });
-
-  // <-- add required signer
-  txBuilder.addSigners(makePubKeyHash(allowed_minters[0]));
-
-  // <-- attach settings asset as reference input
-  txBuilder.refer(settingsAssetTxInput);
-
-  // <-- attach deploy scripts
-  txBuilder.refer(
-    mintProxyScriptTxInput,
-    mintV1ScriptTxInput,
-    mintingDataScriptTxInput,
-    ordersScriptTxInput
-  );
-
-  // <-- spend minting data utxo
-  txBuilder.spendUnsafe(
-    mintingDataAssetTxInput,
-    mintingDataMintNewHandlesRedeemer
-  );
-
-  // <-- lock minting data value with new root hash
-  txBuilder.payUnsafe(
-    mintingDataAssetTxInput.address,
-    mintingDataValue,
-    makeInlineTxOutputDatum(buildMintingData(newMintingData))
-  );
-
-  // <-- spend handle price info utxo
-  txBuilder.spendUnsafe(handlePriceInfoAssetTxInput);
-
-  // <-- lock handle price info value with handle prices
+  // Output 2: updated handle price info back to same address
   const newHandlePriceInfo: HandlePriceInfo = {
     current_data: convertHandlePricesToHandlePriceData(latestHandlePrices),
     prev_data: handlePriceInfo.prev_data,
     updated_at: BigInt(Date.now()),
   };
+  const newHandlePriceInfoDatum = Serialization.PlutusData.fromCbor(
+    plutusDataToCbor(buildHandlePriceInfoData(newHandlePriceInfo)) as HexBlob,
+  ).toCore();
+  const handlePriceInfoOutput: CardanoTypes.TxOut = {
+    address: handlePriceInfoCoreUtxo[1].address,
+    value: handlePriceInfoCoreUtxo[1].value,
+    datum: newHandlePriceInfoDatum,
+  };
 
-  txBuilder.payUnsafe(
-    handlePriceInfoAssetTxInput.address,
-    handlePriceInfoValue,
-    makeInlineTxOutputDatum(buildHandlePriceInfoData(newHandlePriceInfo))
-  );
+  // Output 3: treasury fee
+  const voidDatum = Serialization.PlutusData.fromCbor(
+    plutusDataToCbor({ constructor: 0n, fields: { items: [] } }) as HexBlob,
+  ).toCore();
+  const treasuryOutput: CardanoTypes.TxOut = {
+    address: treasury_address as unknown as CardanoTypes.TxOut["address"],
+    value: { coins: treasuryFee },
+    datum: voidDatum,
+  };
 
-  // <-- withdraw from mint v1 withdraw validator (script from reference input)
-  txBuilder.withdrawUnsafe(
-    makeStakingAddress(
-      isMainnet,
-      makeStakingValidatorHash(mintV1ScriptDetails.validatorHash)
-    ),
-    0n,
-    mintV1MintHandlesRedeemer
-  );
+  // Output 4: minter fee
+  const minterOutput: CardanoTypes.TxOut = {
+    address: changeAddress as unknown as CardanoTypes.TxOut["address"],
+    value: { coins: minterFee },
+    datum: voidDatum,
+  };
 
-  // <-- pay treasury fee
-  txBuilder.payUnsafe(
-    treasury_address,
-    makeValue(treasuryFee),
-    makeInlineTxOutputDatum(makeVoidData())
-  );
+  const spendMintingDataRedeemer: CardanoTypes.Redeemer = {
+    data: Serialization.PlutusData.fromCbor(
+      plutusDataToCbor(
+        buildMintingDataMintNewHandlesRedeemer(proofs, 0n),
+      ) as HexBlob,
+    ).toCore(),
+    executionUnits: { memory: 0, steps: 0 },
+    index: 0,
+    purpose: Cardano.RedeemerPurpose.spend,
+  };
 
-  // <-- pay minter fee
-  txBuilder.payUnsafe(
-    address,
-    makeValue(minterFee),
-    makeInlineTxOutputDatum(makeVoidData())
-  );
+  const withdrawMintV1Redeemer: CardanoTypes.Redeemer = {
+    data: Serialization.PlutusData.fromCbor(
+      plutusDataToCbor(buildMintV1MintHandlesRedeemer()) as HexBlob,
+    ).toCore(),
+    executionUnits: { memory: 0, steps: 0 },
+    index: 0,
+    purpose: Cardano.RedeemerPurpose.withdrawal,
+  };
 
-  // NOTE:
-  // After call this function
-  // using txBuilder (return value), they can continue with minting assets (e.g. ref and user asset)
+  const buildContext = await getBlockfrostBuildContext(network, blockfrostApiKey);
+
+  const referenceInputs = new Set<CardanoTypes.TxIn>([
+    {
+      txId: Cardano.TransactionId(settingsUtxo.txHash as HexBlob),
+      index: settingsUtxo.outputIndex,
+    },
+    {
+      txId: Cardano.TransactionId(mintProxyScript.refScriptUtxo.txHash as HexBlob),
+      index: mintProxyScript.refScriptUtxo.outputIndex,
+    },
+    {
+      txId: Cardano.TransactionId(mintV1Script.refScriptUtxo.txHash as HexBlob),
+      index: mintV1Script.refScriptUtxo.outputIndex,
+    },
+    {
+      txId: Cardano.TransactionId(mintingDataScript.refScriptUtxo.txHash as HexBlob),
+      index: mintingDataScript.refScriptUtxo.outputIndex,
+    },
+    {
+      txId: Cardano.TransactionId(ordersScript.refScriptUtxo.txHash as HexBlob),
+      index: ordersScript.refScriptUtxo.outputIndex,
+    },
+  ]);
+
+  const mintV1StakingCredential = {
+    type: Cardano.CredentialType.ScriptHash,
+    hash: mintV1Script.details.validatorHash as unknown as CardanoTypes.Credential["hash"],
+  };
+  const mintV1RewardAccount =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Cardano as any).RewardAccount.fromCredentials(
+      network === "mainnet" ? 1 : 0,
+      mintV1StakingCredential,
+    ) as CardanoTypes.RewardAccount;
+  const withdrawals = new Map<CardanoTypes.RewardAccount, bigint>([
+    [mintV1RewardAccount, 0n],
+  ]);
+
+  const plan: TxPlan = {
+    preSelectedUtxos: [mintingDataCoreUtxo, handlePriceInfoCoreUtxo],
+    spareUtxos: walletUtxos,
+    outputs: [
+      mintingDataOutput,
+      handlePriceInfoOutput,
+      treasuryOutput,
+      minterOutput,
+    ],
+    referenceInputs,
+    redeemers: [spendMintingDataRedeemer, withdrawMintV1Redeemer],
+    withdrawals,
+    requiredSigners: [minterKeyHash as Ed25519KeyHashHex],
+    usedPlutusVersions: [Cardano.PlutusLanguageVersion.V2],
+    collateralUtxo,
+    changeAddress,
+    buildContext,
+  };
 
   return Ok({
-    txBuilder,
+    plan,
     deployedScripts: fetchedResult.data,
     settings,
     settingsV1,
     handlePriceInfo,
   });
+};
+
+const reconstructUtxo = (
+  descriptor: import("../configs/index.js").UtxoDescriptor,
+): CardanoTypes.Utxo => {
+  const assets = new Map<CardanoTypes.AssetId, bigint>();
+  for (const [key, quantity] of descriptor.assets) {
+    const [policyId, assetName] = key.split(".");
+    const assetId = Cardano.AssetId.fromParts(
+      Cardano.PolicyId(policyId as HexBlob),
+      Cardano.AssetName(assetName as HexBlob),
+    );
+    assets.set(assetId, quantity);
+  }
+  const txIn: CardanoTypes.HydratedTxIn = {
+    txId: Cardano.TransactionId(descriptor.txHash as HexBlob),
+    index: descriptor.outputIndex,
+    address: descriptor.address as CardanoTypes.TxOut["address"],
+  };
+  const txOut: CardanoTypes.TxOut = {
+    address: descriptor.address as CardanoTypes.TxOut["address"],
+    value: {
+      coins: descriptor.lovelace,
+      ...(assets.size > 0 ? { assets } : {}),
+    },
+    ...(descriptor.inlineDatumCbor
+      ? {
+          datum: Serialization.PlutusData.fromCbor(
+            descriptor.inlineDatumCbor as HexBlob,
+          ).toCore(),
+        }
+      : {}),
+  };
+  return [txIn, txOut];
 };
 
 export type { PrepareNewMintParams };

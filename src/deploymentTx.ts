@@ -9,29 +9,15 @@ import {
   GreedyTxEvaluator,
 } from "@cardano-sdk/tx-construction";
 import type { HexBlob } from "@cardano-sdk/util";
-import { bytesToHex } from "@helios-lang/codec-utils";
-import {
-  makeAddress,
-  makeAssetClass,
-  makeAssets,
-  makeInlineTxOutputDatum,
-  makePubKeyHash,
-  makeTxInput,
-  makeTxOutput,
-  makeValidatorHash,
-  makeValue,
-} from "@helios-lang/ledger";
-import { makeBlockfrostV0Client, makeTxBuilder } from "@helios-lang/tx-utils";
-import {
-  decodeUplcData,
-  decodeUplcProgramV2FromCbor,
-  makeByteArrayData,
-  makeConstrData,
-} from "@helios-lang/uplc";
 import { fetch as crossFetch } from "cross-fetch";
 
 import { LEGACY_POLICY_ID, PREFIX_222 } from "./constants/index.js";
 import { buildContracts } from "./contracts/config.js";
+import {
+  mkBytes,
+  mkConstr,
+  plutusDataToCbor,
+} from "./contracts/data/plutusData.js";
 import { buildSettingsData } from "./contracts/data/settings.js";
 import { buildSettingsV1Data } from "./contracts/data/settings-v1.js";
 import { handlesApiBaseUrlForNetwork } from "./deploymentPlan.js";
@@ -42,6 +28,8 @@ import {
   asPaymentAddress,
   buildPlaceholderSignatures,
   Cardano,
+  computeScriptDataHash,
+  plutusV2ScriptHash,
   Serialization,
   transactionHashFromCore,
   transactionToCbor,
@@ -405,21 +393,20 @@ export const buildSettingsUpdateTx = async ({
     policy_id: desiredSettings.policy_id as string,
     allowed_minters: desiredSettings.allowed_minters as string[],
     valid_handle_price_assets: desiredSettings.valid_handle_price_assets as string[],
-    treasury_address: makeAddress(desiredSettings.treasury_address as string),
+    treasury_address: desiredSettings.treasury_address as string,
     treasury_fee_percentage: BigInt(desiredSettings.treasury_fee_percentage as number),
-    pz_script_address: makeAddress(desiredSettings.pz_script_address as string),
-    order_script_hash: built.orders.ordersValidatorHash.toHex(),
-    minting_data_script_hash: built.mintingData.mintingDataValidatorHash.toHex(),
+    pz_script_address: desiredSettings.pz_script_address as string,
+    order_script_hash: built.orders.validatorHash,
+    minting_data_script_hash: built.mintingData.validatorHash,
   });
 
   const settingsData = buildSettingsData({
-    mint_governor: built.mintV1.mintV1ValidatorHash.toHex(),
+    mint_governor: built.mintV1.validatorHash,
     mint_version: BigInt(desired.buildParameters.mintVersion),
     data: settingsV1Data,
   });
 
-  // Convert helios UplcData to cardano-sdk PlutusData via CBOR
-  const settingsDatumCbor = Buffer.from(settingsData.toCbor()).toString("hex");
+  const settingsDatumCbor = plutusDataToCbor(settingsData);
   const datum = Serialization.PlutusData.fromCbor(settingsDatumCbor as HexBlob).toCore();
 
   // Resolve the settings handle UTxO and its script address
@@ -610,13 +597,25 @@ export const buildPreparationTx = async ({
 }): Promise<BuiltTransaction | null> => {
   const isMainnet = desired.network === "mainnet";
   const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
-  const adminAddress = makeAddress(isMainnet, makePubKeyHash(adminKeyHash));
+  const adminCredential = {
+    type: Cardano.CredentialType.KeyHash,
+    hash: adminKeyHash as unknown as CardanoTypes.Credential["hash"],
+  };
+  const adminAddress = Cardano.EnterpriseAddress.fromCredentials(
+    isMainnet ? 1 : 0,
+    adminCredential,
+  )
+    .toAddress()
+    .toBech32() as string;
 
-  // Check current admin balance
-  const blockfrostClient = makeBlockfrostV0Client(desired.network, blockfrostApiKey);
-  const adminUtxos = await blockfrostClient.getUtxos(adminAddress);
+  const adminUtxos = await fetchBlockfrostUtxos(
+    adminAddress,
+    blockfrostApiKey,
+    desired.network,
+  );
   const adminBalance = adminUtxos.reduce(
-    (sum, u) => sum + u.value.lovelace, 0n
+    (sum, u) => sum + (u[1].value.coins ?? 0n),
+    0n,
   );
 
   if (adminBalance >= targetLovelace) {
@@ -637,7 +636,6 @@ export const buildPreparationTx = async ({
 
   const buildContext = await getBlockfrostBuildContext(desired.network, blockfrostApiKey);
 
-  // Get clean (no-token, no-ref-script) UTxOs from the script address for fee inputs
   const allScriptUtxos = await fetchBlockfrostUtxos(
     scriptAddress, blockfrostApiKey, desired.network, fetch,
     { excludeWithReferenceScripts: true },
@@ -650,9 +648,8 @@ export const buildPreparationTx = async ({
     throw new Error("no clean UTxOs at script address to fund admin wallet");
   }
 
-  const adminAddressBech32 = asPaymentAddress(adminAddress.toBech32());
   const output: CardanoTypes.TxOut = {
-    address: adminAddressBech32,
+    address: asPaymentAddress(adminAddress),
     value: { coins: needed },
   };
 
@@ -693,18 +690,17 @@ export const buildMptRootMigrationTx = async ({
   const isMainnet = desired.network === "mainnet";
   const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
 
-  // Decode old validator (already parameterized)
-  const oldProgram = decodeUplcProgramV2FromCbor(oldValidatorCborHex);
-  const oldHash = makeValidatorHash(oldProgram.hash());
+  // Compute old script hash from its single-CBOR hex (used only for sanity).
+  const _oldScriptHash = plutusV2ScriptHash(oldValidatorCborHex);
+  void _oldScriptHash;
 
-  // Build new script address from current code
   const built = buildContracts({
     network: desired.network,
     mint_version: BigInt(desired.buildParameters.mintVersion),
     legacy_policy_id: desired.buildParameters.legacyPolicyId,
     admin_verification_key_hash: adminKeyHash,
   });
-  const newScriptAddress = built.mintingData.mintingDataValidatorAddress;
+  const newScriptAddress = built.mintingData.scriptAddress;
 
   // Fetch handle_root UTxO from Blockfrost
   const handleName = "handle_root@handle_settings";
@@ -719,11 +715,11 @@ export const buildMptRootMigrationTx = async ({
     throw new Error(`${handleName} missing utxo or address`);
   }
 
-  const [txHash, txIdxStr] = handleData.utxo.split("#");
+  const [txHashStr, txIdxStr] = handleData.utxo.split("#");
   const txIdx = parseInt(txIdxStr, 10);
   const host = `https://cardano-${desired.network}.blockfrost.io/api/v0`;
   const utxoRes = await crossFetch(
-    `${host}/txs/${txHash}/utxos`,
+    `${host}/txs/${txHashStr}/utxos`,
     { headers: { "Content-Type": "application/json", project_id: blockfrostApiKey } }
   );
   if (!utxoRes.ok) throw new Error(`failed to fetch UTxO ${handleData.utxo}: HTTP ${utxoRes.status}`);
@@ -734,71 +730,237 @@ export const buildMptRootMigrationTx = async ({
   if (!output) throw new Error(`UTxO ${handleData.utxo} not found`);
 
   const handleHex = Buffer.from(handleName, "utf8").toString("hex");
-  const handleAssetClass = makeAssetClass(`${LEGACY_POLICY_ID}.${PREFIX_222}${handleHex}`);
+  const handleAssetId = Cardano.AssetId.fromParts(
+    Cardano.PolicyId(LEGACY_POLICY_ID as HexBlob),
+    Cardano.AssetName(`${PREFIX_222}${handleHex}` as HexBlob),
+  );
   const lovelace = BigInt(output.amount.find((a) => a.unit === "lovelace")?.quantity ?? "0");
 
-  const handleUtxo = makeTxInput(
-    handleData.utxo,
-    makeTxOutput(
-      makeAddress(handleData.resolved_addresses.ada),
-      makeValue(lovelace, makeAssets([[handleAssetClass, 1n]])),
-      output.inline_datum
-        ? makeInlineTxOutputDatum(decodeUplcData(Buffer.from(output.inline_datum, "hex")))
-        : undefined
-    )
+  const adminCredential = {
+    type: Cardano.CredentialType.KeyHash,
+    hash: adminKeyHash as unknown as CardanoTypes.Credential["hash"],
+  };
+  const adminAddressBech32 = Cardano.EnterpriseAddress.fromCredentials(
+    isMainnet ? 1 : 0,
+    adminCredential,
+  )
+    .toAddress()
+    .toBech32() as string;
+  const adminUtxos = await fetchBlockfrostUtxos(
+    adminAddressBech32,
+    blockfrostApiKey,
+    desired.network,
   );
+  const cleanUtxos = adminUtxos.filter((u) => !u[1].value.assets || u[1].value.assets.size === 0);
+  const collateralUtxo = cleanUtxos.length > 0
+    ? cleanUtxos.sort((a, b) => Number((b[1].value.coins ?? 0n) - (a[1].value.coins ?? 0n)))[0]
+    : undefined;
 
-  // UpdateMPT redeemer (constructor index 2, no fields)
-  const redeemer = makeConstrData(2, []);
+  const spendInput: CardanoTypes.Utxo = [
+    {
+      txId: Cardano.TransactionId(txHashStr as HexBlob),
+      index: txIdx,
+      address: handleData.resolved_addresses.ada as unknown as CardanoTypes.TxOut["address"],
+    },
+    {
+      address: handleData.resolved_addresses.ada as unknown as CardanoTypes.TxOut["address"],
+      value: {
+        coins: lovelace,
+        assets: new Map([[handleAssetId, 1n]]),
+      },
+      ...(output.inline_datum
+        ? {
+            datum: Serialization.PlutusData.fromCbor(output.inline_datum as HexBlob).toCore(),
+          }
+        : {}),
+    },
+  ];
 
-  // New datum with computed MPT root hash
-  const newDatum = makeConstrData(0, [makeByteArrayData(newMptRootHash)]);
+  const newDatumCbor = plutusDataToCbor(mkConstr(0, [mkBytes(newMptRootHash)]));
+  const newDatumCore = Serialization.PlutusData.fromCbor(newDatumCbor as HexBlob).toCore();
 
-  // Build tx with helios TxBuilder
-  const txBuilder = makeTxBuilder({ isMainnet });
-  txBuilder.attachUplcProgram(oldProgram);
-  txBuilder.spendUnsafe(handleUtxo, redeemer);
-  txBuilder.payUnsafe(
-    newScriptAddress,
-    makeValue(lovelace, makeAssets([[handleAssetClass, 1n]])),
-    makeInlineTxOutputDatum(newDatum)
-  );
-  txBuilder.addSigners(makePubKeyHash(adminKeyHash));
+  const migrationOutput: CardanoTypes.TxOut = {
+    address: newScriptAddress as unknown as CardanoTypes.TxOut["address"],
+    value: {
+      coins: lovelace,
+      assets: new Map([[handleAssetId, 1n]]),
+    },
+    datum: newDatumCore,
+  };
 
-  // Fetch admin wallet UTxOs for fees and collateral
-  const adminAddress = makeAddress(isMainnet, makePubKeyHash(adminKeyHash));
-  const blockfrostClient = makeBlockfrostV0Client(desired.network, blockfrostApiKey);
-  const adminUtxos = await blockfrostClient.getUtxos(adminAddress);
+  const redeemerDataCbor = plutusDataToCbor(mkConstr(2, []));
+  const spendRedeemer: CardanoTypes.Redeemer = {
+    data: Serialization.PlutusData.fromCbor(redeemerDataCbor as HexBlob).toCore(),
+    executionUnits: { memory: 0, steps: 0 },
+    index: 0,
+    purpose: Cardano.RedeemerPurpose.spend,
+  };
 
-  // Pre-set collateral from a clean (ADA-only) UTxO
-  const cleanUtxos = adminUtxos.filter((u) => u.value.assets.isZero());
-  if (cleanUtxos.length > 0) {
-    const collateral = cleanUtxos.sort((a, b) => Number(b.value.lovelace - a.value.lovelace))[0];
-    txBuilder.addCollateral(collateral);
-  }
+  const buildContext = await getBlockfrostBuildContext(desired.network, blockfrostApiKey);
 
-  const tx = await txBuilder.buildUnsafe({
-    networkParams: blockfrostClient.parameters,
-    changeAddress: adminAddress,
-    spareUtxos: adminUtxos,
-    allowDirtyChangeOutput: true,
+  const oldScriptCore = Serialization.PlutusV2Script.fromCbor(
+    oldValidatorCborHex as HexBlob,
+  ).toCore();
+
+  const result = await buildPlutusSpendTxInline({
+    buildContext,
+    spendInput,
+    walletUtxos: adminUtxos,
+    collateralUtxo,
+    output: migrationOutput,
+    spendRedeemer,
+    attachedPlutusScript: oldScriptCore,
+    requiredSigner: adminKeyHash,
+    changeAddress: adminAddressBech32,
   });
 
-  if (tx.hasValidationError) {
-    throw new Error(`MPT root migration tx validation error: ${tx.hasValidationError}`);
-  }
+  const estimatedSignedTxSize = Math.ceil(result.cborHex.length / 2) + 104;
+  return {
+    cborHex: result.cborHex,
+    estimatedSignedTxSize,
+    consumedInputs: result.consumedInputs,
+  };
+};
 
-  const cborHex = bytesToHex(tx.toCbor());
-  // Estimate signed size: the admin adds 1 signature (~100 bytes)
-  const estimatedSignedTxSize = Math.ceil(cborHex.length / 2) + 104;
+/**
+ * Minimal Plutus-spend tx builder inlined for `buildMptRootMigrationTx` — one
+ * script input, one output, attached (non-reference) Plutus V2 script, admin
+ * signer. Uses the shared Conway-correct `computeScriptDataHash`.
+ */
+const buildPlutusSpendTxInline = async ({
+  buildContext,
+  spendInput,
+  walletUtxos,
+  collateralUtxo,
+  output,
+  spendRedeemer,
+  attachedPlutusScript,
+  requiredSigner,
+  changeAddress,
+}: {
+  buildContext: BlockfrostBuildContext;
+  spendInput: CardanoTypes.Utxo;
+  walletUtxos: CardanoTypes.Utxo[];
+  collateralUtxo?: CardanoTypes.Utxo;
+  output: CardanoTypes.TxOut;
+  spendRedeemer: CardanoTypes.Redeemer;
+  attachedPlutusScript: CardanoTypes.Script;
+  requiredSigner: string;
+  changeAddress: string;
+}): Promise<{ cborHex: string; consumedInputs: Set<string> }> => {
+  const changeAddressBech32 = asPaymentAddress(changeAddress);
+  const inputSelector = roundRobinRandomImprove({
+    changeAddressResolver: {
+      resolve: async (selection) =>
+        selection.change.map((change) => ({
+          ...change,
+          address: changeAddressBech32,
+        })),
+    },
+  });
+  const txEvaluator = new GreedyTxEvaluator(
+    async () => buildContext.protocolParameters,
+  );
 
-  // MPT migration uses the helios tx builder which doesn't expose selection,
-  // but we can extract inputs from the built tx body
+  const buildForSelection = (selection: SelectionSkeleton) =>
+    Promise.resolve(
+      buildPlutusTxForSelection(
+        selection,
+        output,
+        spendRedeemer,
+        "0".repeat(64),
+        attachedPlutusScript,
+        requiredSigner,
+        collateralUtxo,
+        buildContext,
+      ),
+    );
+
+  const selection = await inputSelector.select({
+    preSelectedUtxo: new Set([spendInput]),
+    utxo: new Set(walletUtxos),
+    outputs: new Set([output]),
+    constraints: defaultSelectionConstraints({
+      protocolParameters: buildContext.protocolParameters,
+      buildTx: buildForSelection,
+      redeemersByType: {
+        spend: new Map([
+          [`${spendInput[0].txId}#${spendInput[0].index}`, spendRedeemer],
+        ]),
+      },
+      txEvaluator,
+    }),
+  });
+
+  const scriptDataHash = computeScriptDataHash(
+    buildContext.protocolParameters.costModels,
+    [Cardano.PlutusLanguageVersion.V2],
+    [spendRedeemer],
+  );
+
+  const finalTx = buildPlutusTxForSelection(
+    selection.selection,
+    output,
+    spendRedeemer,
+    scriptDataHash ?? "0".repeat(64),
+    attachedPlutusScript,
+    requiredSigner,
+    collateralUtxo,
+    buildContext,
+  );
+
+  const unsignedTx: CardanoTypes.Tx = {
+    ...finalTx,
+    body: { ...finalTx.body, fee: selection.selection.fee },
+    witness: {
+      ...finalTx.witness,
+      signatures: new Map(),
+    },
+  };
+
+  const cborHex = transactionToCbor(unsignedTx);
   const consumedInputs = new Set<string>();
-  for (const input of tx.body.inputs) {
-    consumedInputs.add(`${input.id.txId.toHex()}#${input.id.index}`);
+  for (const u of selection.selection.inputs) {
+    consumedInputs.add(`${u[0].txId}#${u[0].index}`);
   }
+  return { cborHex, consumedInputs };
+};
 
-  return { cborHex, estimatedSignedTxSize, consumedInputs };
+const buildPlutusTxForSelection = (
+  selection: SelectionSkeleton,
+  output: CardanoTypes.TxOut,
+  spendRedeemer: CardanoTypes.Redeemer,
+  scriptDataHash: string,
+  attachedPlutusScript: CardanoTypes.Script,
+  requiredSigner: string,
+  collateralUtxo: CardanoTypes.Utxo | undefined,
+  buildContext: BlockfrostBuildContext,
+): CardanoTypes.Tx => {
+  const bodyWithHash = createTransactionInternals({
+    inputSelection: selection,
+    validityInterval: buildContext.validityInterval,
+    outputs: [output],
+    requiredExtraSignatures: [requiredSigner],
+    collaterals: collateralUtxo
+      ? new Set<CardanoTypes.TxIn>([
+          { txId: collateralUtxo[0].txId, index: collateralUtxo[0].index },
+        ])
+      : undefined,
+    scriptIntegrityHash: scriptDataHash as HexBlob,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+
+  return {
+    id: transactionHashFromCore({
+      body: bodyWithHash.body,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any) as unknown as CardanoTypes.TransactionId,
+    body: bodyWithHash.body,
+    witness: {
+      signatures: buildPlaceholderSignatures(2),
+      redeemers: [spendRedeemer],
+      scripts: [attachedPlutusScript],
+    },
+  };
 };
 
