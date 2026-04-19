@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2.0.1
+
+Fix package.json `main` so Node resolves the entry point without the
+DEP0151 extension-resolution fallback warning.
+
+The CI `publish.yml` copies `package.json` into `./lib/` and publishes
+from there — so `lib/` is the published package root. The 2.0.0
+package.json still pointed `main` at `"lib/index.js"`, which
+(a) doesn't exist inside the published layout and (b) forced Node's
+legacy extension-resolution to fire and emit a DEP0151 on every
+import. Repointed `main` to `"index.js"`.
+
+No code changes; byte-identical compiled output to 2.0.0.
+
 ## 2.0.0
 
 **Breaking — full cutover from `@helios-lang/*` to `@cardano-sdk/core`.**
