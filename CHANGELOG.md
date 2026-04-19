@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2.0.3
+
+Fix `prepareNewMintTransaction`: `Cardano.RewardAccount.fromCredentials`
+does not exist on the `@cardano-sdk/core` we depend on; the correct
+builder is `Cardano.RewardAddress.fromCredentials(...).toAddress().toBech32()`,
+which produces the `stake_test1…` / `stake1…` bech32 that
+`Cardano.RewardAccount` is a branded alias of.
+
+Symptom before the fix: `prepareNewMintTransaction` crashed at
+`Cardano.RewardAccount.fromCredentials is not a function` the moment
+the MintV1 withdrawal was assembled, blocking any DeMi mint build.
+
+No on-chain output changes (the stake-address bech32 produced by the
+fixed path is byte-identical to what the helios-era withdrawal
+credential would have resolved to).
+
 ## 2.0.2
 
 Swap the `file:./cardano-sdk-*.tgz` dependency references for the
