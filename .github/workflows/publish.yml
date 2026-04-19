@@ -32,6 +32,25 @@ jobs:
         # flow requires npm >= 11.5.1. Install the latest npm over the top.
         run: npm install -g npm@latest
 
+      - name: Strip setup-node auth token placeholder
+        # setup-node's `registry-url` writes `_authToken=${NODE_AUTH_TOKEN}`
+        # into the managed .npmrc, and sets NODE_AUTH_TOKEN to the literal
+        # placeholder "XXXXX-XXXXX-XXXXX-XXXXX". With trusted publishing
+        # enabled we don't want ANY bearer token in the publish request —
+        # npm 11 is supposed to fall through to the OIDC exchange when
+        # there's no token, but if the placeholder is present it sends
+        # that garbage instead and registry.npmjs.org responds 404.
+        run: |
+          set -eu
+          for f in "$HOME/.npmrc" "$NPM_CONFIG_USERCONFIG" "./.npmrc"; do
+            if [[ -f "$f" ]]; then
+              sed -i '/_authToken=/d' "$f"
+            fi
+          done
+          # Clear NODE_AUTH_TOKEN in subsequent steps (unsetting here is
+          # per-shell; GITHUB_ENV persists across steps).
+          echo "NODE_AUTH_TOKEN=" >> "$GITHUB_ENV"
+
       - name: Diagnose publish environment
         run: |
           echo "node version:   $(node -v)"
