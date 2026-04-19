@@ -246,12 +246,14 @@ const prepareNewMintTransaction = async (
   // Cardano-sdk exports a reward-account builder at `RewardAddress`, not
   // `RewardAccount`. Build a RewardAddress then project out its bech32
   // which matches the `CardanoTypes.RewardAccount` branded-string type.
-  const mintV1RewardAccount = (Cardano as any).RewardAddress.fromCredentials(
-    network === "mainnet" ? 1 : 0,
-    mintV1StakingCredential,
-  )
-    .toAddress()
-    .toBech32() as CardanoTypes.RewardAccount;
+  const mintV1RewardAccount =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (Cardano as any).RewardAddress.fromCredentials(
+      network === "mainnet" ? 1 : 0,
+      mintV1StakingCredential,
+    )
+      .toAddress()
+      .toBech32() as CardanoTypes.RewardAccount;
   const withdrawals = new Map<CardanoTypes.RewardAccount, bigint>([
     [mintV1RewardAccount, 0n],
   ]);
