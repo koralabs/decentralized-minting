@@ -1,7 +1,3 @@
-import { bytesToHex } from "@helios-lang/codec-utils";
-import { makeTxOutputId, TxInput } from "@helios-lang/ledger";
-import { BlockfrostV0Client, NetworkName } from "@helios-lang/tx-utils";
-import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
 import { ScriptDetails, ScriptType } from "@koralabs/kora-labs-common";
 import { Err, Ok, Result } from "ts-res";
 
@@ -11,40 +7,46 @@ import {
   makeMintProxyUplcProgramParameterDatum,
   makeMintV1UplcProgramParameterDatum,
 } from "../contracts/index.js";
+import { plutusDataToCbor } from "../contracts/data/plutusData.js";
+import type { NetworkName } from "../helpers/cardano-sdk/networkName.js";
 import { convertError, invariant } from "../helpers/index.js";
 import { fetchDeployedScript } from "../utils/contract.js";
 
 /**
- * @interface
- * @typedef {object} DeployParams
- * @property {NetworkName} network Network
- * @property {bigint} mintVersion Mint Version - Parameter in Mint Proxy validator
- * @property {string} legacyPolicyId Legacy Handle's Policy ID
- * @property {string} adminVerificationKeyHash Admin Verification Key  Hash - Parameter in Minting Data V1 Validator
- * @property {string} contractName Contract Name to Deploy
+ * Inputs to `deploy`. `NetworkName` is now a local literal union — no Helios.
  */
 interface DeployParams {
   network: NetworkName;
+  /** Mint Version — parameter in the demimntprx.mint validator. */
   mintVersion: bigint;
+  /** Legacy handle policy id. */
   legacyPolicyId: string;
+  /** Admin verification key hash — parameter in demimntmpt.spend. */
   adminVerificationKeyHash: string;
+  /** Which contract blueprint to extract. */
   contractName: string;
 }
 
 interface DeployData {
+  /** Double-CBOR of the parameterized optimized script. */
   optimizedCbor: string;
+  /** Double-CBOR of the parameterized unoptimized script. */
   unOptimizedCbor?: string;
+  /** Inline datum CBOR (settings-proxy parameter echo) — when applicable. */
   datumCbor?: string;
+  /** Script hash (28-byte hex). */
   validatorHash: string;
+  /** Policy id — only set for the mint-proxy. */
   policyId?: string;
+  /** Script bech32 address — only set for spending validators. */
   scriptAddress?: string;
+  /** Script reward-account — only set for the withdraw validator. */
   scriptStakingAddress?: string;
 }
 
 /**
- * @description Deploy one of De-Mi contracts
- * @param {DeployParams} params
- * @returns {Promise<DeployData>} Deploy Data
+ * Produce the CBORs + datum + hashes for one of the De-Mi validators. The
+ * on-chain deployment plan generator consumes this.
  */
 const deploy = async (params: DeployParams): Promise<DeployData> => {
   const {
@@ -55,178 +57,157 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
     contractName,
   } = params;
 
-  const contractsConfig = buildContracts({
+  const built = buildContracts({
     network,
     mint_version: mintVersion,
     legacy_policy_id: legacyPolicyId,
     admin_verification_key_hash: adminVerificationKeyHash,
   });
-  const {
-    mintProxy: mintProxyConfig,
-    mintV1: mintV1Config,
-    mintingData: mintingDataConfig,
-    orders: ordersConfig,
-  } = contractsConfig;
 
   switch (contractName) {
     case "demimntprx.mint":
       return {
-        ...extractScriptCborsFromUplcProgram(
-          mintProxyConfig.mintProxyMintUplcProgram
+        optimizedCbor: built.mintProxy.validator.optimizedCbor,
+        unOptimizedCbor: built.mintProxy.validator.unoptimizedCbor,
+        datumCbor: plutusDataToCbor(
+          makeMintProxyUplcProgramParameterDatum(mintVersion),
         ),
-        datumCbor: bytesToHex(
-          makeMintProxyUplcProgramParameterDatum(mintVersion).data.toCbor()
-        ),
-        validatorHash: mintProxyConfig.mintProxyPolicyHash.toHex(),
-        policyId: mintProxyConfig.mintProxyPolicyHash.toHex(),
+        validatorHash: built.mintProxy.policyId,
+        policyId: built.mintProxy.policyId,
       };
     case "demimntmpt.spend":
       return {
-        ...extractScriptCborsFromUplcProgram(
-          mintingDataConfig.mintingDataSpendUplcProgram
-        ),
-        datumCbor: bytesToHex(
+        optimizedCbor: built.mintingData.validator.optimizedCbor,
+        unOptimizedCbor: built.mintingData.validator.unoptimizedCbor,
+        datumCbor: plutusDataToCbor(
           makeMintingDataUplcProgramParameterDatum(
             legacyPolicyId,
-            adminVerificationKeyHash
-          ).data.toCbor()
+            adminVerificationKeyHash,
+          ),
         ),
-        validatorHash: mintingDataConfig.mintingDataValidatorHash.toHex(),
-        scriptAddress: mintingDataConfig.mintingDataValidatorAddress.toBech32(),
+        validatorHash: built.mintingData.validatorHash,
+        scriptAddress: built.mintingData.scriptAddress,
       };
     case "demimnt.withdraw":
       return {
-        ...extractScriptCborsFromUplcProgram(
-          mintV1Config.mintV1WithdrawUplcProgram
+        optimizedCbor: built.mintV1.validator.optimizedCbor,
+        unOptimizedCbor: built.mintV1.validator.unoptimizedCbor,
+        datumCbor: plutusDataToCbor(
+          makeMintV1UplcProgramParameterDatum(built.mintingData.validatorHash),
         ),
-        datumCbor: bytesToHex(
-          makeMintV1UplcProgramParameterDatum(
-            mintingDataConfig.mintingDataValidatorHash.toHex()
-          ).data.toCbor()
-        ),
-        validatorHash: mintV1Config.mintV1ValidatorHash.toHex(),
-        scriptStakingAddress: mintV1Config.mintV1StakingAddress.toBech32(),
+        validatorHash: built.mintV1.validatorHash,
+        scriptStakingAddress: built.mintV1.stakingAddress,
       };
     case "demiord.spend":
       return {
-        ...extractScriptCborsFromUplcProgram(
-          ordersConfig.ordersSpendUplcProgram
-        ),
-        validatorHash: ordersConfig.ordersValidatorHash.toHex(),
-        scriptAddress: ordersConfig.ordersValidatorAddress.toBech32(),
+        optimizedCbor: built.orders.validator.optimizedCbor,
+        unOptimizedCbor: built.orders.validator.unoptimizedCbor,
+        validatorHash: built.orders.validatorHash,
+        scriptAddress: built.orders.scriptAddress,
       };
     default:
       throw new Error(
-        `Contract name must be one of "demimntprx.mint" | "demimntmpt.spend" | "demimnt.withdraw" | "demiord.spend"`
+        `Contract name must be one of "demimntprx.mint" | "demimntmpt.spend" | "demimnt.withdraw" | "demiord.spend"`,
       );
   }
 };
 
-const extractScriptCborsFromUplcProgram = (
-  uplcProgram: UplcProgramV2
-): { optimizedCbor: string; upOptimizedCbor?: string } => {
-  return {
-    optimizedCbor: bytesToHex(uplcProgram.toCbor()),
-    upOptimizedCbor: uplcProgram.alt
-      ? bytesToHex(uplcProgram.alt.toCbor())
-      : undefined,
-  };
-};
-
-interface DeployedScripts {
-  mintProxyScriptDetails: ScriptDetails;
-  mintProxyScriptTxInput: TxInput;
-  mintingDataScriptDetails: ScriptDetails;
-  mintingDataScriptTxInput: TxInput;
-  mintV1ScriptDetails: ScriptDetails;
-  mintV1ScriptTxInput: TxInput;
-  ordersScriptDetails: ScriptDetails;
-  ordersScriptTxInput: TxInput;
+/**
+ * Reference-script UTxO descriptor for a deployed validator. Replaces the
+ * Helios `TxInput` with the minimum the tx builders actually need.
+ */
+export interface DeployedScriptRef {
+  details: ScriptDetails;
+  refScriptUtxo: { txHash: string; outputIndex: number };
+  /** Double-CBOR of the on-chain script (used to recompute hashes). */
+  optimizedCbor: string;
+  /** Double-CBOR of the off-chain unoptimized fallback if present. */
+  unoptimizedCbor?: string;
 }
 
-const fetchAllDeployedScripts = async (
-  blockfrostV0Client: BlockfrostV0Client
-): Promise<Result<DeployedScripts, string>> => {
+interface DeployedScripts {
+  mintProxyScript: DeployedScriptRef;
+  mintingDataScript: DeployedScriptRef;
+  mintV1Script: DeployedScriptRef;
+  ordersScript: DeployedScriptRef;
+}
+
+const parseRefUtxo = (
+  refScriptUtxo: string,
+): { txHash: string; outputIndex: number } => {
+  const [txHash, idxStr] = refScriptUtxo.split("#");
+  return { txHash, outputIndex: parseInt(idxStr, 10) };
+};
+
+const fetchAllDeployedScripts = async (): Promise<
+  Result<DeployedScripts, string>
+> => {
   try {
-    // "demimntprx.mint"
-    const mintProxyScriptDetails = await fetchDeployedScript(
-      ScriptType.DEMI_MINT_PROXY
+    const mintProxyDetails = await fetchDeployedScript(
+      ScriptType.DEMI_MINT_PROXY,
     );
     invariant(
-      mintProxyScriptDetails.refScriptUtxo,
-      "Mint Proxy has no Ref script UTxO"
+      mintProxyDetails.refScriptUtxo,
+      "Mint Proxy has no Ref script UTxO",
     );
-    const mintProxyScriptTxInput = await blockfrostV0Client.getUtxo(
-      makeTxOutputId(mintProxyScriptDetails.refScriptUtxo)
-    );
-    if (mintProxyScriptDetails.unoptimizedCbor)
-      mintProxyScriptTxInput.output.refScript = (
-        mintProxyScriptTxInput.output.refScript as UplcProgramV2
-      )?.withAlt(
-        decodeUplcProgramV2FromCbor(mintProxyScriptDetails.unoptimizedCbor)
-      );
+    const mintProxyScript: DeployedScriptRef = {
+      details: mintProxyDetails,
+      refScriptUtxo: parseRefUtxo(mintProxyDetails.refScriptUtxo),
+      optimizedCbor: mintProxyDetails.cbor ?? "",
+      ...(mintProxyDetails.unoptimizedCbor
+        ? { unoptimizedCbor: mintProxyDetails.unoptimizedCbor }
+        : {}),
+    };
 
-    // "demimntmpt.spend"
-    const mintingDataScriptDetails = await fetchDeployedScript(
-      ScriptType.DEMI_MINTING_DATA
+    const mintingDataDetails = await fetchDeployedScript(
+      ScriptType.DEMI_MINTING_DATA,
     );
     invariant(
-      mintingDataScriptDetails.refScriptUtxo,
-      "Minting Data has no Ref script UTxO"
+      mintingDataDetails.refScriptUtxo,
+      "Minting Data has no Ref script UTxO",
     );
-    const mintingDataScriptTxInput = await blockfrostV0Client.getUtxo(
-      makeTxOutputId(mintingDataScriptDetails.refScriptUtxo)
-    );
-    if (mintingDataScriptDetails.unoptimizedCbor)
-      mintingDataScriptTxInput.output.refScript = (
-        mintingDataScriptTxInput.output.refScript as UplcProgramV2
-      )?.withAlt(
-        decodeUplcProgramV2FromCbor(mintingDataScriptDetails.unoptimizedCbor)
-      );
+    const mintingDataScript: DeployedScriptRef = {
+      details: mintingDataDetails,
+      refScriptUtxo: parseRefUtxo(mintingDataDetails.refScriptUtxo),
+      optimizedCbor: mintingDataDetails.cbor ?? "",
+      ...(mintingDataDetails.unoptimizedCbor
+        ? { unoptimizedCbor: mintingDataDetails.unoptimizedCbor }
+        : {}),
+    };
 
-    // "demimnt.withdraw"
-    const mintV1ScriptDetails = await fetchDeployedScript(ScriptType.DEMI_MINT);
+    const mintV1Details = await fetchDeployedScript(ScriptType.DEMI_MINT);
     invariant(
-      mintV1ScriptDetails.refScriptUtxo,
-      "Mint V1 has no Ref script UTxO"
+      mintV1Details.refScriptUtxo,
+      "Mint V1 has no Ref script UTxO",
     );
-    const mintV1ScriptTxInput = await blockfrostV0Client.getUtxo(
-      makeTxOutputId(mintV1ScriptDetails.refScriptUtxo)
-    );
-    if (mintV1ScriptDetails.unoptimizedCbor)
-      mintV1ScriptTxInput.output.refScript = (
-        mintV1ScriptTxInput.output.refScript as UplcProgramV2
-      )?.withAlt(
-        decodeUplcProgramV2FromCbor(mintV1ScriptDetails.unoptimizedCbor)
-      );
+    const mintV1Script: DeployedScriptRef = {
+      details: mintV1Details,
+      refScriptUtxo: parseRefUtxo(mintV1Details.refScriptUtxo),
+      optimizedCbor: mintV1Details.cbor ?? "",
+      ...(mintV1Details.unoptimizedCbor
+        ? { unoptimizedCbor: mintV1Details.unoptimizedCbor }
+        : {}),
+    };
 
-    // "demiord.spend"
-    const ordersScriptDetails = await fetchDeployedScript(
-      ScriptType.DEMI_ORDERS
-    );
+    const ordersDetails = await fetchDeployedScript(ScriptType.DEMI_ORDERS);
     invariant(
-      ordersScriptDetails.refScriptUtxo,
-      "Orders has no Ref script UTxO"
+      ordersDetails.refScriptUtxo,
+      "Orders has no Ref script UTxO",
     );
-    const ordersScriptTxInput = await blockfrostV0Client.getUtxo(
-      makeTxOutputId(ordersScriptDetails.refScriptUtxo)
-    );
-    if (ordersScriptDetails.unoptimizedCbor)
-      ordersScriptTxInput.output.refScript = (
-        ordersScriptTxInput.output.refScript as UplcProgramV2
-      )?.withAlt(
-        decodeUplcProgramV2FromCbor(ordersScriptDetails.unoptimizedCbor)
-      );
+    const ordersScript: DeployedScriptRef = {
+      details: ordersDetails,
+      refScriptUtxo: parseRefUtxo(ordersDetails.refScriptUtxo),
+      optimizedCbor: ordersDetails.cbor ?? "",
+      ...(ordersDetails.unoptimizedCbor
+        ? { unoptimizedCbor: ordersDetails.unoptimizedCbor }
+        : {}),
+    };
 
     return Ok({
-      mintProxyScriptDetails,
-      mintProxyScriptTxInput,
-      mintingDataScriptDetails,
-      mintingDataScriptTxInput,
-      mintV1ScriptDetails,
-      mintV1ScriptTxInput,
-      ordersScriptDetails,
-      ordersScriptTxInput,
+      mintProxyScript,
+      mintingDataScript,
+      mintV1Script,
+      ordersScript,
     });
   } catch (err) {
     return Err(convertError(err));

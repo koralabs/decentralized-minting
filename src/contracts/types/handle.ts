@@ -1,10 +1,8 @@
-import { ShelleyAddress } from "@helios-lang/ledger";
-
 interface NewHandle {
   // without asset name label
   hexName: string;
   utf8Name: string;
-  destinationAddress: ShelleyAddress;
+  destinationAddress: string; // bech32
   minterFee: bigint;
   treasuryFee: bigint;
 }

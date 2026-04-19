@@ -1,70 +1,56 @@
-import { TxOutputDatum } from "@helios-lang/ledger";
-import {
-  expectByteArrayData,
-  expectConstrData,
-  makeByteArrayData,
-  makeConstrData,
-  makeIntData,
-  makeListData,
-  UplcData,
-} from "@helios-lang/uplc";
-
 import { invariant } from "../../helpers/index.js";
-import { MintingData, MPTProof } from "../types/index.js";
-import { LegacyHandleProof } from "../types/index.js";
+import { LegacyHandleProof, MintingData, MPTProof } from "../types/index.js";
 import { buildMPTProofData } from "./mpt.js";
+import {
+  expectBytesHex,
+  expectConstr,
+  mkBytes,
+  mkConstr,
+  mkInt,
+  mkList,
+  PlutusData,
+  plutusDataFromCbor,
+} from "./plutusData.js";
 
-const buildMintingData = (mintingData: MintingData): UplcData => {
-  return makeConstrData(0, [makeByteArrayData(mintingData.mpt_root_hash)]);
-};
+const buildMintingData = (mintingData: MintingData): PlutusData =>
+  mkConstr(0, [mkBytes(mintingData.mpt_root_hash)]);
 
 const decodeMintingDataDatum = (
-  datum: TxOutputDatum | undefined
+  datumCbor: string | undefined,
 ): MintingData => {
-  invariant(
-    datum?.kind == "InlineTxOutputDatum",
-    "Minting Data Datum must be inline datum"
+  invariant(datumCbor, "Minting Data Datum must have inline datum CBOR");
+  const data = plutusDataFromCbor(datumCbor);
+  const constr = expectConstr(data, 0, 1, "MintingData");
+  const mpt_root_hash = expectBytesHex(
+    constr.fields.items[0],
+    "mpt_root_hash must be ByteArray",
   );
-  const datumData = datum.data;
-  const mintingDataConstrData = expectConstrData(datumData, 0, 1);
-
-  const mpt_root_hash = expectByteArrayData(
-    mintingDataConstrData.fields[0],
-    "mpt_root_hash must be ByteArray"
-  ).toHex();
-
   return { mpt_root_hash };
 };
 
-const buildLegacyHandleProofData = (proof: LegacyHandleProof): UplcData => {
+const buildLegacyHandleProofData = (proof: LegacyHandleProof): PlutusData => {
   const { mpt_proof, handle_name, is_virtual } = proof;
-  return makeConstrData(0, [
+  return mkConstr(0, [
     buildMPTProofData(mpt_proof),
-    makeByteArrayData(handle_name),
-    makeIntData(is_virtual),
+    mkBytes(handle_name),
+    mkInt(is_virtual),
   ]);
 };
 
 const buildMintingDataMintNewHandlesRedeemer = (
   proofs: MPTProof[],
-  minter_index: bigint
-): UplcData => {
-  return makeConstrData(0, [
-    makeListData(proofs.map(buildMPTProofData)),
-    makeIntData(minter_index),
+  minter_index: bigint,
+): PlutusData =>
+  mkConstr(0, [
+    mkList(proofs.map(buildMPTProofData)),
+    mkInt(minter_index),
   ]);
-};
 
 const buildMintingDataMintLegacyHandlesRedeemer = (
-  proofs: LegacyHandleProof[]
-): UplcData => {
-  return makeConstrData(1, [
-    makeListData(proofs.map(buildLegacyHandleProofData)),
-  ]);
-};
-const buildMintingDataUpdateMPTRedeemer = (): UplcData => {
-  return makeConstrData(2, []);
-};
+  proofs: LegacyHandleProof[],
+): PlutusData => mkConstr(1, [mkList(proofs.map(buildLegacyHandleProofData))]);
+
+const buildMintingDataUpdateMPTRedeemer = (): PlutusData => mkConstr(2, []);
 
 export {
   buildLegacyHandleProofData,

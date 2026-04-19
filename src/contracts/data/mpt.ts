@@ -1,43 +1,40 @@
-import {
-  makeByteArrayData,
-  makeConstrData,
-  makeIntData,
-  makeListData,
-  UplcData,
-} from "@helios-lang/uplc";
-
 import { MPTProof, MPTProofStep, Neighbor } from "../types/index.js";
+import {
+  mkBytes,
+  mkConstr,
+  mkInt,
+  mkList,
+  PlutusData,
+} from "./plutusData.js";
 
-const buildMPTProofData = (proof: MPTProof): UplcData => {
-  return makeListData(proof.map(buildMPTProofStepData));
-};
+const buildMPTProofData = (proof: MPTProof): PlutusData =>
+  mkList(proof.map(buildMPTProofStepData));
 
-const buildMPTProofStepData = (proofStep: MPTProofStep): UplcData => {
+const buildMPTProofStepData = (proofStep: MPTProofStep): PlutusData => {
   if (proofStep.type == "branch") {
-    return makeConstrData(0, [
-      makeIntData(proofStep.skip),
-      makeByteArrayData(proofStep.neighbors),
-    ]);
-  } else if (proofStep.type == "fork") {
-    return makeConstrData(1, [
-      makeIntData(proofStep.skip),
-      buildNeighborData(proofStep.neighbor),
-    ]);
-  } else {
-    return makeConstrData(2, [
-      makeIntData(proofStep.skip),
-      makeByteArrayData(proofStep.key),
-      makeByteArrayData(proofStep.value),
+    return mkConstr(0, [
+      mkInt(proofStep.skip),
+      mkBytes(proofStep.neighbors),
     ]);
   }
-};
-
-const buildNeighborData = (neighbor: Neighbor): UplcData => {
-  return makeConstrData(0, [
-    makeIntData(neighbor.nibble),
-    makeByteArrayData(neighbor.prefix),
-    makeByteArrayData(neighbor.root),
+  if (proofStep.type == "fork") {
+    return mkConstr(1, [
+      mkInt(proofStep.skip),
+      buildNeighborData(proofStep.neighbor),
+    ]);
+  }
+  return mkConstr(2, [
+    mkInt(proofStep.skip),
+    mkBytes(proofStep.key),
+    mkBytes(proofStep.value),
   ]);
 };
+
+const buildNeighborData = (neighbor: Neighbor): PlutusData =>
+  mkConstr(0, [
+    mkInt(neighbor.nibble),
+    mkBytes(neighbor.prefix),
+    mkBytes(neighbor.root),
+  ]);
 
 export { buildMPTProofData, buildMPTProofStepData, buildNeighborData };

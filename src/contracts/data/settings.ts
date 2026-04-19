@@ -1,42 +1,41 @@
-import { TxOutputDatum } from "@helios-lang/ledger";
-import {
-  expectByteArrayData,
-  expectConstrData,
-  expectIntData,
-  makeByteArrayData,
-  makeConstrData,
-  makeIntData,
-  UplcData,
-} from "@helios-lang/uplc";
-
 import { invariant } from "../../helpers/index.js";
 import { Settings } from "../types/index.js";
+import {
+  expectBytesHex,
+  expectConstr,
+  expectInt,
+  mkBytes,
+  mkConstr,
+  mkInt,
+  PlutusData,
+  plutusDataFromCbor,
+} from "./plutusData.js";
 
-const buildSettingsData = (settings: Settings): UplcData => {
+const buildSettingsData = (settings: Settings): PlutusData => {
   const { mint_governor, mint_version, data } = settings;
-  return makeConstrData(0, [
-    makeByteArrayData(mint_governor),
-    makeIntData(mint_version),
+  return mkConstr(0, [
+    mkBytes(mint_governor),
+    mkInt(mint_version),
     data,
   ]);
 };
 
-const decodeSettingsDatum = (datum: TxOutputDatum | undefined): Settings => {
-  invariant(
-    datum?.kind == "InlineTxOutputDatum",
-    "Settings must be inline datum"
+const decodeSettingsDatum = (datumCbor: string | undefined): Settings => {
+  invariant(datumCbor, "Settings must have inline datum");
+  const datumData = plutusDataFromCbor(datumCbor);
+  const settingsConstrData = expectConstr(datumData, 0, 3, "Settings");
+
+  const mint_governor = expectBytesHex(
+    settingsConstrData.fields.items[0],
+    "mint_governor must be ByteArray",
   );
-  const datumData = datum.data;
-  const settingsConstrData = expectConstrData(datumData, 0, 3);
 
-  const mint_governor = expectByteArrayData(
-    settingsConstrData.fields[0],
-    "mint_governor must be ByteArray"
-  ).toHex();
+  const mint_version = expectInt(
+    settingsConstrData.fields.items[1],
+    "mint_version must be Int",
+  );
 
-  const mint_version = expectIntData(settingsConstrData.fields[1]).value;
-
-  const data = settingsConstrData.fields[2];
+  const data = settingsConstrData.fields.items[2];
 
   return {
     mint_governor,

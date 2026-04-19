@@ -1,5 +1,8 @@
-import { decodeUplcProgramV2FromCbor, UplcProgramV2 } from "@helios-lang/uplc";
-
+import {
+  applyParamsToScript,
+  type PlutusDataJson,
+  plutusV2ScriptHash,
+} from "../helpers/cardano-sdk/scriptParams.js";
 import { invariant } from "../helpers/index.js";
 import optimizedBlueprint from "./optimized-blueprint.js";
 import unOptimizedBlueprint from "./unoptimized-blueprint.js";
@@ -9,101 +12,65 @@ import {
   makeMintV1UplcProgramParameter,
 } from "./utils.js";
 
-const getMintProxyMintUplcProgram = (mint_version: bigint): UplcProgramV2 => {
-  const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "demimntprx.mint"
-  );
-  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "demimntprx.mint"
-  );
+/**
+ * A parameterized validator as consumed by the rest of the package.
+ *
+ * `optimizedCbor` / `unoptimizedCbor` are in double-CBOR form (byte string
+ * wrapping byte string wrapping flat UPLC) — the format that
+ * `Serialization.PlutusV2Script.fromCbor` and the on-chain `script_ref` field
+ * both expect.
+ */
+export interface AppliedPlutusV2Script {
+  optimizedCbor: string;
+  unoptimizedCbor: string;
+  scriptHash: string;
+}
+
+const findValidator = (title: string) => {
+  const optimized = optimizedBlueprint.validators.find((v) => v.title === title);
+  const unoptimized = unOptimizedBlueprint.validators.find((v) => v.title === title);
   invariant(
-    !!optimizedFoundValidator && !!unOptimizedFoundValidator,
-    "Mint Proxy Mint Validator not found"
+    !!optimized && !!unoptimized,
+    `Validator not found in blueprint: ${title}`,
   );
-  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
-    .apply(makeMintProxyUplcProgramParameter(mint_version))
-    .withAlt(
-      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
-        makeMintProxyUplcProgramParameter(mint_version)
-      )
-    );
+  return { optimized, unoptimized };
 };
 
-const getMintV1WithdrawUplcProgram = (
-  minting_data_script_hash: string
-): UplcProgramV2 => {
-  const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "demimnt.withdraw"
-  );
-  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "demimnt.withdraw"
-  );
-  invariant(
-    !!optimizedFoundValidator && unOptimizedFoundValidator,
-    "Mint V1 Withdraw Validator not found"
-  );
-  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
-    .apply(makeMintV1UplcProgramParameter(minting_data_script_hash))
-    .withAlt(
-      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
-        makeMintV1UplcProgramParameter(minting_data_script_hash)
-      )
-    );
+const applyAndHash = (
+  title: string,
+  params: PlutusDataJson[],
+): AppliedPlutusV2Script => {
+  const { optimized, unoptimized } = findValidator(title);
+  const optimizedCbor = applyParamsToScript(optimized.compiledCode, params);
+  const unoptimizedCbor = applyParamsToScript(unoptimized.compiledCode, params);
+  const scriptHash = plutusV2ScriptHash(optimizedCbor);
+  return { optimizedCbor, unoptimizedCbor, scriptHash };
 };
 
-// this is `minting_data_script_hash`
-const getMintingDataSpendUplcProgram = (
+export const getMintProxyMintValidator = (
+  mint_version: bigint,
+): AppliedPlutusV2Script =>
+  applyAndHash("demimntprx.mint", makeMintProxyUplcProgramParameter(mint_version));
+
+export const getMintV1WithdrawValidator = (
+  minting_data_script_hash: string,
+): AppliedPlutusV2Script =>
+  applyAndHash(
+    "demimnt.withdraw",
+    makeMintV1UplcProgramParameter(minting_data_script_hash),
+  );
+
+export const getMintingDataSpendValidator = (
   legacy_policy_id: string,
-  admin_verification_key_hash: string
-): UplcProgramV2 => {
-  const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "demimntmpt.spend"
+  admin_verification_key_hash: string,
+): AppliedPlutusV2Script =>
+  applyAndHash(
+    "demimntmpt.spend",
+    makeMintingDataUplcProgramParameter(
+      legacy_policy_id,
+      admin_verification_key_hash,
+    ),
   );
-  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "demimntmpt.spend"
-  );
-  invariant(
-    !!optimizedFoundValidator && !!unOptimizedFoundValidator,
-    "Minting Data Spend Validator not found"
-  );
-  return decodeUplcProgramV2FromCbor(optimizedFoundValidator.compiledCode)
-    .apply(
-      makeMintingDataUplcProgramParameter(
-        legacy_policy_id,
-        admin_verification_key_hash
-      )
-    )
-    .withAlt(
-      decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode).apply(
-        makeMintingDataUplcProgramParameter(
-          legacy_policy_id,
-          admin_verification_key_hash
-        )
-      )
-    );
-};
 
-const getOrdersSpendUplcProgram = (): UplcProgramV2 => {
-  const optimizedFoundValidator = optimizedBlueprint.validators.find(
-    (validator) => validator.title == "demiord.spend"
-  );
-  const unOptimizedFoundValidator = unOptimizedBlueprint.validators.find(
-    (validator) => validator.title == "demiord.spend"
-  );
-  invariant(
-    !!optimizedFoundValidator && !!unOptimizedFoundValidator,
-    "Orders Spend Validator not found"
-  );
-  return decodeUplcProgramV2FromCbor(
-    optimizedFoundValidator.compiledCode
-  ).withAlt(
-    decodeUplcProgramV2FromCbor(unOptimizedFoundValidator.compiledCode)
-  );
-};
-
-export {
-  getMintingDataSpendUplcProgram,
-  getMintProxyMintUplcProgram,
-  getMintV1WithdrawUplcProgram,
-  getOrdersSpendUplcProgram,
-};
+export const getOrdersSpendValidator = (): AppliedPlutusV2Script =>
+  applyAndHash("demiord.spend", []);

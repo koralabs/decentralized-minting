@@ -1,10 +1,9 @@
-import { ShelleyAddress } from "@helios-lang/ledger";
-import { UplcData } from "@helios-lang/uplc";
+import type { PlutusData } from "../data/plutusData.js";
 
 interface OrderDatum {
-  owner: UplcData;
+  owner: PlutusData;
   requested_handle: string; // hex string without asset label
-  destination_address: ShelleyAddress;
+  destination_address: string; // bech32
 }
 
 export type { OrderDatum };

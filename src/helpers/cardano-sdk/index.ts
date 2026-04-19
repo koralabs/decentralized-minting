@@ -47,3 +47,11 @@ export {
   spliceVkeysIntoWitnessSet,
 } from "./cborSplice.js";
 export { computeScriptDataHash } from "./computeScriptDataHash.js";
+export { getNetworkId, type NetworkName } from "./networkName.js";
+export {
+  applyParamsToScript,
+  plutusDataJsonToCbor,
+  plutusDataJsonToCore,
+  type PlutusDataJson,
+  plutusV2ScriptHash,
+} from "./scriptParams.js";

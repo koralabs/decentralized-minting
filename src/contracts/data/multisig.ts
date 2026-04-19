@@ -1,8 +1,7 @@
-import { PubKeyHash } from "@helios-lang/ledger";
-import { makeByteArrayData, makeConstrData, UplcData } from "@helios-lang/uplc";
+import { mkBytes, mkConstr, PlutusData } from "./plutusData.js";
 
-const makeSignatureMultiSigScriptData = (pubKeyHash: PubKeyHash): UplcData => {
-  return makeConstrData(0, [makeByteArrayData(pubKeyHash.toHex())]);
-};
+/** Native-script-style signature multisig: `Constr 0 [PubKeyHash]`. */
+const makeSignatureMultiSigScriptData = (pubKeyHashHex: string): PlutusData =>
+  mkConstr(0, [mkBytes(pubKeyHashHex)]);
 
 export { makeSignatureMultiSigScriptData };

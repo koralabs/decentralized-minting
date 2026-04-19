@@ -1,27 +1,19 @@
-import {
-  makeAddress,
-  makeMintingPolicyHash,
-  makeRegistrationDCert,
-  makeStakingAddress,
-  makeStakingValidatorHash,
-  makeValidatorHash,
-} from "@helios-lang/ledger";
-import { NetworkName } from "@helios-lang/tx-utils";
+import type { Cardano as CardanoTypes } from "@cardano-sdk/core";
 
+import { Cardano, type NetworkName } from "../helpers/cardano-sdk/index.js";
+import type { HexBlob } from "../helpers/cardano-sdk/index.js";
+import type { AppliedPlutusV2Script } from "./validators.js";
 import {
-  getMintingDataSpendUplcProgram,
-  getMintProxyMintUplcProgram,
-  getMintV1WithdrawUplcProgram,
-  getOrdersSpendUplcProgram,
+  getMintingDataSpendValidator,
+  getMintProxyMintValidator,
+  getMintV1WithdrawValidator,
+  getOrdersSpendValidator,
 } from "./validators.js";
 
 /**
- * @interface
- * @typedef {object} BuildContractsParams
- * @property {NetworkName} network Cardano Network
- * @property {bigint} mint_version De-Mi version
- * @property {string} legacy_policy_id Legacy Handle's Policy ID
- * @property {string} admin_verification_key_hash Admin Verification Key Hash
+ * Contract build inputs, previously typed via `@helios-lang/tx-utils`. The
+ * local `NetworkName` union and cardano-sdk primitives cover the same
+ * information without the Helios dependency tree.
  */
 interface BuildContractsParams {
   network: NetworkName;
@@ -31,83 +23,124 @@ interface BuildContractsParams {
 }
 
 /**
- * @description Build Contracts for De-Mi from config
- * @param {BuildContractsParams} params
- * @returns All Contracts
+ * All contract hashes/addresses a tx builder in this package might need.
+ * Every field is either a hex string or a bech32 string — no Helios types.
  */
-const buildContracts = (params: BuildContractsParams) => {
+export interface BuiltContracts {
+  mintProxy: {
+    validator: AppliedPlutusV2Script;
+    policyId: string;
+  };
+  mintingData: {
+    validator: AppliedPlutusV2Script;
+    validatorHash: string;
+    scriptAddress: string;
+  };
+  mintV1: {
+    validator: AppliedPlutusV2Script;
+    validatorHash: string;
+    stakingAddress: string;
+    registrationCertificate: CardanoTypes.StakeAddressCertificate;
+  };
+  orders: {
+    validator: AppliedPlutusV2Script;
+    validatorHash: string;
+    scriptAddress: string;
+  };
+  handlePolicyId: string;
+}
+
+const networkId = (network: NetworkName): 0 | 1 =>
+  network === "mainnet" ? 1 : 0;
+
+const scriptEnterpriseBech32 = (
+  network: NetworkName,
+  scriptHash: string,
+): string => {
+  const credential = {
+    type: Cardano.CredentialType.ScriptHash,
+    hash: scriptHash as unknown as CardanoTypes.Credential["hash"],
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (Cardano as any)
+    .EnterpriseAddress.fromCredentials(networkId(network), credential)
+    .toAddress()
+    .toBech32() as string;
+};
+
+const scriptRewardAccountBech32 = (
+  network: NetworkName,
+  scriptHash: string,
+): string => {
+  const credential = {
+    type: Cardano.CredentialType.ScriptHash,
+    hash: scriptHash as unknown as CardanoTypes.Credential["hash"],
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (Cardano as any)
+    .RewardAccount.fromCredentials(networkId(network), credential) as string;
+};
+
+const buildContracts = (params: BuildContractsParams): BuiltContracts => {
   const {
     network,
     mint_version,
     legacy_policy_id,
     admin_verification_key_hash,
   } = params;
-  const isMainnet = network == "mainnet";
 
   // "demimntprx.mint"
-  const mintProxyMintUplcProgram = getMintProxyMintUplcProgram(mint_version);
-  const mintProxyPolicyHash = makeMintingPolicyHash(
-    mintProxyMintUplcProgram.hash()
-  );
-  const handlePolicyHash = mintProxyPolicyHash;
+  const mintProxy = getMintProxyMintValidator(mint_version);
 
   // "demimntmpt.spend"
-  const mintingDataSpendUplcProgram = getMintingDataSpendUplcProgram(
+  const mintingData = getMintingDataSpendValidator(
     legacy_policy_id,
-    admin_verification_key_hash
-  );
-  const mintingDataValidatorHash = makeValidatorHash(
-    mintingDataSpendUplcProgram.hash()
-  );
-  const mintingDataValidatorAddress = makeAddress(
-    isMainnet,
-    mintingDataValidatorHash
+    admin_verification_key_hash,
   );
 
   // "demimnt.withdraw"
-  const mintV1WithdrawUplcProgram = getMintV1WithdrawUplcProgram(
-    mintingDataValidatorHash.toHex()
-  );
-  const mintV1ValidatorHash = makeValidatorHash(
-    mintV1WithdrawUplcProgram.hash()
-  );
-  const mintV1StakingAddress = makeStakingAddress(
-    isMainnet,
-    makeStakingValidatorHash(mintV1WithdrawUplcProgram.hash())
-  );
-  const mintV1RegistrationDCert = makeRegistrationDCert(
-    mintV1StakingAddress.stakingCredential
-  );
+  const mintV1 = getMintV1WithdrawValidator(mintingData.scriptHash);
 
   // "demiord.spend"
-  const ordersSpendUplcProgram = getOrdersSpendUplcProgram();
-  const ordersValidatorHash = makeValidatorHash(ordersSpendUplcProgram.hash());
-  const ordersValidatorAddress = makeAddress(isMainnet, ordersValidatorHash);
+  const orders = getOrdersSpendValidator();
+
+  const mintV1StakingAddress = scriptRewardAccountBech32(network, mintV1.scriptHash);
+  const mintV1Credential = {
+    type: Cardano.CredentialType.ScriptHash,
+    hash: mintV1.scriptHash as unknown as CardanoTypes.Credential["hash"],
+  };
+  const mintV1RegistrationCertificate: CardanoTypes.StakeAddressCertificate = {
+    __typename: Cardano.CertificateType.StakeRegistration,
+    stakeCredential: mintV1Credential,
+  };
 
   return {
     mintProxy: {
-      mintProxyMintUplcProgram,
-      mintProxyPolicyHash,
+      validator: mintProxy,
+      policyId: mintProxy.scriptHash,
     },
     mintingData: {
-      mintingDataSpendUplcProgram,
-      mintingDataValidatorHash,
-      mintingDataValidatorAddress,
+      validator: mintingData,
+      validatorHash: mintingData.scriptHash,
+      scriptAddress: scriptEnterpriseBech32(network, mintingData.scriptHash),
     },
     mintV1: {
-      mintV1WithdrawUplcProgram,
-      mintV1ValidatorHash,
-      mintV1StakingAddress,
-      mintV1RegistrationDCert,
+      validator: mintV1,
+      validatorHash: mintV1.scriptHash,
+      stakingAddress: mintV1StakingAddress,
+      registrationCertificate: mintV1RegistrationCertificate,
     },
     orders: {
-      ordersSpendUplcProgram,
-      ordersValidatorHash,
-      ordersValidatorAddress,
+      validator: orders,
+      validatorHash: orders.scriptHash,
+      scriptAddress: scriptEnterpriseBech32(network, orders.scriptHash),
     },
-    handlePolicyHash,
+    handlePolicyId: mintProxy.scriptHash,
   };
 };
 
+// Silence "used-as-type-only" warning: we keep the HexBlob import so
+// downstream callers can use the same brand without pulling @cardano-sdk/util.
+export type { HexBlob };
 export type { BuildContractsParams };
 export { buildContracts };

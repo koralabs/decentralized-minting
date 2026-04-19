@@ -1,61 +1,56 @@
-import { TxOutputDatum } from "@helios-lang/ledger";
-import {
-  expectConstrData,
-  expectIntData,
-  expectListData,
-  makeConstrData,
-  makeIntData,
-  makeListData,
-  UplcData,
-} from "@helios-lang/uplc";
-
 import { invariant } from "../../helpers/index.js";
 import { HandlePriceData, HandlePriceInfo } from "../types/index.js";
+import {
+  expectConstr,
+  expectInt,
+  expectList,
+  mkConstr,
+  mkInt,
+  mkList,
+  PlutusData,
+  plutusDataFromCbor,
+} from "./plutusData.js";
 
 const buildHandlePriceInfoData = (
-  handlePriceInfo: HandlePriceInfo
-): UplcData => {
+  handlePriceInfo: HandlePriceInfo,
+): PlutusData => {
   const { current_data, prev_data, updated_at } = handlePriceInfo;
-  return makeConstrData(0, [
+  return mkConstr(0, [
     buildHandlePriceData(current_data),
     buildHandlePriceData(prev_data),
-    makeIntData(updated_at),
+    mkInt(updated_at),
   ]);
 };
 
-const buildHandlePriceData = (handlePriceData: HandlePriceData): UplcData => {
+const buildHandlePriceData = (handlePriceData: HandlePriceData): PlutusData => {
   invariant(
     handlePriceData.length == 4,
-    "Handle Price Data must be 4, ultraRare, rare, common, basic"
+    "Handle Price Data must be 4, ultraRare, rare, common, basic",
   );
-
-  return makeListData(handlePriceData.map(makeIntData));
+  return mkList(handlePriceData.map((v) => mkInt(v)));
 };
 
 const decodeHandlePriceInfoDatum = (
-  datum: TxOutputDatum | undefined
+  datumCbor: string | undefined,
 ): HandlePriceInfo => {
-  invariant(
-    datum?.kind == "InlineTxOutputDatum",
-    "Minting Data Datum must be inline datum"
+  invariant(datumCbor, "HandlePriceInfo datum must have inline datum CBOR");
+  const data = plutusDataFromCbor(datumCbor);
+  const constr = expectConstr(data, 0, 3, "HandlePriceInfo");
+
+  const current_data = expectList(
+    constr.fields.items[0],
+    "handle price info current data must be List",
+  ).map((item) => expectInt(item));
+
+  const prev_data = expectList(
+    constr.fields.items[1],
+    "handle price info prev data must be List",
+  ).map((item) => expectInt(item));
+
+  const updated_at = expectInt(
+    constr.fields.items[2],
+    "handle price info updated_at must be Int",
   );
-  const datumData = datum.data;
-  const handlePriceInfoConstrData = expectConstrData(datumData, 0, 3);
-
-  const current_data = expectListData(
-    handlePriceInfoConstrData.fields[0],
-    "handle price info current data must be List"
-  ).items.map((item) => expectIntData(item).value);
-
-  const prev_data = expectListData(
-    handlePriceInfoConstrData.fields[1],
-    "handle price info prev data must be List"
-  ).items.map((item) => expectIntData(item).value);
-
-  const updated_at = expectIntData(
-    handlePriceInfoConstrData.fields[2],
-    "handle price info updated_at must be Int"
-  ).value;
 
   return { current_data, prev_data, updated_at };
 };
