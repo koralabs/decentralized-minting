@@ -141,7 +141,92 @@ const main = async () => {
   // Track consumed UTxOs across all txs to prevent input conflicts
   const consumedUtxoRefs = new Set<string>();
 
+  // Determine whether the MPT-root migration tx will need to be emitted.
+  // We compute this UP FRONT so the admin-funding tx (if needed) can be
+  // emitted as tx-00 — the operator signs+submits it first, the
+  // migration tx then references its predicted outputs as inputs, and
+  // the whole chain ships in one workflow run instead of the historical
+  // two-phase pattern.
+  const mptContract = plan.summaryJson.contracts.find(
+    (c) => c.contract_slug === "demimntmpt"
+  );
+  const mptNeedsMigration = await (async () => {
+    if (!mptContract || !blockfrostApiKey) return false;
+    if (mptContract.drift_type === "script_hash_only" || mptContract.drift_type === "script_hash_and_settings") return true;
+    try {
+      const { fetch: crossFetch } = await import("cross-fetch");
+      const baseUrl = desired.network === "preview" ? "https://preview.api.handle.me" :
+        desired.network === "preprod" ? "https://preprod.api.handle.me" : "https://api.handle.me";
+      const rootRes = await crossFetch(`${baseUrl}/handles/${encodeURIComponent("handle_root@handle_settings")}`,
+        { headers: { "User-Agent": userAgent } });
+      if (!rootRes.ok) return false;
+      const rootHandle = await rootRes.json() as { resolved_addresses?: { ada?: string } };
+      const currentAddress = rootHandle.resolved_addresses?.ada ?? "";
+      const latestSub = mptContract.subhandle?.value ?? "";
+      if (!latestSub) return false;
+      const subRes = await crossFetch(`${baseUrl}/handles/${encodeURIComponent(latestSub)}`,
+        { headers: { "User-Agent": userAgent } });
+      if (!subRes.ok) return false;
+      const subHandle = await subRes.json() as { resolved_addresses?: { ada?: string } };
+      void subHandle;
+      const { buildContracts } = await import("../src/contracts/config.js");
+      const built = buildContracts({
+        network: desired.network,
+        mint_version: BigInt(desired.buildParameters.mintVersion),
+        legacy_policy_id: desired.buildParameters.legacyPolicyId,
+        admin_verification_key_hash: desired.buildParameters.adminVerificationKeyHash,
+      });
+      const expectedAddress = built.mintingData.mintingDataValidatorAddress.toBech32();
+      const needsMigration = currentAddress !== expectedAddress;
+      if (needsMigration) {
+        console.log(`handle_root@handle_settings is at ${currentAddress.slice(0, 30)}... but should be at ${expectedAddress.slice(0, 30)}...`);
+      }
+      return needsMigration;
+    } catch {
+      return false;
+    }
+  })();
+
+  // If migration is needed, build the admin-funding tx FIRST (as
+  // tx-00) and capture the predicted outputs that the migration tx
+  // will consume. `buildPreparationTx` returns null when admin
+  // already has both a collateral-sized and a fee-sized clean ADA
+  // UTxO on chain — in that case no funding tx is emitted.
   let txIndex = 0;
+  let pendingAdminFunding: Awaited<ReturnType<typeof buildPreparationTx>> = null;
+  if (mptNeedsMigration && blockfrostApiKey) {
+    try {
+      pendingAdminFunding = await buildPreparationTx({
+        desired,
+        nativeScriptCborHex: nativeScriptCborHex || undefined,
+        blockfrostApiKey,
+        userAgent,
+        excludeUtxoRefs: consumedUtxoRefs,
+      });
+      if (pendingAdminFunding) {
+        for (const ref of pendingAdminFunding.consumedInputs) consumedUtxoRefs.add(ref);
+        // tx-00 is reserved for the funding tx — every subsequent
+        // deploy/settings/migration tx in this run is numbered
+        // starting at tx-01. Naming pattern matches the historical
+        // tx-04-admin-funding emission so K.O.R.A. and operator
+        // muscle memory recognize it.
+        const prepFileName = `tx-${String(txIndex).padStart(2, "0")}-admin-funding.cbor`;
+        const prepCborBytes = Buffer.from(pendingAdminFunding.cborHex, "hex");
+        await fs.writeFile(path.join(args["artifacts-dir"], prepFileName), prepCborBytes);
+        await fs.writeFile(path.join(args["artifacts-dir"], `${prepFileName}.hex`), `${pendingAdminFunding.cborHex}\n`);
+        generatedArtifacts.push(prepFileName, `${prepFileName}.hex`);
+        transactionOrder.push(prepFileName);
+        txArtifactGenerated = true;
+        console.log(`Generated admin funding tx: ${prepFileName} (sign + submit FIRST; migration tx references its predicted outputs)`);
+        // Leave txIndex at 0 — the loop below increments BEFORE
+        // formatting the filename, so the first deploy tx will be
+        // tx-01 even though we just wrote tx-00.
+      }
+    } catch (error) {
+      console.log(`Skipping admin funding tx: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+
   for (const contractPlan of changedContracts) {
     const desiredContract = desired.contracts.find((contract) => contract.contractSlug === contractPlan.contract_slug);
     const handleName = String(contractPlan.subhandle.value ?? "").trim();
@@ -202,83 +287,18 @@ const main = async () => {
     }
   }
 
-  // Generate MPT root migration tx if handle_root@handle_settings is at the wrong address.
-  // This can happen after a demimntmpt upgrade — the ref script is deployed but the
-  // handle_root UTxO still sits at the old validator address.
-  const mptContract = plan.summaryJson.contracts.find(
-    (c) => c.contract_slug === "demimntmpt"
-  );
-  const mptNeedsMigration = await (async () => {
-    if (!mptContract || !blockfrostApiKey) return false;
-    // If there's a script hash change, migration is always needed
-    if (mptContract.drift_type === "script_hash_only" || mptContract.drift_type === "script_hash_and_settings") return true;
-    // Check if handle_root@handle_settings is at the expected validator address
-    try {
-      const { fetch: crossFetch } = await import("cross-fetch");
-      const baseUrl = desired.network === "preview" ? "https://preview.api.handle.me" :
-        desired.network === "preprod" ? "https://preprod.api.handle.me" : "https://api.handle.me";
-      const rootRes = await crossFetch(`${baseUrl}/handles/${encodeURIComponent("handle_root@handle_settings")}`,
-        { headers: { "User-Agent": userAgent } });
-      if (!rootRes.ok) return false;
-      const rootHandle = await rootRes.json() as { resolved_addresses?: { ada?: string } };
-      const currentAddress = rootHandle.resolved_addresses?.ada ?? "";
-      // Get the expected address from the latest demimntmpt subhandle
-      const latestSub = mptContract.subhandle?.value ?? "";
-      if (!latestSub) return false;
-      const subRes = await crossFetch(`${baseUrl}/handles/${encodeURIComponent(latestSub)}`,
-        { headers: { "User-Agent": userAgent } });
-      if (!subRes.ok) return false;
-      const subHandle = await subRes.json() as { resolved_addresses?: { ada?: string } };
-      const expectedScriptAddress = subHandle.resolved_addresses?.ada ?? "";
-      // The handle_root should be at the validator address derived from the latest script hash,
-      // NOT at the subhandle's address. Compute expected from the built contracts.
-      const { buildContracts } = await import("../src/contracts/config.js");
-      const built = buildContracts({
-        network: desired.network,
-        mint_version: BigInt(desired.buildParameters.mintVersion),
-        legacy_policy_id: desired.buildParameters.legacyPolicyId,
-        admin_verification_key_hash: desired.buildParameters.adminVerificationKeyHash,
-      });
-      const expectedAddress = built.mintingData.mintingDataValidatorAddress.toBech32();
-      const needsMigration = currentAddress !== expectedAddress;
-      if (needsMigration) {
-        console.log(`handle_root@handle_settings is at ${currentAddress.slice(0, 30)}... but should be at ${expectedAddress.slice(0, 30)}...`);
-      }
-      return needsMigration;
-    } catch {
-      return false;
-    }
-  })();
+  // Emit the MPT-root migration tx (last in the manifest). When
+  // `pendingAdminFunding` is set, the migration tx references the
+  // funding tx's predicted outputs as inputs — operator signs both,
+  // submits in order (tx-00 → migration), node accepts the chain.
   if (mptNeedsMigration) {
     const currentMptSubhandle = liveContracts.find(
       (lc) => lc.contractSlug === "demimntmpt"
     )?.currentSubhandle;
-
     if (!currentMptSubhandle) {
       console.log("Skipping MPT root migration: no current demimntmpt subhandle found");
     } else {
       try {
-        // Check if admin wallet needs funding and generate a prep tx
-        const prepTx = await buildPreparationTx({
-          desired,
-          nativeScriptCborHex: nativeScriptCborHex || undefined,
-          blockfrostApiKey,
-          userAgent,
-          excludeUtxoRefs: consumedUtxoRefs,
-        });
-        if (prepTx) {
-          for (const ref of prepTx.consumedInputs) consumedUtxoRefs.add(ref);
-          txIndex += 1;
-          const prepFileName = `tx-${String(txIndex).padStart(2, "0")}-admin-funding.cbor`;
-          const prepCborBytes = Buffer.from(prepTx.cborHex, "hex");
-          await fs.writeFile(path.join(args["artifacts-dir"], prepFileName), prepCborBytes);
-          await fs.writeFile(path.join(args["artifacts-dir"], `${prepFileName}.hex`), `${prepTx.cborHex}\n`);
-          generatedArtifacts.push(prepFileName, `${prepFileName}.hex`);
-          transactionOrder.push(prepFileName);
-          txArtifactGenerated = true;
-          console.log(`Generated admin funding tx: ${prepFileName} (sign and submit before MPT migration)`);
-        }
-
         console.log("Computing MPT root hash from API handle set...");
         const newMptRootHash = await computeMptRootHash({
           network: desired.network,
@@ -293,31 +313,27 @@ const main = async () => {
           userAgent,
         });
 
-        try {
-          const migrationTx = await buildMptRootMigrationTx({
-            desired,
-            newMptRootHash,
-            oldValidatorCborHex,
-            blockfrostApiKey,
-            userAgent,
-          });
+        const migrationTx = await buildMptRootMigrationTx({
+          desired,
+          newMptRootHash,
+          oldValidatorCborHex,
+          blockfrostApiKey,
+          userAgent,
+          pendingAdminFunding: pendingAdminFunding?.pendingAdminFundingUtxos,
+        });
 
-          txIndex += 1;
-          const fileName = `tx-${String(txIndex).padStart(2, "0")}-mpt-migration.cbor`;
-          const cborBytes = Buffer.from(migrationTx.cborHex, "hex");
-          await fs.writeFile(path.join(args["artifacts-dir"], fileName), cborBytes);
-          await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${migrationTx.cborHex}\n`);
-          generatedArtifacts.push(fileName, `${fileName}.hex`);
-          transactionOrder.push(fileName);
-          txArtifactGenerated = true;
-          console.log(`Generated MPT root migration tx: ${fileName} (requires admin/policy key signature)`);
-        } catch (migrationError) {
-          if (prepTx) {
-            console.log(`MPT root migration tx deferred: admin funding tx must be submitted first, then re-run this workflow`);
-          } else {
-            throw migrationError;
-          }
-        }
+        txIndex += 1;
+        const fileName = `tx-${String(txIndex).padStart(2, "0")}-mpt-migration.cbor`;
+        const cborBytes = Buffer.from(migrationTx.cborHex, "hex");
+        await fs.writeFile(path.join(args["artifacts-dir"], fileName), cborBytes);
+        await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${migrationTx.cborHex}\n`);
+        generatedArtifacts.push(fileName, `${fileName}.hex`);
+        transactionOrder.push(fileName);
+        txArtifactGenerated = true;
+        const chainNote = pendingAdminFunding
+          ? " (chained — references admin-funding tx-00 outputs; submit tx-00 first)"
+          : " (admin already funded; no chained inputs)";
+        console.log(`Generated MPT root migration tx: ${fileName} (requires admin/policy key signature)${chainNote}`);
       } catch (error) {
         console.log(`Skipping MPT root migration tx: ${error instanceof Error ? error.message : error}`);
       }
