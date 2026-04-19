@@ -21,7 +21,7 @@ import {
   makeValidatorHash,
   makeValue,
 } from "@helios-lang/ledger";
-import { makeTxBuilder, makeBlockfrostV0Client } from "@helios-lang/tx-utils";
+import { makeBlockfrostV0Client, makeTxBuilder } from "@helios-lang/tx-utils";
 import {
   decodeUplcData,
   decodeUplcProgramV2FromCbor,
@@ -34,8 +34,8 @@ import { LEGACY_POLICY_ID, PREFIX_222 } from "./constants/index.js";
 import { buildContracts } from "./contracts/config.js";
 import { buildSettingsData } from "./contracts/data/settings.js";
 import { buildSettingsV1Data } from "./contracts/data/settings-v1.js";
-import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
 import { handlesApiBaseUrlForNetwork } from "./deploymentPlan.js";
+import type { DesiredContractTarget, DesiredDeploymentState } from "./deploymentState.js";
 import { type BlockfrostBuildContext, getBlockfrostBuildContext } from "./helpers/cardano-sdk/blockfrostContext.js";
 import { fetchBlockfrostUtxos } from "./helpers/cardano-sdk/blockfrostUtxo.js";
 import {

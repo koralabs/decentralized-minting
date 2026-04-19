@@ -39,3 +39,11 @@ export const transactionToCbor = (tx: import("@cardano-sdk/core").Cardano.Tx): s
 export const transactionHashFromCore = (tx: { body: import("@cardano-sdk/core").Cardano.TxBody }): string =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Serialization.TransactionBody.fromCore(structuredClone(tx.body) as any).hash() as string;
+
+export {
+  locateWitnessSet,
+  mergeVkeysIntoTxCbor,
+  skipCborItem,
+  spliceVkeysIntoWitnessSet,
+} from "./cborSplice.js";
+export { computeScriptDataHash } from "./computeScriptDataHash.js";
