@@ -131,4 +131,4 @@ jobs:
         # attestation automatically.
         run: |
           set -eu
-          (cd ./lib && npm publish --access public --ignore-scripts --provenance)
+          (cd ./lib && npm publish --access public --ignore-scripts --provenance --loglevel=verbose)
