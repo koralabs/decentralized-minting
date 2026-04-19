@@ -34,12 +34,12 @@ jobs:
 
       - name: Strip setup-node auth token placeholder
         # setup-node's `registry-url` writes `_authToken=${NODE_AUTH_TOKEN}`
-        # into the managed .npmrc, and sets NODE_AUTH_TOKEN to the literal
-        # placeholder "XXXXX-XXXXX-XXXXX-XXXXX". With trusted publishing
-        # enabled we don't want ANY bearer token in the publish request —
-        # npm 11 is supposed to fall through to the OIDC exchange when
-        # there's no token, but if the placeholder is present it sends
-        # that garbage instead and registry.npmjs.org responds 404.
+        # into the managed .npmrc and exports NODE_AUTH_TOKEN as the literal
+        # placeholder `XXXXX-XXXXX-XXXXX-XXXXX`. With trusted publishing
+        # there must be NO bearer token on the request — otherwise npm
+        # sends that placeholder and registry.npmjs.org 404s. Strip the
+        # auth line and blank NODE_AUTH_TOKEN so npm falls through to the
+        # OIDC token-exchange endpoint.
         run: |
           set -eu
           for f in "$HOME/.npmrc" "$NPM_CONFIG_USERCONFIG" "./.npmrc"; do
@@ -47,29 +47,7 @@ jobs:
               sed -i '/_authToken=/d' "$f"
             fi
           done
-          # Clear NODE_AUTH_TOKEN in subsequent steps (unsetting here is
-          # per-shell; GITHUB_ENV persists across steps).
           echo "NODE_AUTH_TOKEN=" >> "$GITHUB_ENV"
-
-      - name: Diagnose publish environment
-        run: |
-          echo "node version:   $(node -v)"
-          echo "npm version:    $(npm -v)"
-          echo "which npm:      $(which npm)"
-          echo "PATH:           ${PATH}"
-          echo "--- OIDC env vars ---"
-          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
-          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
-          echo "--- .npmrc locations ---"
-          for f in "$HOME/.npmrc" "$NPM_CONFIG_USERCONFIG" "./.npmrc"; do
-            if [[ -f "$f" ]]; then
-              echo ">>> $f"
-              # mask tokens in log output
-              sed 's/_authToken=.*/_authToken=***/' "$f"
-            fi
-          done
-          echo "--- npm config resolved ---"
-          npm config ls -l 2>&1 | head -40 || true
 
       - name: Install Libssl
         run: |
@@ -131,4 +109,4 @@ jobs:
         # attestation automatically.
         run: |
           set -eu
-          (cd ./lib && npm publish --access public --ignore-scripts --provenance --loglevel=verbose)
+          (cd ./lib && npm publish --access public --ignore-scripts --provenance)
