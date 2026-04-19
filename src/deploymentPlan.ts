@@ -2,18 +2,7 @@ import { Buffer } from "node:buffer";
 import crypto from "node:crypto";
 
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
-import {
-  makeAddress,
-  makeAssetClass,
-  makeAssets,
-  makeInlineTxOutputDatum,
-  makeTxInput,
-  makeTxOutput,
-  makeValue,
-} from "@helios-lang/ledger";
-import { decodeUplcData } from "@helios-lang/uplc";
 
-import { LEGACY_POLICY_ID } from "./constants/index.js";
 import { buildContracts } from "./contracts/config.js";
 import {
   decodeHandlePriceInfoDatum,
@@ -254,13 +243,13 @@ const expectedScriptHashForContract = (
 ): string => {
   switch (contract.build.contractName) {
     case "demimntprx.mint":
-      return built.mintProxy.mintProxyPolicyHash.toHex();
+      return built.mintProxy.policyId;
     case "demimntmpt.spend":
-      return built.mintingData.mintingDataValidatorHash.toHex();
+      return built.mintingData.validatorHash;
     case "demimnt.withdraw":
-      return built.mintV1.mintV1ValidatorHash.toHex();
+      return built.mintV1.validatorHash;
     case "demiord.spend":
-      return built.orders.ordersValidatorHash.toHex();
+      return built.orders.validatorHash;
     default:
       throw new Error(`unsupported contract_name \`${contract.build.contractName}\``);
   }
@@ -332,41 +321,10 @@ export const fetchLiveSettingsState = async ({
     return { currentSettingsUtxoRefs: {}, values: null };
   }
 
-  const settingsTxInput = makeTxInput(
-    String(settingsHandle.utxo),
-    makeTxOutput(
-      makeAddress(String(settingsHandle.resolved_addresses?.ada)),
-      makeValue(1n, makeAssets([[makeAssetClass(`${LEGACY_POLICY_ID}.${String(settingsHandle.hex)}`), 1n]])),
-      makeInlineTxOutputDatum(decodeUplcData(settingsDatumHex))
-    )
-  );
-  const mintingDataTxInput = makeTxInput(
-    String(mintingDataHandle.utxo),
-    makeTxOutput(
-      makeAddress(String(mintingDataHandle.resolved_addresses?.ada)),
-      makeValue(
-        BigInt(Number(mintingDataUtxo.lovelace ?? 0)),
-        makeAssets([[makeAssetClass(`${LEGACY_POLICY_ID}.${String(mintingDataHandle.hex)}`), 1n]])
-      ),
-      makeInlineTxOutputDatum(decodeUplcData(mintingDataDatumHex))
-    )
-  );
-  const handlePriceTxInput = makeTxInput(
-    String(handlePriceHandle.utxo),
-    makeTxOutput(
-      makeAddress(String(handlePriceHandle.resolved_addresses?.ada)),
-      makeValue(
-        BigInt(Number(handlePriceUtxo.lovelace ?? 0)),
-        makeAssets([[makeAssetClass(`${LEGACY_POLICY_ID}.${String(handlePriceHandle.hex)}`), 1n]])
-      ),
-      makeInlineTxOutputDatum(decodeUplcData(handlePriceDatumHex))
-    )
-  );
-
-  const settings = decodeSettingsDatum(settingsTxInput.datum);
+  const settings = decodeSettingsDatum(settingsDatumHex);
   const settingsV1 = decodeSettingsV1Data(settings.data, network);
-  const mintingData = decodeMintingDataDatum(mintingDataTxInput.datum);
-  const handlePrice = decodeHandlePriceInfoDatum(handlePriceTxInput.datum);
+  const mintingData = decodeMintingDataDatum(mintingDataDatumHex);
+  const handlePrice = decodeHandlePriceInfoDatum(handlePriceDatumHex);
 
   return {
     currentSettingsUtxoRefs: {

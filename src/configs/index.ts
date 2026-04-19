@@ -1,15 +1,3 @@
-import {
-  makeAddress,
-  makeAssetClass,
-  makeAssets,
-  makeInlineTxOutputDatum,
-  makeTxInput,
-  makeTxOutput,
-  makeValue,
-  TxInput,
-} from "@helios-lang/ledger";
-import { NetworkName } from "@helios-lang/tx-utils";
-import { decodeUplcData } from "@helios-lang/uplc";
 import { fetch } from "cross-fetch";
 import { Err, Ok, Result } from "ts-res";
 
@@ -29,202 +17,213 @@ import {
   Settings,
   SettingsV1,
 } from "../contracts/index.js";
+import { plutusDataFromCbor } from "../contracts/data/plutusData.js";
+import { type NetworkName } from "../helpers/cardano-sdk/networkName.js";
 import { fetchApi, getNetwork, mayFail } from "../helpers/index.js";
+
+/**
+ * Output UTxO descriptor returned by the settings/minting-data/handle-price
+ * lookups. Replaces the Helios `TxInput` with the minimum data a tx builder
+ * needs to spend from — or reference — this UTxO.
+ */
+export interface UtxoDescriptor {
+  txHash: string;
+  outputIndex: number;
+  address: string; // bech32
+  lovelace: bigint;
+  /** Non-lovelace assets, keyed by `${policyIdHex}.${assetNameHex}`. */
+  assets: Map<string, bigint>;
+  /** Inline datum CBOR hex, if present. */
+  inlineDatumCbor?: string;
+}
+
+const blockfrostHeaders = () => ({
+  project_id: BLOCKFROST_API_KEY,
+  "Content-Type": "application/json",
+});
 
 const fetchCurrentAssetUtxo = async (assetId: string) => {
   const network = getNetwork(BLOCKFROST_API_KEY);
-  const headers = { project_id: BLOCKFROST_API_KEY, "Content-Type": "application/json" };
+  const host = `https://cardano-${network}.blockfrost.io/api/v0`;
+
   const txs = (await fetch(
-    `https://cardano-${network}.blockfrost.io/api/v0/assets/${assetId}/transactions?order=desc&count=1`,
-    { headers }
+    `${host}/assets/${assetId}/transactions?order=desc&count=1`,
+    { headers: blockfrostHeaders() },
   ).then((res) => res.json())) as { tx_hash: string }[];
   const latestTx = txs[0];
   if (!latestTx?.tx_hash) throw new Error("Minting Data UTxO Not Found");
 
   const txUtxos = (await fetch(
-    `https://cardano-${network}.blockfrost.io/api/v0/txs/${latestTx.tx_hash}/utxos`,
-    { headers }
+    `${host}/txs/${latestTx.tx_hash}/utxos`,
+    { headers: blockfrostHeaders() },
   ).then((res) => res.json())) as {
     outputs: {
       output_index: number;
       address: string;
       amount: { unit: string; quantity: string }[];
-      inline_datum?: string;
+      inline_datum?: string | null;
     }[];
   };
   const output = txUtxos.outputs.find((candidate) =>
-    candidate.amount.some((amount) => amount.unit === assetId && amount.quantity !== "0")
+    candidate.amount.some(
+      (amount) => amount.unit === assetId && amount.quantity !== "0",
+    ),
   );
   if (!output) throw new Error("Minting Data UTxO Not Found");
 
   return { tx_id: latestTx.tx_hash, output };
 };
 
-const makeAssetsFromOutputAmounts = (
-  amounts: { unit: string; quantity: string }[]
-) =>
-  makeAssets(
-    amounts
-      .filter((amount) => amount.unit !== "lovelace" && BigInt(amount.quantity) > 0n)
-      .map((amount) => [
-        makeAssetClass(`${amount.unit.slice(0, 56)}.${amount.unit.slice(56)}`),
-        BigInt(amount.quantity),
-      ])
-  );
+const makeUtxoDescriptor = (
+  txHash: string,
+  output: {
+    output_index: number;
+    address: string;
+    amount: { unit: string; quantity: string }[];
+    inline_datum?: string | null;
+  },
+): UtxoDescriptor => {
+  let lovelace = 0n;
+  const assets = new Map<string, bigint>();
+  for (const { unit, quantity } of output.amount) {
+    if (unit === "lovelace") {
+      lovelace = BigInt(quantity);
+    } else {
+      const policyId = unit.slice(0, 56);
+      const assetName = unit.slice(56);
+      assets.set(`${policyId}.${assetName}`, BigInt(quantity));
+    }
+  }
+
+  return {
+    txHash,
+    outputIndex: output.output_index,
+    address: output.address,
+    lovelace,
+    assets,
+    ...(output.inline_datum ? { inlineDatumCbor: output.inline_datum } : {}),
+  };
+};
 
 const fetchSettings = async (
-  network: NetworkName
+  network: NetworkName,
 ): Promise<
   Result<
     {
       settings: Settings;
       settingsV1: SettingsV1;
-      settingsAssetTxInput: TxInput;
+      settingsUtxo: UtxoDescriptor;
     },
     string
   >
 > => {
   const settingsHandle = await fetchApi(`handles/${SETTINGS_HANDLE_NAME}`).then(
-    (res) => res.json()
+    (res) => res.json(),
   );
   const settingsHandleDatum: string = await fetchApi(
     `handles/${SETTINGS_HANDLE_NAME}/datum`,
-    { "Content-Type": "text/plain" }
+    { "Content-Type": "text/plain" },
   ).then((res) => res.text());
 
   if (!settingsHandleDatum) {
     throw new Error("Settings Datum Not Found");
   }
 
-  const settingsAssetTxInput = makeTxInput(
-    settingsHandle.utxo,
-    makeTxOutput(
-      makeAddress(settingsHandle.resolved_addresses.ada),
-      makeValue(
-        BigInt(1),
-        makeAssets([
-          [makeAssetClass(`${LEGACY_POLICY_ID}.${settingsHandle.hex}`), 1n],
-        ])
-      ),
-      makeInlineTxOutputDatum(decodeUplcData(settingsHandleDatum))
-    )
-  );
+  const [txHash, idxStr] = settingsHandle.utxo.split("#");
+  const settingsUtxo: UtxoDescriptor = {
+    txHash,
+    outputIndex: Number.parseInt(idxStr, 10),
+    address: settingsHandle.resolved_addresses.ada,
+    lovelace: 0n,
+    assets: new Map([[`${LEGACY_POLICY_ID}.${settingsHandle.hex}`, 1n]]),
+    inlineDatumCbor: settingsHandleDatum,
+  };
 
   const decodedSettingsResult = mayFail(() =>
-    decodeSettingsDatum(settingsAssetTxInput.datum)
+    decodeSettingsDatum(settingsUtxo.inlineDatumCbor),
   );
-  if (!decodedSettingsResult.ok) {
-    return Err(decodedSettingsResult.error);
-  }
+  if (!decodedSettingsResult.ok) return Err(decodedSettingsResult.error);
 
   const decodedSettingsV1Result = mayFail(() =>
-    decodeSettingsV1Data(decodedSettingsResult.data.data, network)
+    decodeSettingsV1Data(decodedSettingsResult.data.data, network),
   );
   if (!decodedSettingsV1Result.ok) return Err(decodedSettingsV1Result.error);
 
   return Ok({
     settings: decodedSettingsResult.data,
     settingsV1: decodedSettingsV1Result.data,
-    settingsAssetTxInput,
+    settingsUtxo,
   });
 };
 
 const fetchMintingData = async (): Promise<
-  Result<{ mintingData: MintingData; mintingDataAssetTxInput: TxInput }, string>
+  Result<{ mintingData: MintingData; mintingDataUtxo: UtxoDescriptor }, string>
 > => {
-  const mintingDataHandle = await fetchApi(`handles/${MINTING_DATA_HANDLE_NAME}`).then((res) =>
-    res.json()
+  const mintingDataHandle = await fetchApi(
+    `handles/${MINTING_DATA_HANDLE_NAME}`,
+  ).then((res) => res.json());
+
+  const mintingDataRaw = await fetchCurrentAssetUtxo(
+    `${LEGACY_POLICY_ID}${mintingDataHandle.hex}`,
   );
 
-  const mintingDataUtxo = await fetchCurrentAssetUtxo(
-    `${LEGACY_POLICY_ID}${mintingDataHandle.hex}`
-  );
-  const mintingDataDatum = mintingDataUtxo.output.inline_datum;
-
-  if (!mintingDataDatum) {
+  if (!mintingDataRaw.output.inline_datum) {
     throw new Error("Minting Data Datum Not Found");
   }
 
-  const mintingDataAssetTxInput = makeTxInput(
-    `${mintingDataUtxo.tx_id}#${mintingDataUtxo.output.output_index}`,
-    makeTxOutput(
-      makeAddress(mintingDataUtxo.output.address),
-      makeValue(
-        BigInt(
-          mintingDataUtxo.output.amount.find((amount) => amount.unit === "lovelace")
-            ?.quantity || "0"
-        ),
-        makeAssetsFromOutputAmounts(mintingDataUtxo.output.amount)
-      ),
-      makeInlineTxOutputDatum(decodeUplcData(mintingDataDatum))
-    )
+  const mintingDataUtxo = makeUtxoDescriptor(
+    mintingDataRaw.tx_id,
+    mintingDataRaw.output,
   );
 
   const decodedMintingDataResult = mayFail(() =>
-    decodeMintingDataDatum(mintingDataAssetTxInput.datum)
+    decodeMintingDataDatum(mintingDataUtxo.inlineDatumCbor),
   );
-  if (!decodedMintingDataResult.ok) {
-    return Err(decodedMintingDataResult.error);
-  }
+  if (!decodedMintingDataResult.ok) return Err(decodedMintingDataResult.error);
 
   return Ok({
     mintingData: decodedMintingDataResult.data,
-    mintingDataAssetTxInput,
+    mintingDataUtxo,
   });
 };
 
 /**
  * Fetch Handle Price Info Data
  * @param handlePriceAssetName - The name of the handle price asset in UTF8
- * @returns The handle price info data
  */
 const fetchHandlePriceInfoData = async (
-  handlePriceAssetName: string
+  handlePriceAssetName: string,
 ): Promise<
   Result<
-    { handlePriceInfo: HandlePriceInfo; handlePriceInfoAssetTxInput: TxInput },
+    { handlePriceInfo: HandlePriceInfo; handlePriceInfoUtxo: UtxoDescriptor },
     string
   >
 > => {
   const handlePriceInfoHandle = await fetchApi(
-    `handles/${handlePriceAssetName}`
+    `handles/${handlePriceAssetName}`,
   ).then((res) => res.json());
-  const handlePriceInfoUtxo = await fetchCurrentAssetUtxo(
-    `${LEGACY_POLICY_ID}${handlePriceInfoHandle.hex}`
+  const raw = await fetchCurrentAssetUtxo(
+    `${LEGACY_POLICY_ID}${handlePriceInfoHandle.hex}`,
   );
-  const handlePriceInfoHandleDatum = handlePriceInfoUtxo.output.inline_datum;
-
-  if (!handlePriceInfoHandleDatum) {
+  if (!raw.output.inline_datum) {
     throw new Error("Handle Price Info Datum Not Found");
   }
 
-  const handlePriceInfoAssetTxInput = makeTxInput(
-    `${handlePriceInfoUtxo.tx_id}#${handlePriceInfoUtxo.output.output_index}`,
-    makeTxOutput(
-      makeAddress(handlePriceInfoUtxo.output.address),
-      makeValue(
-        BigInt(
-          handlePriceInfoUtxo.output.amount.find(
-            (amount) => amount.unit === "lovelace"
-          )?.quantity || "0"
-        ),
-        makeAssetsFromOutputAmounts(handlePriceInfoUtxo.output.amount)
-      ),
-      makeInlineTxOutputDatum(decodeUplcData(handlePriceInfoHandleDatum))
-    )
-  );
+  const handlePriceInfoUtxo = makeUtxoDescriptor(raw.tx_id, raw.output);
 
-  const decodedHandlePriceInfoResult = mayFail(() =>
-    decodeHandlePriceInfoDatum(handlePriceInfoAssetTxInput.datum)
+  const decodedResult = mayFail(() =>
+    decodeHandlePriceInfoDatum(handlePriceInfoUtxo.inlineDatumCbor),
   );
-  if (!decodedHandlePriceInfoResult.ok) {
-    return Err(decodedHandlePriceInfoResult.error);
-  }
+  if (!decodedResult.ok) return Err(decodedResult.error);
 
   return Ok({
-    handlePriceInfo: decodedHandlePriceInfoResult.data,
-    handlePriceInfoAssetTxInput,
+    handlePriceInfo: decodedResult.data,
+    handlePriceInfoUtxo,
   });
 };
+
+// Kept so callers can pre-decode a raw inline-datum CBOR if they need the
+// parsed Plutus data directly.
+export const decodeInlineDatum = plutusDataFromCbor;
 
 export { fetchHandlePriceInfoData, fetchMintingData, fetchSettings };
