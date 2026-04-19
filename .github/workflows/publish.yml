@@ -23,8 +23,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.13"
+          # 22.14+ ships with npm >= 11.5.1, required for npm's OIDC
+          # trusted-publisher flow on registry.npmjs.org.
+          node-version: "22.14"
           check-latest: true
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install Libssl
         run: |
@@ -75,9 +78,11 @@ jobs:
           rm -f "${publish_log}"
 
       - name: Publish to public npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # OIDC trusted-publisher flow — no NPM_TOKEN. npm CLI >= 11.5.1
+        # automatically exchanges the GitHub Actions OIDC token (via the
+        # `id-token: write` permission set at the job level) for a short-
+        # lived npm publish credential, and emits the provenance
+        # attestation automatically.
         run: |
           set -eu
-          npm config set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
           (cd ./lib && npm publish --access public --ignore-scripts --@koralabs:registry='https://registry.npmjs.org')
