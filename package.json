@@ -1,6 +1,6 @@
 {
   "name": "@koralabs/handles-decentralized-minting",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "MIT",
   "main": "index.js",
   "type": "module",
@@ -20,8 +20,8 @@
     "@aiken-lang/merkle-patricia-forestry": "^1.2.0",
     "@blockfrost/blockfrost-js": "^6.0.0",
     "@cardano-sdk/core": "^0.46.12",
-    "@cardano-sdk/input-selection": "file:./cardano-sdk-input-selection-0.14.28.tgz",
-    "@cardano-sdk/tx-construction": "file:./cardano-sdk-tx-construction-0.28.10.tgz",
+    "@cardano-sdk/input-selection": "^0.14.28",
+    "@cardano-sdk/tx-construction": "^0.28.10",
     "@koralabs/kora-labs-common": "^5.1.41",
     "@stricahq/bip32ed25519": "^1.1.2",
     "ansi-colors": "^4.1.3",

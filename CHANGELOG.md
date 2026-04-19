@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 2.0.2
+
+Swap the `file:./cardano-sdk-*.tgz` dependency references for the
+published npm semver equivalents (`^0.14.28` / `^0.28.10`). The
+`file:` entries were from local development against unreleased SDK
+builds; those versions are now on public npm, and shipping `file:`
+references in a published package left the tarballs unresolvable in
+consumers (npm tried to look for them inside the installed DeMi
+package directory, where they are not shipped).
+
+No code changes; the `.tgz` contents for those two versions are
+identical to what public npm serves.
+
 ## 2.0.1
 
 Fix package.json `main` so Node resolves the entry point without the
