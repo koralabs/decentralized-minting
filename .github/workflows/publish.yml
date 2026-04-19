@@ -109,4 +109,20 @@ jobs:
         # attestation automatically.
         run: |
           set -eu
-          (cd ./lib && npm publish --access public --ignore-scripts --provenance)
+          set +e
+          publish_log=$(mktemp)
+          (cd ./lib && npm publish --access public --ignore-scripts --provenance) >"${publish_log}" 2>&1
+          status=$?
+          set -e
+          cat "${publish_log}"
+          if [[ ${status} -ne 0 ]]; then
+            # Treat "already published" as success so re-runs of an
+            # unchanged version are idempotent.
+            if grep -qiE "publish over (the previously )?(existing|published) version" "${publish_log}"; then
+              echo "public npm version already exists, nothing to do"
+            else
+              rm -f "${publish_log}"
+              exit ${status}
+            fi
+          fi
+          rm -f "${publish_log}"
