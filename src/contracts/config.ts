@@ -76,9 +76,14 @@ const scriptRewardAccountBech32 = (
     type: Cardano.CredentialType.ScriptHash,
     hash: scriptHash as unknown as CardanoTypes.Credential["hash"],
   };
+  // `RewardAccount.fromCredentials` does not exist on @cardano-sdk/core@^0.46.12;
+  // use the RewardAddress builder and project out its bech32, matching the
+  // pattern in src/txs/prepareNewMint.ts.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (Cardano as any)
-    .RewardAccount.fromCredentials(networkId(network), credential) as string;
+  return (Cardano as any).RewardAddress.fromCredentials(
+    networkId(network),
+    credential,
+  ).toAddress().toBech32() as string;
 };
 
 const buildContracts = (params: BuildContractsParams): BuiltContracts => {
