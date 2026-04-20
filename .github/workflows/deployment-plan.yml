@@ -102,6 +102,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: koralabs/minting.handle.me
+          ref: ${{ matrix.network }}
           token: ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}
           path: minting.handle.me
 
