@@ -46,6 +46,15 @@ export interface BuiltTransaction {
   estimatedSignedTxSize: number;
   /** UTxO refs consumed as inputs (txHash#index), for excluding from subsequent txs */
   consumedInputs: Set<string>;
+  /**
+   * The body-hash / txId of the unsigned tx. Deterministic from the body —
+   * does NOT change when the operator adds signatures in Eternl. Lets a
+   * later tx in the same plan reference an output of this one even before
+   * this tx has confirmed on chain (chained-tx pattern, used by
+   * `buildMptRootMigrationTx` to reference the predicted admin-funding
+   * outputs without waiting for them to land).
+   */
+  txHash: string;
 }
 
 export const resolveDeployerWallet = async ({
@@ -570,31 +579,67 @@ const buildAndSerializeTx = async ({
     consumedInputs.add(toUtxoRef(utxo));
   }
 
-  return { cborHex, estimatedSignedTxSize, consumedInputs };
+  // Body-hash / txId from `unsignedTx.id` (set above to
+  // `finalTxBodyWithHash.hash`). String form so callers can build
+  // chained-input references without depending on cardano-sdk's
+  // TransactionId type.
+  const txHash = String(unsignedTx.id);
+
+  return { cborHex, estimatedSignedTxSize, consumedInputs, txHash };
 };
 
 /**
+ * Predicted UTxOs that an unsubmitted `buildPreparationTx` output will
+ * create at the admin address once it lands. Lets the migration tx that
+ * follows in the same plan reference these inputs without waiting for
+ * the funding tx to confirm — the operator signs both, submits in
+ * order, and the node accepts the chain.
+ */
+export interface PendingAdminFundingUtxos {
+  /** Pure-ADA UTxO sized for collateral (≥ minCollateralPercentage% of fee). */
+  collateralUtxo: CardanoTypes.Utxo;
+  /** Pure-ADA UTxO sized to cover the migration tx's fee + change. */
+  feeUtxo: CardanoTypes.Utxo;
+}
+
+export interface PreparationTx extends BuiltTransaction {
+  /**
+   * The two outputs this funding tx creates at the admin address — one
+   * sized for collateral, one sized for fee. Pass into
+   * `buildMptRootMigrationTx` via its `pendingAdminFunding` param so
+   * the migration tx references these unconfirmed UTxOs directly,
+   * eliminating the two-phase deploy.
+   */
+  pendingAdminFundingUtxos: PendingAdminFundingUtxos;
+}
+
+const COLLATERAL_OUTPUT_LOVELACE = 6_000_000n;
+const FEE_OUTPUT_LOVELACE = 4_000_000n;
+
+/**
  * Build an unsigned preparation tx that funds the admin address from the
- * script address. This is needed when the admin wallet has insufficient ADA
- * for the MPT root migration tx (which requires fees + collateral).
+ * script address. Always emits TWO outputs at admin — one sized for
+ * collateral (6 ADA), one for fee + change (4 ADA) — so the migration
+ * tx that follows can reference them as separate inputs (collateral and
+ * regular input slots cannot share a UTxO).
  *
- * Returns null if the admin address already has enough funds.
+ * Returns null if the admin address already has BOTH a collateral-
+ * sized UTxO and a fee-sized UTxO on chain — in that case no funding
+ * is needed and the migration tx can use admin's existing UTxOs.
  */
 export const buildPreparationTx = async ({
   desired,
   nativeScriptCborHex,
   blockfrostApiKey,
   userAgent,
-  targetLovelace = 10_000_000n,
   excludeUtxoRefs,
 }: {
   desired: DesiredDeploymentState;
   nativeScriptCborHex?: string;
   blockfrostApiKey: string;
   userAgent: string;
-  targetLovelace?: bigint;
   excludeUtxoRefs?: Set<string>;
-}): Promise<BuiltTransaction | null> => {
+}): Promise<PreparationTx | null> => {
   const isMainnet = desired.network === "mainnet";
   const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
   const adminCredential = {
@@ -613,16 +658,22 @@ export const buildPreparationTx = async ({
     blockfrostApiKey,
     desired.network,
   );
-  const adminBalance = adminUtxos.reduce(
-    (sum, u) => sum + (u[1].value.coins ?? 0n),
-    0n,
-  );
-
-  if (adminBalance >= targetLovelace) {
+  // Funding is unnecessary only when admin already has BOTH a clean
+  // ADA-only UTxO ≥ COLLATERAL_OUTPUT_LOVELACE (for collateral) AND a
+  // distinct clean ADA-only UTxO ≥ FEE_OUTPUT_LOVELACE (for the fee
+  // input). One UTxO can't fill both slots: regular `inputs` and
+  // `collateral` are separate fields and share-via-double-spending is
+  // rejected by the ledger.
+  const cleanAdminUtxos = adminUtxos
+    .filter((u) => !u[1].value.assets || u[1].value.assets.size === 0)
+    .sort((a, b) => Number((b[1].value.coins ?? 0n) - (a[1].value.coins ?? 0n)));
+  const hasCollateralReady = cleanAdminUtxos.some((u) => (u[1].value.coins ?? 0n) >= COLLATERAL_OUTPUT_LOVELACE);
+  const hasFeeAndCollateralPair = cleanAdminUtxos.length >= 2
+    && (cleanAdminUtxos[0][1].value.coins ?? 0n) >= COLLATERAL_OUTPUT_LOVELACE
+    && (cleanAdminUtxos[1][1].value.coins ?? 0n) >= FEE_OUTPUT_LOVELACE;
+  if (hasCollateralReady && hasFeeAndCollateralPair) {
     return null;
   }
-
-  const needed = targetLovelace - adminBalance;
 
   // Find a script address to source funds from — use the first settings handle's address
   const settingsHandleName = "demi@handle_settings";
@@ -648,22 +699,52 @@ export const buildPreparationTx = async ({
     throw new Error("no clean UTxOs at script address to fund admin wallet");
   }
 
-  const output: CardanoTypes.TxOut = {
-    address: asPaymentAddress(adminAddress),
-    value: { coins: needed },
+  // Two outputs: index 0 = collateral, index 1 = fee. Index assignment
+  // must match what the migration tx assumes when it builds chained
+  // input refs from the funding tx hash.
+  const adminPaymentAddress = asPaymentAddress(adminAddress);
+  const collateralOutput: CardanoTypes.TxOut = {
+    address: adminPaymentAddress,
+    value: { coins: COLLATERAL_OUTPUT_LOVELACE },
+  };
+  const feeOutput: CardanoTypes.TxOut = {
+    address: adminPaymentAddress,
+    value: { coins: FEE_OUTPUT_LOVELACE },
   };
 
   const nativeScript = nativeScriptCborHex ? parseNativeScript(nativeScriptCborHex) : undefined;
 
-  return buildAndSerializeTx({
+  const built = await buildAndSerializeTx({
     selectedUtxos: [],
     remainingUtxos: cleanUtxos,
-    requestedOutputs: [output],
+    requestedOutputs: [collateralOutput, feeOutput],
     changeAddress: scriptAddress,
     buildContext,
     nativeScript,
     excludeUtxoRefs,
   });
+
+  // Synthesize the predicted UTxOs the funding tx will create at admin.
+  // These don't exist on chain yet — `txHash` is the body hash of the
+  // unsigned tx, identical post-signing because Eternl only adds
+  // witnesses (which don't affect body hash).
+  const fundingTxId = Cardano.TransactionId(built.txHash as HexBlob);
+  const adminAddressTyped = adminPaymentAddress as unknown as CardanoTypes.TxOut["address"];
+  const pendingAdminFundingUtxos: PendingAdminFundingUtxos = {
+    collateralUtxo: [
+      { txId: fundingTxId, index: 0, address: adminAddressTyped },
+      { address: adminAddressTyped, value: { coins: COLLATERAL_OUTPUT_LOVELACE } },
+    ],
+    feeUtxo: [
+      { txId: fundingTxId, index: 1, address: adminAddressTyped },
+      { address: adminAddressTyped, value: { coins: FEE_OUTPUT_LOVELACE } },
+    ],
+  };
+
+  return {
+    ...built,
+    pendingAdminFundingUtxos,
+  };
 };
 
 /**
@@ -680,12 +761,22 @@ export const buildMptRootMigrationTx = async ({
   oldValidatorCborHex,
   blockfrostApiKey,
   userAgent,
+  pendingAdminFunding,
 }: {
   desired: DesiredDeploymentState;
   newMptRootHash: string;
   oldValidatorCborHex: string;
   blockfrostApiKey: string;
   userAgent: string;
+  /**
+   * When set, the migration tx skips Blockfrost lookups for admin's
+   * UTxOs and uses the predicted outputs of an unconfirmed
+   * `buildPreparationTx` instead. The funding tx must be submitted
+   * before this one (manifest order is enforced by the operator
+   * runbook); the node accepts the chain because the funding tx
+   * lands first and creates the inputs this tx then consumes.
+   */
+  pendingAdminFunding?: PendingAdminFundingUtxos;
 }): Promise<BuiltTransaction> => {
   const isMainnet = desired.network === "mainnet";
   const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
@@ -746,15 +837,31 @@ export const buildMptRootMigrationTx = async ({
   )
     .toAddress()
     .toBech32() as string;
-  const adminUtxos = await fetchBlockfrostUtxos(
-    adminAddressBech32,
-    blockfrostApiKey,
-    desired.network,
-  );
-  const cleanUtxos = adminUtxos.filter((u) => !u[1].value.assets || u[1].value.assets.size === 0);
-  const collateralUtxo = cleanUtxos.length > 0
-    ? cleanUtxos.sort((a, b) => Number((b[1].value.coins ?? 0n) - (a[1].value.coins ?? 0n)))[0]
-    : undefined;
+  // Resolve admin UTxOs for fee + collateral. When the planner has
+  // emitted a chained `buildPreparationTx`, those outputs aren't on
+  // chain yet — use the predicted UTxOs the planner returned, and
+  // skip the Blockfrost lookup entirely. Otherwise fall back to the
+  // existing on-chain UTxO query (admin already has funds, so the
+  // planner didn't emit a funding tx).
+  let walletUtxosForMigration: CardanoTypes.Utxo[];
+  let collateralUtxo: CardanoTypes.Utxo | undefined;
+  if (pendingAdminFunding) {
+    walletUtxosForMigration = [pendingAdminFunding.feeUtxo];
+    collateralUtxo = pendingAdminFunding.collateralUtxo;
+  } else {
+    const adminUtxos = await fetchBlockfrostUtxos(
+      adminAddressBech32,
+      blockfrostApiKey,
+      desired.network,
+    );
+    const cleanUtxos = adminUtxos.filter((u) => !u[1].value.assets || u[1].value.assets.size === 0);
+    const sortedClean = cleanUtxos.sort((a, b) => Number((b[1].value.coins ?? 0n) - (a[1].value.coins ?? 0n)));
+    collateralUtxo = sortedClean[0];
+    // Fee inputs come from admin's full UTxO set (assets included —
+    // the input selector will pick what it needs and route any
+    // non-ADA assets back to admin via change).
+    walletUtxosForMigration = adminUtxos;
+  }
 
   const spendInput: CardanoTypes.Utxo = [
     {
@@ -805,7 +912,7 @@ export const buildMptRootMigrationTx = async ({
   const result = await buildPlutusSpendTxInline({
     buildContext,
     spendInput,
-    walletUtxos: adminUtxos,
+    walletUtxos: walletUtxosForMigration,
     collateralUtxo,
     output: migrationOutput,
     spendRedeemer,
@@ -819,6 +926,7 @@ export const buildMptRootMigrationTx = async ({
     cborHex: result.cborHex,
     estimatedSignedTxSize,
     consumedInputs: result.consumedInputs,
+    txHash: result.txHash,
   };
 };
 
@@ -847,7 +955,7 @@ const buildPlutusSpendTxInline = async ({
   attachedPlutusScript: CardanoTypes.Script;
   requiredSigner: string;
   changeAddress: string;
-}): Promise<{ cborHex: string; consumedInputs: Set<string> }> => {
+}): Promise<{ cborHex: string; consumedInputs: Set<string>; txHash: string }> => {
   const changeAddressBech32 = asPaymentAddress(changeAddress);
   const inputSelector = roundRobinRandomImprove({
     changeAddressResolver: {
@@ -923,7 +1031,8 @@ const buildPlutusSpendTxInline = async ({
   for (const u of selection.selection.inputs) {
     consumedInputs.add(`${u[0].txId}#${u[0].index}`);
   }
-  return { cborHex, consumedInputs };
+  const txHash = String(unsignedTx.id);
+  return { cborHex, consumedInputs, txHash };
 };
 
 const buildPlutusTxForSelection = (
