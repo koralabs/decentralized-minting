@@ -743,7 +743,12 @@ const fetchHandleDatum = async ({
     `${handlesApiBaseUrlForNetwork(network)}/handles/${encodeURIComponent(handleName)}/datum`,
     { headers: { "User-Agent": userAgent } }
   );
-  if (response.status === 404 || response.status === 202) return null;
+  if (response.status === 404) return null;
+  // api.handle.me returns HTTP 202 for settings-handle datums even when the
+  // body is fully-formed valid CBOR — treating 202 as null makes every live
+  // value appear missing, which in turn makes the drift detector report a
+  // wholesale "settings drifted" against desired and re-emit already-applied
+  // settings updates. Accept 202 alongside 200.
   if (!response.ok) {
     throw new Error(`failed to load handle datum ${handleName}: HTTP ${response.status}`);
   }
