@@ -10,7 +10,6 @@ import {
   discoverNextContractSubhandles,
   fetchLiveContractStates,
   fetchLiveSettingsState,
-  fetchOldValidatorCbor,
   renderTransactionOrderMarkdown,
 } from "../src/deploymentPlan.js";
 import { loadDesiredDeploymentState } from "../src/deploymentState.js";
@@ -287,12 +286,37 @@ const main = async () => {
         });
         console.log(`Computed MPT root hash: ${newMptRootHash}`);
 
-        console.log(`Fetching old validator script from $${currentMptSubhandle}...`);
-        const oldValidatorCborHex = await fetchOldValidatorCbor({
-          network: desired.network,
-          currentSubhandle: currentMptSubhandle,
-          userAgent,
+        // Fetch the OLD minting-data validator script by hash, not by subhandle.
+        // After phase-1 deployment, `currentSubhandle` points at the NEW ordinal
+        // (e.g. demimntmpt2) whose /script endpoint returns the NEW CBOR —
+        // wrong for the migration, which must spend handle_root at its OLD
+        // address using the OLD script. Extract the script hash from
+        // handle_root's current resolved address (first 28 bytes after the
+        // 1-byte bech32 header) and fetch via Blockfrost /scripts/{hash}/cbor.
+        const { fetch: crossFetch2 } = await import("cross-fetch");
+        const handlesBase = desired.network === "preview" ? "https://preview.api.handle.me" :
+          desired.network === "preprod" ? "https://preprod.api.handle.me" : "https://api.handle.me";
+        const rootRes2 = await crossFetch2(
+          `${handlesBase}/handles/${encodeURIComponent("handle_root@handle_settings")}`,
+          { headers: { "User-Agent": userAgent } }
+        );
+        if (!rootRes2.ok) throw new Error(`failed to fetch handle_root: HTTP ${rootRes2.status}`);
+        const rootJson2 = await rootRes2.json() as { resolved_addresses?: { ada?: string } };
+        const oldAddrBech32 = rootJson2.resolved_addresses?.ada;
+        if (!oldAddrBech32) throw new Error("handle_root missing resolved ADA address");
+        const { Cardano: CardanoSdk } = await import("@cardano-sdk/core");
+        const oldPaymentCred = CardanoSdk.Address.fromBech32(oldAddrBech32).asEnterprise()?.getPaymentCredential();
+        if (!oldPaymentCred) throw new Error(`handle_root address ${oldAddrBech32} is not a script enterprise address`);
+        const oldScriptHash = oldPaymentCred.hash as unknown as string;
+        console.log(`Fetching old validator script by hash ${oldScriptHash}...`);
+        const bfHost = `https://cardano-${desired.network}.blockfrost.io/api/v0`;
+        const scriptRes = await crossFetch2(`${bfHost}/scripts/${oldScriptHash}/cbor`, {
+          headers: { "Content-Type": "application/json", project_id: blockfrostApiKey },
         });
+        if (!scriptRes.ok) throw new Error(`failed to fetch script ${oldScriptHash}: HTTP ${scriptRes.status}`);
+        const scriptJson = await scriptRes.json() as { cbor?: string };
+        if (!scriptJson.cbor) throw new Error(`no cbor in script response for ${oldScriptHash}`);
+        const oldValidatorCborHex = scriptJson.cbor;
 
         try {
           const migrationTx = await buildMptRootMigrationTx({
