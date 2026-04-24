@@ -519,16 +519,39 @@ const buildAndSerializeTx = async ({
       }),
     );
 
+  // cardano-sdk's `defaultSelectionConstraints.computeMinimumCost` undershoots
+  // the node's computed min fee by ~4 bytes (~176 lovelace) when the witness set
+  // contains a native script. Applying the margin here — inside the selection's
+  // `computeMinimumCost` hook, mirroring the bff `feeAdjustmentLovelace` pattern
+  // in handlers/migrateSubHandleSettings — ensures the selector sees the bumped
+  // fee and sizes inputs/change to keep the body balanced. Bumping fee AFTER
+  // selection breaks the `inputs = outputs + fee` invariant and is rejected by
+  // the node as "value not conserved".
+  const NATIVE_SCRIPT_FEE_SAFETY_MARGIN_LOVELACE = 2000n;
+  const baseConstraints = defaultSelectionConstraints({
+    protocolParameters: buildContext.protocolParameters,
+    buildTx: buildForSelection,
+    redeemersByType: {},
+    txEvaluator,
+  });
+  const constraints = nativeScript
+    ? {
+        ...baseConstraints,
+        computeMinimumCost: async (selection: SelectionSkeleton) => {
+          const result = await baseConstraints.computeMinimumCost(selection);
+          return {
+            ...result,
+            fee: result.fee + NATIVE_SCRIPT_FEE_SAFETY_MARGIN_LOVELACE,
+          };
+        },
+      }
+    : baseConstraints;
+
   const selection = await inputSelector.select({
     preSelectedUtxo: new Set(selectedUtxos),
     utxo: new Set(remainingUtxos),
     outputs: new Set(requestedOutputs),
-    constraints: defaultSelectionConstraints({
-      protocolParameters: buildContext.protocolParameters,
-      buildTx: buildForSelection,
-      redeemersByType: {},
-      txEvaluator,
-    }),
+    constraints,
   });
 
   // Build the final tx using the fee from coin selection (which was computed
@@ -539,19 +562,7 @@ const buildAndSerializeTx = async ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const finalTxBodyWithHash = createTransactionInternals({ inputSelection: selection.selection, validityInterval: buildContext.validityInterval, outputs: requestedOutputs } as any);
 
-  // cardano-sdk's `defaultSelectionConstraints.computeMinimumCost` undershoots
-  // the node's computed min fee by ~4 bytes (~176 lovelace) when the witness set
-  // contains a native script. Mainnet txs submitted at the selector's fee are
-  // rejected with `Insufficient fee!` before signature validation even runs.
-  // The bff fee-adjustment hook (`feeAdjustmentLovelace` in handlers/*) only
-  // covers the Conway reference-script surcharge; we need a separate margin for
-  // native-script encoding variance. A fixed 2000-lovelace buffer covers this
-  // class of miscalculation with room to spare and is trivial compared to tx
-  // fees (~0.5–1 ADA).
-  const NATIVE_SCRIPT_FEE_SAFETY_MARGIN_LOVELACE = 2000n;
-  const selectionFee =
-    selection.selection.fee +
-    (nativeScript ? NATIVE_SCRIPT_FEE_SAFETY_MARGIN_LOVELACE : 0n);
+  const selectionFee = selection.selection.fee;
 
   // Unsigned tx with native script witness (no signatures — Eternl will sign)
   const unsignedTx: CardanoTypes.Tx = {
