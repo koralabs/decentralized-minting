@@ -239,7 +239,7 @@ const main = async () => {
         legacy_policy_id: desired.buildParameters.legacyPolicyId,
         admin_verification_key_hash: desired.buildParameters.adminVerificationKeyHash,
       });
-      const expectedAddress = built.mintingData.mintingDataValidatorAddress.toBech32();
+      const expectedAddress = built.mintingData.scriptAddress;
       const needsMigration = currentAddress !== expectedAddress;
       if (needsMigration) {
         console.log(`handle_root@handle_settings is at ${currentAddress.slice(0, 30)}... but should be at ${expectedAddress.slice(0, 30)}...`);
