@@ -919,16 +919,28 @@ const buildPlutusSpendTxInline = async ({
     }),
   });
 
+  // The selector's txEvaluator fills in the redeemer's ex-units during
+  // selection. We need those populated redeemers (not the zero-initialized
+  // input) for both the final tx body and the script-data-hash computation —
+  // the mismatched hash from the earlier submit was a symptom of having zero
+  // ex-units leak into the body while the on-chain evaluation used a
+  // different (evaluated) set. Same pattern bff uses in
+  // handlers/migrateSubHandleSettings: `selection.redeemers ?? []`.
+  const evaluatedRedeemer =
+    (selection.redeemers ?? []).find(
+      (r) => r.purpose === Cardano.RedeemerPurpose.spend && r.index === 0,
+    ) ?? spendRedeemer;
+
   const scriptDataHash = computeScriptDataHash(
     buildContext.protocolParameters.costModels,
     [Cardano.PlutusLanguageVersion.V2],
-    [spendRedeemer],
+    [evaluatedRedeemer],
   );
 
   const finalTx = buildPlutusTxForSelection(
     selection.selection,
     output,
-    spendRedeemer,
+    evaluatedRedeemer,
     scriptDataHash ?? "0".repeat(64),
     attachedPlutusScript,
     requiredSigner,
