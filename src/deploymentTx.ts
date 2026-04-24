@@ -29,6 +29,7 @@ import {
   buildPlaceholderSignatures,
   Cardano,
   computeScriptDataHash,
+  ensureDoubleCbor,
   plutusV2ScriptHash,
   Serialization,
   transactionHashFromCore,
@@ -821,8 +822,11 @@ export const buildMptRootMigrationTx = async ({
 
   const buildContext = await getBlockfrostBuildContext(desired.network, blockfrostApiKey);
 
+  // Blockfrost's /scripts/{hash}/cbor returns single-CBOR (byte string of
+  // flat UPLC); PlutusV2Script.fromCbor needs double-CBOR. ensureDoubleCbor
+  // normalizes either form.
   const oldScriptCore = Serialization.PlutusV2Script.fromCbor(
-    oldValidatorCborHex as HexBlob,
+    ensureDoubleCbor(oldValidatorCborHex) as HexBlob,
   ).toCore();
 
   const result = await buildPlutusSpendTxInline({

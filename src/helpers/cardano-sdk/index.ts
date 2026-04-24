@@ -50,6 +50,7 @@ export { computeScriptDataHash } from "./computeScriptDataHash.js";
 export { getNetworkId, type NetworkName } from "./networkName.js";
 export {
   applyParamsToScript,
+  ensureDoubleCbor,
   type PlutusDataJson,
   plutusDataJsonToCbor,
   plutusDataJsonToCore,
