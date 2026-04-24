@@ -245,7 +245,8 @@ const main = async () => {
         console.log(`handle_root@handle_settings is at ${currentAddress.slice(0, 30)}... but should be at ${expectedAddress.slice(0, 30)}...`);
       }
       return needsMigration;
-    } catch {
+    } catch (err) {
+      console.log(`MPT-migration address check failed: ${err instanceof Error ? err.message : err}`);
       return false;
     }
   })();
