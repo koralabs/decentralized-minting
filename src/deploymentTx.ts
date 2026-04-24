@@ -539,7 +539,19 @@ const buildAndSerializeTx = async ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const finalTxBodyWithHash = createTransactionInternals({ inputSelection: selection.selection, validityInterval: buildContext.validityInterval, outputs: requestedOutputs } as any);
 
-  const selectionFee = selection.selection.fee;
+  // cardano-sdk's `defaultSelectionConstraints.computeMinimumCost` undershoots
+  // the node's computed min fee by ~4 bytes (~176 lovelace) when the witness set
+  // contains a native script. Mainnet txs submitted at the selector's fee are
+  // rejected with `Insufficient fee!` before signature validation even runs.
+  // The bff fee-adjustment hook (`feeAdjustmentLovelace` in handlers/*) only
+  // covers the Conway reference-script surcharge; we need a separate margin for
+  // native-script encoding variance. A fixed 2000-lovelace buffer covers this
+  // class of miscalculation with room to spare and is trivial compared to tx
+  // fees (~0.5–1 ADA).
+  const NATIVE_SCRIPT_FEE_SAFETY_MARGIN_LOVELACE = 2000n;
+  const selectionFee =
+    selection.selection.fee +
+    (nativeScript ? NATIVE_SCRIPT_FEE_SAFETY_MARGIN_LOVELACE : 0n);
 
   // Unsigned tx with native script witness (no signatures — Eternl will sign)
   const unsignedTx: CardanoTypes.Tx = {
