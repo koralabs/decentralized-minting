@@ -926,25 +926,15 @@ const buildPlutusSpendTxInline = async ({
   // ex-units leak into the body while the on-chain evaluation used a
   // different (evaluated) set. Same pattern bff uses in
   // handlers/migrateSubHandleSettings: `selection.redeemers ?? []`.
-  // Debug: log what the selector returned for redeemers.
-  console.log(`[buildPlutusSpendTxInline] selection.redeemers = ${JSON.stringify(
-    selection.redeemers?.map((r) => ({
-      purpose: r.purpose,
-      index: r.index,
-      mem: r.executionUnits?.memory,
-      steps: r.executionUnits?.steps,
-    })) ?? null,
-  )}`);
-  // cardano-sdk's updateRedeemers rewrites the redeemer's `index` to the
-  // position of the spend-input in sorted txInputs — may not be 0. Match on
-  // purpose alone (we only ever have one spend redeemer in this builder).
+  // cardano-sdk's updateRedeemers (in @cardano-sdk/tx-construction
+  // selectionConstraints.js) rewrites the spend redeemer's `index` to the
+  // position of the spend-input in the SORTED txInputs list — may not be 0.
+  // Match on purpose alone; we only ever have one spend redeemer in this
+  // builder.
   const evaluatedRedeemer =
     (selection.redeemers ?? []).find(
       (r) => r.purpose === Cardano.RedeemerPurpose.spend,
     ) ?? spendRedeemer;
-  console.log(`[buildPlutusSpendTxInline] evaluated redeemer exUnits = mem:${
-    evaluatedRedeemer.executionUnits?.memory
-  } steps:${evaluatedRedeemer.executionUnits?.steps}`);
 
   const scriptDataHash = computeScriptDataHash(
     buildContext.protocolParameters.costModels,
