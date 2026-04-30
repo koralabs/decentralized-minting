@@ -4,6 +4,7 @@
 - [Product Index](./product/index.md)
 - [PRD](./product/prd.md)
 - [Feature Matrix](./product/feature-matrix.md)
+- [Operating Model](./product/operating-model.md)
 - [Runtime Dependencies](./product/runtime-dependencies.md)
 
 ## Spec
@@ -11,3 +12,4 @@
 - [Technical Spec](./spec/spec.md)
 - [Contract Deployment Pipeline](./spec/contract-deployment-pipeline.md)
 - [Data Model](./spec/data-model.md)
+- [Repository Map](./spec/repository-map.md)
