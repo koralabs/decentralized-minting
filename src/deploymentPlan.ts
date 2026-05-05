@@ -741,7 +741,7 @@ const fetchHandleDatum = async ({
 }) => {
   const response = await fetchFn(
     `${handlesApiBaseUrlForNetwork(network)}/handles/${encodeURIComponent(handleName)}/datum`,
-    { headers: { "User-Agent": userAgent } }
+    { headers: { "User-Agent": userAgent, Accept: "text/plain" } }
   );
   if (response.status === 404) return null;
   // api.handle.me returns HTTP 202 for settings-handle datums even when the

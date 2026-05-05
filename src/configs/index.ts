@@ -122,7 +122,7 @@ const fetchSettings = async (
   );
   const settingsHandleDatum: string = await fetchApi(
     `handles/${SETTINGS_HANDLE_NAME}/datum`,
-    { "Content-Type": "text/plain" },
+    { headers: { Accept: "text/plain" } },
   ).then((res) => res.text());
 
   if (!settingsHandleDatum) {
