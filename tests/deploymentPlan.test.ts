@@ -1,3 +1,7 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -215,30 +219,42 @@ describe("decentralized minting deployment plan", () => {
     });
   });
 
-  it("reuses an already minted DeMi replacement handle before skipping to a new ordinal", async () => {
-    const subhandles = await discoverNextContractSubhandles({
-      network: "preview",
-      contracts: desiredState.contracts,
-      liveContracts: [
-        { contractSlug: "demimntprx", scriptType: "demimntprx", currentScriptHash: "aa", currentSubhandle: "demimntprx1@handlecontract" },
-        { contractSlug: "demimntmpt", scriptType: "demimntmpt", currentScriptHash: "bb", currentSubhandle: "legacy@demi_scripts" },
-      ],
-      userAgent: "codex-test",
-      fetchFn: vi.fn(async (url) => {
-        const target = String(url);
-        if (target.includes("demimntprx1%40handlecontract")) return new Response(null, { status: 200 });
-        if (target.includes("demimntprx2%40handlecontract")) return new Response(null, { status: 200 });
-        if (target.includes("demimntprx3%40handlecontract")) return new Response(null, { status: 404 });
-        if (target.includes("demimntmpt1%40handlecontract")) return new Response(null, { status: 200 });
-        if (target.includes("demimntmpt2%40handlecontract")) return new Response(null, { status: 404 });
-        throw new Error(`unexpected url ${target}`);
-      }) as typeof fetch,
-    });
-
-    expect(subhandles).toEqual({
-      demimntprx: "demimntprx2@handlecontract",
-      demimntmpt: "demimntmpt1@handlecontract",
-    });
+  it("discoverNextContractSubhandles delegates to the canonical Python helper", async () => {
+    // The discovery logic itself is owned by adahandle-deployments/common/discover_subhandles.py
+    // and tested at common/discover_subhandles_test.py (8 cases including
+    // the reuse-ordinal-1 rule). Here we only verify the multi-contract
+    // wrapper invokes the script for each contract slug and stitches the
+    // results into the expected slug→SubHandle map.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "discover-stub-"));
+    const stubPath = path.join(tmpDir, "discover_subhandles.py");
+    fs.writeFileSync(
+      stubPath,
+      "#!/usr/bin/env python3\n" +
+        "import sys\n" +
+        "for i, a in enumerate(sys.argv):\n" +
+        "  if a == '--slug': slug = sys.argv[i+1]\n" +
+        "print(f'{slug}1@handlecontract')\n",
+      { mode: 0o755 }
+    );
+    const origPath = process.env.DISCOVER_SUBHANDLES_PATH;
+    process.env.DISCOVER_SUBHANDLES_PATH = stubPath;
+    try {
+      const subhandles = await discoverNextContractSubhandles({
+        network: "preview",
+        contracts: desiredState.contracts,
+        liveContracts: [],
+        userAgent: "codex-test",
+      });
+      expect(Object.keys(subhandles).sort()).toEqual(
+        desiredState.contracts.map((c) => c.contractSlug).sort()
+      );
+      for (const [slug, value] of Object.entries(subhandles)) {
+        expect(value).toBe(`${slug}1@handlecontract`);
+      }
+    } finally {
+      process.env.DISCOVER_SUBHANDLES_PATH = origPath;
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 
   it("builds raw CBOR bytes and a matching hex artifact for the unsigned deployment tx", async () => {

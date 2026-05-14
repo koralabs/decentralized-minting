@@ -1,7 +1,13 @@
 import { Buffer } from "node:buffer";
+import { execFile } from "node:child_process";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { promisify } from "node:util";
 
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
+
+const execFileP = promisify(execFile);
 
 import { buildContracts } from "./contracts/config.js";
 import {
@@ -116,83 +122,94 @@ export const renderTransactionOrderMarkdown = (transactionOrder: string[]) =>
     ? transactionOrder.map((fileName) => `- \`${fileName}\``)
     : ["- No transaction artifacts generated (no drift detected or Blockfrost API key unavailable)."];
 
+// Locate the canonical Python helper that owns SubHandle ordinal discovery.
+// Authoritative source: https://github.com/koralabs/adahandle-deployments/blob/master/common/discover_subhandles.py
+//
+// Resolution order: DISCOVER_SUBHANDLES_PATH env, $ADAHANDLE_DEPLOYMENTS_PATH/common,
+// then ../adahandle-deployments/common/. Throws if none resolve so callers
+// can't accidentally fall back to a stale local implementation.
+const resolveDiscoverSubhandlesScript = (): string => {
+  const explicit = process.env.DISCOVER_SUBHANDLES_PATH;
+  if (explicit && fs.existsSync(explicit)) return explicit;
+  const deployRoot = process.env.ADAHANDLE_DEPLOYMENTS_PATH;
+  if (deployRoot) {
+    const candidate = path.join(deployRoot, "common", "discover_subhandles.py");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  const sibling = path.resolve("..", "adahandle-deployments", "common", "discover_subhandles.py");
+  if (fs.existsSync(sibling)) return sibling;
+  throw new Error(
+    "discover_subhandles.py not found. Set DISCOVER_SUBHANDLES_PATH or ADAHANDLE_DEPLOYMENTS_PATH, " +
+    "or check out koralabs/adahandle-deployments alongside this repo. " +
+    "See docs at https://github.com/koralabs/adahandle-deployments/blob/master/docs/contract-deployment-pipeline.md#replacement-handle-allocation"
+  );
+};
+
+// Discover the next SubHandle ordinal for one contract slug.
+//
+// Delegates to the canonical Python implementation at
+// `adahandle-deployments/common/discover_subhandles.py`. This wrapper just
+// shells out and parses the result so every Kora contract repo gets
+// identical ordinal-reuse behavior. Do NOT add a local fallback — the rule
+// is "one source of truth, in adahandle-deployments."
+const discoverOneSubhandle = async ({
+  network,
+  deploymentHandleSlug,
+  currentSubhandle,
+  userAgent,
+}: {
+  network: "preview" | "preprod" | "mainnet";
+  deploymentHandleSlug: string;
+  currentSubhandle?: string | null;
+  userAgent: string;
+}): Promise<string> => {
+  const scriptPath = resolveDiscoverSubhandlesScript();
+  const args = [
+    scriptPath,
+    "--slug", deploymentHandleSlug,
+    "--network", network,
+    "--namespace", "handlecontract",
+    "--user-agent", userAgent,
+  ];
+  if (currentSubhandle) {
+    args.push("--current-subhandle", currentSubhandle);
+  }
+  const { stdout } = await execFileP("python3", args, { encoding: "utf8" });
+  const result = stdout.trim();
+  if (!result) {
+    throw new Error(`discover_subhandles.py returned empty stdout for ${deploymentHandleSlug}@handlecontract`);
+  }
+  return result;
+};
+
+// Multi-contract orchestrator — preserves the exported API so callers in
+// scripts/generateDeploymentPlan.ts don't need to change.
 export const discoverNextContractSubhandles = async ({
   network,
   contracts,
   liveContracts = [],
   userAgent,
-  fetchFn = fetch,
 }: {
   network: "preview" | "preprod" | "mainnet";
   contracts: DesiredContractTarget[];
   liveContracts?: LiveContractState[];
   userAgent: string;
-  fetchFn?: typeof fetch;
 }): Promise<Record<string, string>> => {
   const entries = await Promise.all(
     contracts.map(async (contract) => {
       const liveContract = liveContracts.find((item) => item.contractSlug === contract.contractSlug);
       return [
         contract.contractSlug,
-        await discoverNextContractSubhandle({
+        await discoverOneSubhandle({
           network,
           deploymentHandleSlug: contract.deploymentHandleSlug,
           currentSubhandle: liveContract?.currentSubhandle ?? null,
           userAgent,
-          fetchFn,
         }),
       ] as const;
     })
   );
   return Object.fromEntries(entries);
-};
-
-const discoverNextContractSubhandle = async ({
-  network,
-  deploymentHandleSlug,
-  currentSubhandle,
-  userAgent,
-  fetchFn = fetch,
-}: {
-  network: "preview" | "preprod" | "mainnet";
-  deploymentHandleSlug: string;
-  currentSubhandle?: string | null;
-  userAgent: string;
-  fetchFn?: typeof fetch;
-}): Promise<string> => {
-  const baseUrl = handlesApiBaseUrlForNetwork(network);
-  const suffix = "@handlecontract";
-  const currentOrdinal =
-    currentSubhandle &&
-    currentSubhandle.startsWith(deploymentHandleSlug) &&
-    currentSubhandle.endsWith(suffix) &&
-    /^[0-9]+$/.test(currentSubhandle.slice(deploymentHandleSlug.length, currentSubhandle.length - suffix.length))
-      ? Number.parseInt(currentSubhandle.slice(deploymentHandleSlug.length, currentSubhandle.length - suffix.length), 10)
-      : 0;
-  // Reuse existing handles before minting new ones. A handle that exists
-  // on-chain is the intended deployment target — never skip it in favor
-  // of a new ordinal.
-  const existingOrdinals: number[] = [];
-
-  for (let ordinal = 1; ordinal < 10000; ordinal += 1) {
-    const candidate = `${deploymentHandleSlug}${ordinal}${suffix}`;
-    const response = await fetchFn(
-      `${baseUrl}/handles/${encodeURIComponent(candidate)}`,
-      { headers: { "User-Agent": userAgent } }
-    );
-    if (response.status === 404) {
-      const existingReplacement = existingOrdinals.find((existingOrdinal) => existingOrdinal > currentOrdinal);
-      return existingReplacement
-        ? `${deploymentHandleSlug}${existingReplacement}${suffix}`
-        : candidate;
-    }
-    if (!response.ok) {
-      throw new Error(`failed to probe SubHandle ${candidate}: HTTP ${response.status}`);
-    }
-    existingOrdinals.push(ordinal);
-  }
-
-  throw new Error(`no available SubHandle found for ${deploymentHandleSlug}${suffix}`);
 };
 
 interface HandlePayload {
