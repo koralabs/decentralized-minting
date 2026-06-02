@@ -3,8 +3,8 @@ use aiken/transaction/credential.{
   Address, Inline, ScriptCredential, VerificationKeyCredential,
 }
 use decentralized_minting/discounts.{
-  Cip68Datum, is_og, is_rare, is_ultra_rare, partner_policy_in_root,
-  qualifies_for_rarity_discount, shares_credential,
+  Cip68Datum, is_legendary, is_og, is_rare, is_ultra_rare,
+  partner_policy_in_root, qualifies_for_rarity_discount, shares_credential,
 }
 
 fn addr(payment: ByteArray, stake: Option<ByteArray>) -> Address {
@@ -65,12 +65,22 @@ test rare_is_three() {
   }
 }
 
-test rarity_discount_two_or_three() {
+test rarity_discount_one_two_or_three() {
   and {
+    qualifies_for_rarity_discount("a"),
+    // legendary (1)
     qualifies_for_rarity_discount("ab"),
+    // ultra-rare (2)
     qualifies_for_rarity_discount("abc"),
+    // rare (3)
     qualifies_for_rarity_discount("abcd") == False,
-    qualifies_for_rarity_discount("a") == False,
+  }
+}
+
+test legendary_is_one() {
+  and {
+    is_legendary("a"),
+    is_legendary("ab") == False,
   }
 }
 

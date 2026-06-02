@@ -40,8 +40,18 @@ pub fn is_rare(handle_name: ByteArray) -> Bool {
   bytearray.length(handle_name) == 3
 }
 
+// Legendary = 1-char handle (rarer than UltraRare; none minted today, so its bps is 0).
+pub fn is_legendary(handle_name: ByteArray) -> Bool {
+  bytearray.length(handle_name) == 1
+}
+
 pub fn qualifies_for_rarity_discount(handle_name: ByteArray) -> Bool {
-  is_ultra_rare(handle_name) || is_rare(handle_name)
+  is_legendary(handle_name) || is_ultra_rare(handle_name) || is_rare(handle_name)
+}
+
+// H.A.L.-holder eligibility: the referenced asset is under the configured H.A.L. policy.
+pub fn is_hal_asset(asset_policy_id: PolicyId, hal_policy_id: PolicyId) -> Bool {
+  asset_policy_id == hal_policy_id
 }
 
 // CIP-68 reference-token datum: Constr 0 [ metadata: Map<ByteArray,Data>, version, extra ].
