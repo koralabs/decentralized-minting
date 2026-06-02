@@ -1,4 +1,6 @@
 use aiken/interval.{Finite, Interval, IntervalBound}
+use aiken/pairs
+use aiken/transaction/value.{PolicyId}
 
 // WS7 — sunset / minting-window enforcement against the `$handle_policies` admin datum.
 //
@@ -25,6 +27,68 @@ pub type PolicyWindow {
   first_minting_slot: Int,
   last_minting_slot: Int,
   sunset_slot: Int,
+}
+
+// Decode the `$handle_policies` admin datum and look up one policy's window.
+//
+// Confirmed on-chain shape (api.handle.me `/handles/handle_policies/datum`, GET /policies):
+//   List[ Map( policy_id(bytes) -> [first_minting_slot, last_minting_slot, sunset_slot] ) ]
+// i.e. a one-element Data list wrapping a Data map of 3-int lists (NOT CIP-68-wrapped, NOT a
+// Constr). `0` in any slot field means "unset". Returns None if the policy isn't listed.
+pub fn find_policy_window(
+  handle_policies: Data,
+  policy_id: PolicyId,
+) -> Option<PolicyWindow> {
+  expect [policy_map]: List<Pairs<PolicyId, (Int, Int, Int)>> = handle_policies
+  when pairs.get_first(policy_map, policy_id) is {
+    Some((first, last, sunset)) ->
+      Some(
+        PolicyWindow {
+          first_minting_slot: first,
+          last_minting_slot: last,
+          sunset_slot: sunset,
+        },
+      )
+    None -> None
+  }
+}
+
+// `$handle_policies` stores SLOT numbers, but a Plutus V2 `validity_range` is POSIX time (ms)
+// — so the window must be converted before it can be compared against the tx validity bounds
+// (`mint_allowed_in_window`). Post-Shelley networks have a fixed slot length, so a known
+// (slot, time) anchor plus the slot length converts exactly. The anchor + slot length are
+// NETWORK config (mainnet/preprod/preview differ) — supplied at wiring time from settings /
+// params, never hardcoded here.
+pub fn slot_to_posix_ms(
+  slot: Int,
+  anchor_slot: Int,
+  anchor_time_ms: Int,
+  slot_length_ms: Int,
+) -> Int {
+  anchor_time_ms + ( slot - anchor_slot ) * slot_length_ms
+}
+
+// Convert a slot-domain window to the POSIX-ms domain (leaving `0`/unset fields as `0`), so the
+// result can be passed straight to `mint_allowed_in_window` alongside the tx validity range.
+pub fn window_to_posix(
+  window: PolicyWindow,
+  anchor_slot: Int,
+  anchor_time_ms: Int,
+  slot_length_ms: Int,
+) -> PolicyWindow {
+  let convert =
+    fn(slot) {
+      if slot <= 0 {
+        0
+      } else {
+        slot_to_posix_ms(slot, anchor_slot, anchor_time_ms, slot_length_ms)
+      }
+    }
+  PolicyWindow {
+    first_minting_slot: convert(window.first_minting_slot),
+    last_minting_slot: convert(window.last_minting_slot),
+    sunset_slot: convert(window.sunset_slot),
+  }
 }
 
 // Highest value of the unit (slot or posix-time, caller's choice) that the tx is valid for —

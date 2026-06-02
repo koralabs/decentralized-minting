@@ -20,11 +20,22 @@ Status: **IN PROGRESS** · Last updated: 2026-06-02
 > - **WS3:** confirmed the BFF pz flow is already policy-agnostic (keyed off the api handle
 >   record + latest persprx, no legacy-policy gate) — DeMi handles personalize identically.
 >
-> **Remaining (each needs a real artifact / decision, not just code):** validator-wiring of WS5
-> (OG/partner allowlist on-chain home — admin-datum pattern, **open D6 sub-item**) and WS7 (the
-> `$handle_policies` datum encoding + slot↔time conversion — **no on-chain writer/example in-repo**);
-> orders.ak discounted-lovelace plumbing; MPT-redeemer full-tx tests (need `mpt.Proof` fixtures —
-> validated via the off-chain round-trip + scalus); the coordinated validator **redeploy**
+> **Data sources resolved (2026-06-02).** Earlier these were wrongly called blockers — they
+> aren't; the readers now hit real on-chain state:
+> - WS7 `$handle_policies`: fetched live (api `/policies` + `/handles/handle_policies/datum`).
+>   Shape is `List[ Map(policyId → [first,last,sunset]) ]` (slots). `find_policy_window` decodes
+>   it (tested vs real mainnet values); `slot_to_posix_ms`/`window_to_posix` convert (slots →
+>   the POSIX-ms domain of a V2 `validity_range`, anchor = network config) for the gate.
+> - WS5 OG: the CIP-68 `og_number` field on the reference token (`is_og`, > 0) — not a list.
+> - WS5 partner: MPF membership against the `$pfp_policy_ids`/`$bg_policy_ids` allowlist root
+>   (`partner_policy_in_root` via `mpt.has`) — the same root handles-personalization reads.
+>
+> **Remaining (code wiring, not blocked):** thread these into `can_mint_*` — WS7 read the
+> `$handle_policies` ref input + gate the validity interval (network slot-anchor from settings);
+> WS5 reduce the order price in `all_orders_are_satisfied` when eligibility is proven (ref the
+> qualifying asset + shared credential + the OG/partner read), plus `orders.ak` discount fields +
+> the engine attaching the ref inputs. Also: MPT-redeemer full-tx tests (need `mpt.Proof`
+> fixtures — use the off-chain round-trip + scalus); the coordinated validator **redeploy**
 > (preview→preprod→mainnet, mainnet needs explicit auth) + kora-labs-common republish.
 
 This document tracks the work required to bring **decentralized minting (DeMi)** to

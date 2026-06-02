@@ -1,5 +1,6 @@
 use aiken/bytearray
-use aiken/list
+use aiken/merkle_patricia_forestry as mpt
+use aiken/pairs
 use aiken/transaction/credential.{Address}
 use aiken/transaction/value.{PolicyId}
 
@@ -7,15 +8,18 @@ use aiken/transaction/value.{PolicyId}
 //
 // Eligibility is proven by *referencing* a qualifying asset (a rare/OG handle, or a partner
 // NFT) as a reference input — possession without spending — and checking that the referenced
-// asset's holding address shares a credential with the minter's destination. These are the
-// pure checks; wiring them into the mint validator (locate the ref input, read the OG list /
-// partner-policy allowlist from an admin datum, and apply the discount to the order price) is
-// the integration step (see plan WS5: the OG/partner allowlist's on-chain home — an admin
-// datum read as a ref input, mirroring `$pfp_policy_ids` — is the open sub-item).
+// asset's holding address shares a credential with the minter's destination. Each class reads
+// real on-chain state:
+//   - rarity:  the referenced handle's name length (UltraRare = 2, Rare = 3)
+//   - OG:      the `og_number` field in the referenced handle's CIP-68 reference-token datum
+//   - partner: the referenced asset's policy is in the `$pfp_policy_ids` / `$bg_policy_ids`
+//              MPF allowlist root (membership proof), mirroring handles-personalization
+// These are the pure checks; wiring them into the mint validator (locate the ref inputs, read
+// the allowlist root from the admin datum, apply the discount to the order price) is the
+// integration step.
 
 // Possession proof: the qualifying asset's holder and the minter's destination share a
 // credential. Payment-credential match OR stake-credential match (both present and equal).
-// `None`/`None` stake never counts as a match.
 pub fn shares_credential(holder: Address, destination: Address) -> Bool {
   or {
     holder.payment_credential == destination.payment_credential,
@@ -36,24 +40,42 @@ pub fn is_rare(handle_name: ByteArray) -> Bool {
   bytearray.length(handle_name) == 3
 }
 
-// Either rarity tier qualifies for a rarity discount (the tier selects the discount amount).
 pub fn qualifies_for_rarity_discount(handle_name: ByteArray) -> Bool {
   is_ultra_rare(handle_name) || is_rare(handle_name)
 }
 
-// Partner-NFT eligibility: the referenced asset's policy is in the allowlisted partner set
-// (the allowlist comes from the admin datum at wiring time).
-pub fn policy_in_allowlist(
-  policy_id: PolicyId,
-  allowlist: List<PolicyId>,
-) -> Bool {
-  list.has(allowlist, policy_id)
+// CIP-68 reference-token datum: Constr 0 [ metadata: Map<ByteArray,Data>, version, extra ].
+// `og_number` is a metadata field (UTF-8 key); legacy sets it > 0 for OG handles, 0 otherwise.
+pub type Cip68Datum {
+  metadata: Pairs<ByteArray, Data>,
+  version: Int,
+  extra: Data,
 }
 
-// OG eligibility: the referenced handle name is in the OG set (also admin-datum sourced).
-pub fn handle_in_og_list(
-  handle_name: ByteArray,
-  og_list: List<ByteArray>,
+const og_number_key: ByteArray = "og_number"
+
+// OG eligibility: read `og_number` from the referenced handle's CIP-68 reference-token datum;
+// any value > 0 means OG. Reads chain state directly — no off-chain OG list.
+pub fn is_og(reference_datum: Cip68Datum) -> Bool {
+  when pairs.get_first(reference_datum.metadata, og_number_key) is {
+    Some(og_data) -> {
+      expect og_number: Int = og_data
+      og_number > 0
+    }
+    None -> False
+  }
+}
+
+// Partner-NFT eligibility: the referenced asset's policy is in the partner allowlist MPF root
+// (the `$pfp_policy_ids` / `$bg_policy_ids` inline-byte trie read from the admin datum). The
+// key is the policy id; `value` + `proof` come from that trie (mirrors handles-personalization
+// `verify_policy_approval`). An inclusion proof can't be forged against the committed root.
+pub fn partner_policy_in_root(
+  allowlist_root: ByteArray,
+  policy_id: PolicyId,
+  value: ByteArray,
+  proof: mpt.Proof,
 ) -> Bool {
-  list.has(og_list, handle_name)
+  mpt.from_root(allowlist_root)
+    |> mpt.has(policy_id, value, proof)
 }
