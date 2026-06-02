@@ -1,3 +1,4 @@
+use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction/value.{PolicyId}
 
 // WS5 — discount configuration + amount math. Mirrors legacy (minting.handle.me nft.ts:238,
@@ -32,6 +33,25 @@ pub type DiscountClass {
   Legendary
   UltraRare
   Rare
+}
+
+// An order's discount claim — names the qualifying asset (referenced as a reference input,
+// and whose holder must share a credential with the order's destination) so eligibility is
+// deterministic and bound to the order. Per class:
+//   RarityClaim  — a handle (222 owner) you hold; its name length sets the tier
+//   OgClaim      — a handle you hold whose CIP-68 reference datum has og_number > 0
+//   PartnerClaim — a partner NFT you hold whose policy is proven in the partner allowlist root
+//   HalClaim     — a H.A.L. asset you hold (policy == config.hal_policy_id)
+pub type DiscountClaim {
+  RarityClaim { handle_name: ByteArray }
+  OgClaim { handle_name: ByteArray }
+  PartnerClaim {
+    policy_id: PolicyId,
+    asset_name: ByteArray,
+    value: ByteArray,
+    proof: mpt.Proof,
+  }
+  HalClaim { asset_name: ByteArray }
 }
 
 // The configured bps for a claimed class.
