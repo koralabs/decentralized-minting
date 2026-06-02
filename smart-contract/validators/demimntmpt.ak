@@ -41,9 +41,16 @@ type MintingDataRedeemer {
 // datum type is Data because when minting data asset is sent with wrong datum
 // still can recover asset
 //
+// `anchor_slot` / `anchor_time_ms` / `slot_length_ms`: the network's slot->POSIX-time anchor,
+// used by WS7's `$handle_policies` sunset gate to convert the slot-based window to the POSIX-ms
+// domain of the tx validity range. Network-specific (mainnet/preprod/preview differ) — supplied
+// at deploy. Only consequential once a sunset slot is set; the gate is open until then.
 validator(
   legacy_policy_id: PolicyId,
   admin_verification_key_hash: VerificationKeyHash,
+  anchor_slot: Int,
+  anchor_time_ms: Int,
+  slot_length_ms: Int,
 ) {
   fn spend(
     _minting_data: Data,
@@ -60,6 +67,10 @@ validator(
           spending_output_reference,
           proofs,
           minter_index,
+          legacy_policy_id,
+          anchor_slot,
+          anchor_time_ms,
+          slot_length_ms,
         )
       MintLegacyHandles(proofs) ->
         can_mint_legacy_handles(
@@ -67,6 +78,9 @@ validator(
           spending_output_reference,
           proofs,
           legacy_policy_id,
+          anchor_slot,
+          anchor_time_ms,
+          slot_length_ms,
         )
       BurnLegacyHandles(proofs) ->
         can_burn_legacy_handles(

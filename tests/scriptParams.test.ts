@@ -14,8 +14,11 @@ import {
 const HELIOS_PINNED_HASHES = {
   mintProxyIntV1: "c4d3329ac42cd35626f74d451a54b2d1ba1f9f380c9f88e3e7a9585b",
   mintV1WithdrawBytesA56: "7a39effb031fb6dd2f680e7160debcd6fae93592ac9aab0d7c7d03d8",
-  mintingDataSpend2Bytes:
-    "b5d849c08470aa05329369e9e277b97a2176db84d0087cbfc03ceb7f",
+  // demimntmpt now takes 5 params (legacy_policy_id, admin_vkh + WS7 slot anchor:
+  // anchor_slot, anchor_time_ms, slot_length_ms). The old 2-param helios pin no longer
+  // applies; this locks the current aiken-compiled validator's applied hash as a regression.
+  mintingDataSpend5Params:
+    "bf8a107447b239506d1a38d327200c7b6a0d7225455542295f4b4944",
 };
 
 const findValidator = (title: string) => {
@@ -45,14 +48,17 @@ describe("applyParamsToScript (scalus)", () => {
     expect(hash).toBe(HELIOS_PINNED_HASHES.mintV1WithdrawBytesA56);
   });
 
-  it("matches the helios-era hash for minting data spend with two bytes params", () => {
+  it("matches the pinned hash for minting data spend with its 5 params (2 bytes + 3 ints)", () => {
     const compiledCode = findValidator("demimntmpt.spend");
     const hash = plutusV2ScriptHash(
       applyParamsToScript(compiledCode, [
         { bytes: "b".repeat(56) } as PlutusDataJson,
         { bytes: "c".repeat(56) } as PlutusDataJson,
+        { int: 1 } as PlutusDataJson,
+        { int: 2 } as PlutusDataJson,
+        { int: 3 } as PlutusDataJson,
       ]),
     );
-    expect(hash).toBe(HELIOS_PINNED_HASHES.mintingDataSpend2Bytes);
+    expect(hash).toBe(HELIOS_PINNED_HASHES.mintingDataSpend5Params);
   });
 });

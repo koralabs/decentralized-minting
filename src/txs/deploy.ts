@@ -4,6 +4,7 @@ import { Err, Ok, Result } from "ts-res";
 import { plutusDataToCbor } from "../contracts/data/plutusData.js";
 import {
   buildContracts,
+  getSlotAnchor,
   makeMintingDataUplcProgramParameterDatum,
   makeMintProxyUplcProgramParameterDatum,
   makeMintV1UplcProgramParameterDatum,
@@ -80,10 +81,16 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
         optimizedCbor: built.mintingData.validator.optimizedCbor,
         unOptimizedCbor: built.mintingData.validator.unoptimizedCbor,
         datumCbor: plutusDataToCbor(
-          makeMintingDataUplcProgramParameterDatum(
-            legacyPolicyId,
-            adminVerificationKeyHash,
-          ),
+          (() => {
+            const a = getSlotAnchor(network);
+            return makeMintingDataUplcProgramParameterDatum(
+              legacyPolicyId,
+              adminVerificationKeyHash,
+              a.anchor_slot,
+              a.anchor_time_ms,
+              a.slot_length_ms,
+            );
+          })(),
         ),
         validatorHash: built.mintingData.validatorHash,
         scriptAddress: built.mintingData.scriptAddress,

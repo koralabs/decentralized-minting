@@ -16,6 +16,7 @@ use validations/minting_data/utils.{
   all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
   calculate_treasury_fee_and_minter_fee,
 }
+use validations/policy_window.{assert_mint_within_policy_window}
 
 // Validation:
 // All Decentralized Minting logic is here
@@ -31,6 +32,10 @@ pub fn can_mint_new_handles(
   spending_output_reference: OutputReference,
   proofs: List<mpt.Proof>,
   minter_index: Int,
+  legacy_policy_id: PolicyId,
+  anchor_slot: Int,
+  anchor_time_ms: Int,
+  slot_length_ms: Int,
 ) -> Bool {
   trace @"can_mint_new_handles"
   let Transaction {
@@ -39,6 +44,7 @@ pub fn can_mint_new_handles(
     outputs,
     extra_signatories,
     mint,
+    validity_range,
     ..
   } = transaction
 
@@ -66,6 +72,19 @@ pub fn can_mint_new_handles(
 
   // check if allowed_minter sign tx
   expect list.has(extra_signatories, allowed_minter)
+
+  // WS7: new-policy mints must fall inside the new policy's $handle_policies window
+  // (dormant until Kora sets a window; see assert_mint_within_policy_window)
+  expect
+    assert_mint_within_policy_window(
+      reference_inputs,
+      legacy_policy_id,
+      new_policy_id,
+      validity_range,
+      anchor_slot,
+      anchor_time_ms,
+      slot_length_ms,
+    )
 
   // find minting data input which is own input
   expect Some(spending_input) = find_input(inputs, spending_output_reference)
@@ -175,8 +194,24 @@ pub fn can_mint_legacy_handles(
   spending_output_reference: OutputReference,
   proofs: List<LegacyHandleProof>,
   legacy_policy_id: PolicyId,
+  anchor_slot: Int,
+  anchor_time_ms: Int,
+  slot_length_ms: Int,
 ) -> Bool {
   trace @"can_mint_legacy_handles"
+  // WS7: legacy-policy mints must fall inside the legacy policy's $handle_policies window
+  // (the cutover sunset; dormant until set). Burns are intentionally NOT gated.
+  let Transaction { reference_inputs, validity_range, .. } = transaction
+  expect
+    assert_mint_within_policy_window(
+      reference_inputs,
+      legacy_policy_id,
+      legacy_policy_id,
+      validity_range,
+      anchor_slot,
+      anchor_time_ms,
+      slot_length_ms,
+    )
   process_legacy_handles(
     transaction,
     spending_output_reference,

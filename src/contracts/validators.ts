@@ -63,12 +63,19 @@ export const getMintV1WithdrawValidator = (
 export const getMintingDataSpendValidator = (
   legacy_policy_id: string,
   admin_verification_key_hash: string,
+  // WS7 slot->POSIX anchor (network-specific, from getSlotAnchor)
+  anchor_slot: number,
+  anchor_time_ms: number,
+  slot_length_ms: number,
 ): AppliedPlutusV2Script =>
   applyAndHash(
     "demimntmpt.spend",
     makeMintingDataUplcProgramParameter(
       legacy_policy_id,
       admin_verification_key_hash,
+      anchor_slot,
+      anchor_time_ms,
+      slot_length_ms,
     ),
   );
 

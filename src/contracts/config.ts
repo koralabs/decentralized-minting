@@ -86,6 +86,26 @@ const scriptRewardAccountBech32 = (
   ).toAddress().toBech32() as string;
 };
 
+// WS7 — network slot->POSIX-time anchor for the $handle_policies sunset gate. Post-Shelley
+// single-era conversion: posix_ms(slot) = anchor_time_ms + (slot - anchor_slot) * slot_length_ms.
+// These are the public Shelley genesis anchors per network; only consequential once a sunset
+// slot is set (the gate is open until then).
+export const getSlotAnchor = (
+  network: string,
+): { anchor_slot: number; anchor_time_ms: number; slot_length_ms: number } => {
+  switch (network.toLowerCase()) {
+    case "preview":
+      // all-Shelley: slot 0 == 2022-10-25T00:00:00Z
+      return { anchor_slot: 0, anchor_time_ms: 1666656000000, slot_length_ms: 1000 };
+    case "preprod":
+      // Shelley start: slot 86400 == 2022-06-21T00:00:00Z
+      return { anchor_slot: 86400, anchor_time_ms: 1655769600000, slot_length_ms: 1000 };
+    default:
+      // mainnet Shelley start: slot 4492800 == 2020-07-29T21:44:51Z
+      return { anchor_slot: 4492800, anchor_time_ms: 1596059091000, slot_length_ms: 1000 };
+  }
+};
+
 const buildContracts = (params: BuildContractsParams): BuiltContracts => {
   const {
     network,
@@ -98,9 +118,13 @@ const buildContracts = (params: BuildContractsParams): BuiltContracts => {
   const mintProxy = getMintProxyMintValidator(mint_version);
 
   // "demimntmpt.spend"
+  const anchor = getSlotAnchor(network);
   const mintingData = getMintingDataSpendValidator(
     legacy_policy_id,
     admin_verification_key_hash,
+    anchor.anchor_slot,
+    anchor.anchor_time_ms,
+    anchor.slot_length_ms,
   );
 
   // "demimnt.withdraw"

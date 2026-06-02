@@ -26,16 +26,32 @@ const makeMintV1UplcProgramParameterDatum = (
 const makeMintingDataUplcProgramParameter = (
   legacy_policy_id: string,
   admin_verification_key_hash: string,
+  // WS7 slot->POSIX anchor (network-specific): anchor_slot, anchor_time_ms, slot_length_ms
+  anchor_slot: number,
+  anchor_time_ms: number,
+  slot_length_ms: number,
 ): PlutusDataJson[] => [
   { bytes: legacy_policy_id },
   { bytes: admin_verification_key_hash },
+  { int: anchor_slot },
+  { int: anchor_time_ms },
+  { int: slot_length_ms },
 ];
 
 const makeMintingDataUplcProgramParameterDatum = (
   legacy_policy_id: string,
   admin_verification_key_hash: string,
+  anchor_slot: number,
+  anchor_time_ms: number,
+  slot_length_ms: number,
 ): PlutusData =>
-  mkList([mkBytes(legacy_policy_id), mkBytes(admin_verification_key_hash)]);
+  mkList([
+    mkBytes(legacy_policy_id),
+    mkBytes(admin_verification_key_hash),
+    mkInt(anchor_slot),
+    mkInt(anchor_time_ms),
+    mkInt(slot_length_ms),
+  ]);
 
 // Constructor-flavoured versions (tag=0) for the settings-proxy data shape
 // used by the root demimntprx handle reference output.
