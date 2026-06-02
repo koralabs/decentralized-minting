@@ -1,8 +1,8 @@
-use aiken/transaction.{ScriptContext, Spend, Transaction}
-use common/utils.{is_withdrawal_script_executed}
-use decentralized_minting/orders.{Cancel, Execute, OrderDatum, OrderRedeemer}
-use decentralized_minting/settings.{Settings, find_settings}
-use sundae/multisig
+use aiken/transaction.{ScriptContext, Spend}
+use decentralized_minting/orders.{Cancel, Execute, OrderDatum, OrderRedeemer, Refund}
+use validations/orders/validation.{
+  can_cancel_order, can_execute_order, can_refund_order,
+}
 
 validator {
   fn spend(
@@ -10,33 +10,13 @@ validator {
     redeemer: OrderRedeemer,
     ctx: ScriptContext,
   ) -> Bool {
-    let ScriptContext(
-      Transaction {
-        reference_inputs,
-        extra_signatories,
-        validity_range,
-        withdrawals,
-        ..
-      },
-      purpose,
-    ) = ctx
-    expect Spend(_) = purpose
+    let ScriptContext(transaction, purpose) = ctx
+    expect Spend(order_output_reference) = purpose
 
     when redeemer is {
-      Execute -> {
-        let Settings { mint_governor, .. } = find_settings(reference_inputs)
-        is_withdrawal_script_executed(withdrawals, mint_governor)
-      }
-      Cancel -> {
-        expect owner: multisig.MultisigScript = datum.owner
-        // Defer to sundae.multisig
-        multisig.satisfied(
-          owner,
-          extra_signatories,
-          validity_range,
-          withdrawals,
-        )
-      }
+      Execute -> can_execute_order(transaction)
+      Cancel -> can_cancel_order(transaction, datum)
+      Refund -> can_refund_order(transaction, order_output_reference, datum)
     }
   }
 }

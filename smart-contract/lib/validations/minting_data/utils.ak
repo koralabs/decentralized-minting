@@ -9,11 +9,15 @@ use common/handle.{parse_handle_name}
 use common/hashes.{ScriptHash}
 use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
+use decentralized_minting/label_set
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings_v1.{min_treasury_fee}
-use validations/minting_data/types.{LegacyHandleProof}
+use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 
-const max_handle_length = 15
+// WS6: root-handle character cap. Bumped 15 -> 28 (the on-chain gatekeeper that actually
+// lets 28-char roots mint). `max_sub_handle_length` is the full `sub@root` cap and stays 28,
+// so a root past ~26 chars can't also carry a subhandle (full length would exceed the cap).
+const max_handle_length = 28
 
 const max_sub_handle_length = 28
 
@@ -116,10 +120,14 @@ pub fn all_orders_are_satisfied(
   }
 }
 
+// Validate a batch of legacy handle proofs against the MPT root.
+// `amount` is 1 for minting (insert key, add to expected mint value)
+// or -1 for burning (delete key, subtract from expected mint value).
 pub fn all_proofs_are_valid(
   proofs: List<LegacyHandleProof>,
   root: mpt.MerklePatriciaForestry,
   legacy_policy_id: PolicyId,
+  amount: Int,
   expected_mint_value: Value,
   continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
 ) -> result {
@@ -132,28 +140,105 @@ pub fn all_proofs_are_valid(
       // check handle is valid
       expect check_legacy_handle_validity(handle_name, is_virtual_bool)
 
-      // update root
-      // NOTE:
-      // for now we assume that all order is for minting (not burning)
-      let new_root = update_root(root, handle_name, 1, mpt_proof)
+      // update root (insert when minting, delete when burning)
+      let new_root = update_root(root, handle_name, amount, mpt_proof)
 
-      // update mint value
+      // update mint value (positive when minting, negative when burning)
       let new_mint_value =
         update_mint_value(
           expected_mint_value,
           legacy_policy_id,
           handle_name,
           is_virtual_bool,
-          1,
+          amount,
         )
 
       all_proofs_are_valid(
         rest_proofs,
         new_root,
         legacy_policy_id,
+        amount,
         new_mint_value,
         continuation,
       )
+    }
+  }
+}
+
+// WS1 — process each label-asset proof, accumulating the new MPT root and the expected
+// (signed) mint value. Couples the registry value to the tx mint: adding a label to a handle's
+// set requires +1 of that label asset minted; removing requires −1 (burn). The label asset's
+// policy is the one under which the handle's 222 owner token is referenced (see
+// `find_owner_policy`), mirroring the existing new/legacy policy split.
+pub fn all_label_proofs_are_valid(
+  proofs: List<LabelAssetProof>,
+  root: mpt.MerklePatriciaForestry,
+  reference_inputs: List<Input>,
+  legacy_policy_id: PolicyId,
+  new_policy_id: PolicyId,
+  expected_mint_value: Value,
+  continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
+) -> result {
+  when proofs is {
+    [] -> continuation(root, expected_mint_value)
+    [proof, ..rest_proofs] -> {
+      let LabelAssetProof { mpt_proof, handle_name, label, old_value, amount } =
+        proof
+
+      // owner proof -> the policy this handle's label asset is minted under
+      let policy =
+        find_owner_policy(
+          reference_inputs,
+          handle_name,
+          legacy_policy_id,
+          new_policy_id,
+        )
+
+      // update the registry value at this key (apply guards amount = +/-1 and the
+      // add-only-if-absent / remove-only-if-present legality)
+      let new_value = label_set.apply(old_value, label, amount)
+      let new_root = mpt.update(root, handle_name, mpt_proof, old_value, new_value)
+
+      // expected mint: +/-1 of (policy, label ++ handle_name)
+      let label_asset_name = bytearray.concat(label, handle_name)
+      let new_mint_value =
+        expected_mint_value |> value.add(policy, label_asset_name, amount)
+
+      all_label_proofs_are_valid(
+        rest_proofs,
+        new_root,
+        reference_inputs,
+        legacy_policy_id,
+        new_policy_id,
+        new_mint_value,
+        continuation,
+      )
+    }
+  }
+}
+
+// WS1 auth — locate the policy under which the root handle's 222 owner NFT is referenced.
+// The tx must present (as a reference input) the 222 owner token for `handle_name` under
+// either the legacy or the new policy. Fails if no such reference input exists, so a
+// misbehaving engine cannot create label assets for a handle whose owner token isn't on tx.
+fn find_owner_policy(
+  reference_inputs: List<Input>,
+  handle_name: ByteArray,
+  legacy_policy_id: PolicyId,
+  new_policy_id: PolicyId,
+) -> PolicyId {
+  let owner_asset_name = bytearray.concat(prefix_222, handle_name)
+  when reference_inputs is {
+    [] -> fail @"OWNER_222_NOT_REFERENCED"
+    [ref_input, ..rest] -> {
+      let Input { output: Output { value: ref_value, .. }, .. } = ref_input
+      if value.quantity_of(ref_value, legacy_policy_id, owner_asset_name) >= 1 {
+        legacy_policy_id
+      } else if value.quantity_of(ref_value, new_policy_id, owner_asset_name) >= 1 {
+        new_policy_id
+      } else {
+        find_owner_policy(rest, handle_name, legacy_policy_id, new_policy_id)
+      }
     }
   }
 }

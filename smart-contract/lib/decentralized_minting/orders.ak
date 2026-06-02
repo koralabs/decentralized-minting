@@ -20,4 +20,8 @@ pub type OrderDatum {
 pub type OrderRedeemer {
   Execute
   Cancel
+  // WS8: admin/operator refund of an unfulfillable order. Authorized by the same
+  // `mint_governor` as `Execute`, but gated on returning the order's lovelace to the
+  // owner — so an admin can clear any stuck order yet can never redirect the funds.
+  Refund
 }

@@ -1,3 +1,4 @@
+use aiken/bytearray
 use tests/mocks/fake_tx.{make_handle_price_info}
 use validations/minting_data/utils.{
   check_legacy_handle_validity, check_new_handle_validity_and_get_price,
@@ -99,9 +100,30 @@ test check_new_handle_validity_and_get_price_11() fail {
   handle_price == 5_000_000
 }
 
-test check_new_handle_validity_and_get_price_12() fail {
+// WS6: 16-char roots are now valid (cap is 28). A 28-char root mints; 29 fails.
+test check_new_handle_validity_and_get_price_12() {
   let handle_price_info = make_handle_price_info()
-  let handle_name = "abcdefghijklmnop"
+  // 28 chars
+  let handle_name = "abcdefghijklmnopqrstuvwxyz12"
+  let handle_price =
+    check_new_handle_validity_and_get_price(handle_name, handle_price_info)
+  handle_price == 5_000_000
+}
+
+test check_new_handle_validity_28_chars() {
+  let handle_price_info = make_handle_price_info()
+  // exactly 28 chars
+  let handle_name = "abcdefghijklmnopqrstuvwxyz12"
+  bytearray.length(handle_name) == 28 && check_new_handle_validity_and_get_price(
+    handle_name,
+    handle_price_info,
+  ) == 5_000_000
+}
+
+test check_new_handle_validity_29_chars_fail() fail {
+  let handle_price_info = make_handle_price_info()
+  // 29 chars -> rejected
+  let handle_name = "abcdefghijklmnopqrstuvwxyz123"
   let handle_price =
     check_new_handle_validity_and_get_price(handle_name, handle_price_info)
   handle_price == 5_000_000
@@ -127,8 +149,13 @@ test check_legacy_handle_validity_1() fail {
   check_legacy_handle_validity("abc", True)
 }
 
+// WS6: 16-char root now valid; a 29-char root fails.
 test check_legacy_handle_validity_2() fail {
-  check_legacy_handle_validity("abcdefghijklmnop", False)
+  check_legacy_handle_validity("abcdefghijklmnopqrstuvwxyz123", False)
+}
+
+test check_legacy_handle_validity_root_28_ok() {
+  check_legacy_handle_validity("abcdefghijklmnopqrstuvwxyz12", False)
 }
 
 test check_legacy_handle_validity_3() fail {
@@ -147,6 +174,7 @@ test check_legacy_handle_validity_6() fail {
   check_legacy_handle_validity("abcdefghijklm@abcdefghijklmno", True)
 }
 
+// full sub@root length 29 (> max_sub_handle_length 28) -> fail
 test check_legacy_handle_validity_7() fail {
-  check_legacy_handle_validity("abc@abcdefghijklmnop", True)
+  check_legacy_handle_validity("abcde@abcdefghijklmnopqrstuvw", True)
 }

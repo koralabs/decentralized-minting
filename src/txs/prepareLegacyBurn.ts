@@ -6,7 +6,7 @@ import { Err, Ok, Result } from "ts-res";
 import { fetchMintingData } from "../configs/index.js";
 import {
   buildMintingData,
-  buildMintingDataMintLegacyHandlesRedeemer,
+  buildMintingDataBurnLegacyHandlesRedeemer,
   LegacyHandle,
   LegacyHandleProof,
   MintingData,
@@ -17,9 +17,10 @@ import { getBlockfrostBuildContext } from "../helpers/cardano-sdk/blockfrostCont
 import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
 import { getNetwork } from "../helpers/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
+import { reconstructUtxo } from "./prepareLegacyMint.js";
 import type { TxPlan } from "./txPlan.js";
 
-interface PrepareLegacyMintParams {
+interface PrepareLegacyBurnParams {
   /** Change address (bech32) of the minter wallet. */
   changeAddress: string;
   /** Payment-key-hash of the minter (required signer). */
@@ -28,37 +29,38 @@ interface PrepareLegacyMintParams {
   walletUtxos: CardanoTypes.Utxo[];
   /** Collateral UTxO (ADA-only, ≥5 ADA). */
   collateralUtxo?: CardanoTypes.Utxo;
+  /** Handles to burn (e.g. virtual sub handles); deleted from the MPT. */
   handles: LegacyHandle[];
   db: Trie;
   blockfrostApiKey: string;
 }
 
-interface PrepareLegacyMintDeps {
+interface PrepareLegacyBurnDeps {
   fetchAllDeployedScriptsFn?: typeof fetchAllDeployedScripts;
   fetchMintingDataFn?: typeof fetchMintingData;
 }
 
 /**
- * Prepare the minting-data spend component of a legacy mint transaction.
- * Returns a partial `TxPlan` that captures the minting-data UTxO spend with
- * the MintLegacyHandles redeemer + the updated MPT root datum output. The
- * caller (`mintLegacyHandles`) adds the actual minted-handle outputs and
- * mints before calling `finalizeTxPlan`.
+ * WS2 — prepare the minting-data spend component of a legacy *burn* transaction.
+ *
+ * The mirror of `prepareLegacyMintTransaction`: for each handle we generate an MPT *inclusion*
+ * proof (against the current root, which still contains the key) and then delete the key from
+ * the local trie, advancing the root. The `BurnLegacyHandles` redeemer carries those proofs;
+ * on-chain `process_legacy_handles(amount = -1)` applies `mpt.delete` and requires the tx to
+ * burn exactly the corresponding assets. This keeps the MPT root in sync when a legacy
+ * (virtual) sub-handle is burned, instead of the DB-only delete that silently drifts the root.
+ *
+ * The caller adds the actual asset burns (negative mint under the legacy native policy) before
+ * `finalizeTxPlan`.
  */
-const prepareLegacyMintTransaction = async (
-  params: PrepareLegacyMintParams,
+const prepareLegacyBurnTransaction = async (
+  params: PrepareLegacyBurnParams,
   {
     fetchAllDeployedScriptsFn = fetchAllDeployedScripts,
     fetchMintingDataFn = fetchMintingData,
-  }: PrepareLegacyMintDeps = {},
+  }: PrepareLegacyBurnDeps = {},
 ): Promise<
-  Result<
-    {
-      plan: TxPlan;
-      deployedScripts: DeployedScripts;
-    },
-    Error
-  >
+  Result<{ plan: TxPlan; deployedScripts: DeployedScripts }, Error>
 > => {
   const {
     changeAddress,
@@ -93,21 +95,21 @@ const prepareLegacyMintTransaction = async (
     return Err(new Error("ERROR: Local DB and On Chain Root Hash mismatch"));
   }
 
-  // Compute MPT proofs as we insert each handle.
+  // Inclusion proof per handle (against the current root), then delete to advance the root.
   const proofs: LegacyHandleProof[] = [];
   for (const handle of handles) {
     const { utf8Name, hexName, isVirtual } = handle;
     try {
-      await db.insert(utf8Name, "");
       const mpfProof = await db.prove(utf8Name);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
         handle_name: hexName,
         is_virtual: isVirtual ? 1n : 0n,
       });
+      await db.delete(utf8Name);
     } catch (e) {
-      console.warn("Handle already exists", utf8Name, e);
-      return Err(new Error(`Handle "${utf8Name}" already exists`));
+      console.warn("Handle not found in trie", utf8Name, e);
+      return Err(new Error(`Handle "${utf8Name}" not found in trie`));
     }
   }
 
@@ -116,10 +118,8 @@ const prepareLegacyMintTransaction = async (
     mpt_root_hash: db.hash.toString("hex"),
   };
 
-  // Reconstruct the minting-data UTxO as a Core Utxo.
   const mintingDataCoreUtxo = reconstructUtxo(mintingDataUtxo);
 
-  // Output: back to the same (minting-data) script address with updated datum.
   const updatedDatum = Serialization.PlutusData.fromCbor(
     plutusDataToCbor(buildMintingData(newMintingData)) as HexBlob,
   ).toCore();
@@ -129,9 +129,9 @@ const prepareLegacyMintTransaction = async (
     datum: updatedDatum,
   };
 
-  // Spend redeemer (constructor 1 = MintLegacyHandles).
+  // Spend redeemer (constructor 3 = BurnLegacyHandles).
   const redeemerDataCbor = plutusDataToCbor(
-    buildMintingDataMintLegacyHandlesRedeemer(proofs),
+    buildMintingDataBurnLegacyHandlesRedeemer(proofs),
   );
   const spendRedeemer: CardanoTypes.Redeemer = {
     data: Serialization.PlutusData.fromCbor(redeemerDataCbor as HexBlob).toCore(),
@@ -167,39 +167,5 @@ const prepareLegacyMintTransaction = async (
   return Ok({ plan, deployedScripts: fetchedResult.data });
 };
 
-const reconstructUtxo = (
-  descriptor: import("../configs/index.js").UtxoDescriptor,
-): CardanoTypes.Utxo => {
-  const assets = new Map<CardanoTypes.AssetId, bigint>();
-  for (const [key, quantity] of descriptor.assets) {
-    const [policyId, assetName] = key.split(".");
-    const assetId = Cardano.AssetId.fromParts(
-      Cardano.PolicyId(policyId as HexBlob),
-      Cardano.AssetName(assetName as HexBlob),
-    );
-    assets.set(assetId, quantity);
-  }
-  const txIn: CardanoTypes.HydratedTxIn = {
-    txId: Cardano.TransactionId(descriptor.txHash as HexBlob),
-    index: descriptor.outputIndex,
-    address: descriptor.address as CardanoTypes.TxOut["address"],
-  };
-  const txOut: CardanoTypes.TxOut = {
-    address: descriptor.address as CardanoTypes.TxOut["address"],
-    value: {
-      coins: descriptor.lovelace,
-      ...(assets.size > 0 ? { assets } : {}),
-    },
-    ...(descriptor.inlineDatumCbor
-      ? {
-          datum: Serialization.PlutusData.fromCbor(
-            descriptor.inlineDatumCbor as HexBlob,
-          ).toCore(),
-        }
-      : {}),
-  };
-  return [txIn, txOut];
-};
-
-export type { PrepareLegacyMintParams };
-export { prepareLegacyMintTransaction, reconstructUtxo };
+export type { PrepareLegacyBurnParams };
+export { prepareLegacyBurnTransaction };

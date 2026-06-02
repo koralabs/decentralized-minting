@@ -11,9 +11,9 @@ use decentralized_minting/settings.{Settings, find_settings}
 use decentralized_minting/settings_v1.{
   SettingsV1, get_allowed_minter_and_valid_handle_price_asset,
 }
-use validations/minting_data/types.{LegacyHandleProof}
+use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 use validations/minting_data/utils.{
-  all_orders_are_satisfied, all_proofs_are_valid,
+  all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
   calculate_treasury_fee_and_minter_fee,
 }
 
@@ -177,6 +177,50 @@ pub fn can_mint_legacy_handles(
   legacy_policy_id: PolicyId,
 ) -> Bool {
   trace @"can_mint_legacy_handles"
+  process_legacy_handles(
+    transaction,
+    spending_output_reference,
+    proofs,
+    legacy_policy_id,
+    1,
+  )
+}
+
+// Validation:
+// Legacy Handle Burning logic is here
+//
+// Mirror of `can_mint_legacy_handles` with amount -1: each proof deletes its
+// handle from the MPT and the tx must burn exactly the corresponding assets.
+// Used to keep the MPT root in sync when a (virtual) legacy sub handle is burned
+// (the legacy policy native script authorizes the actual burn; this enforces
+// the root update when minting_data is spent).
+//
+pub fn can_burn_legacy_handles(
+  transaction: Transaction,
+  spending_output_reference: OutputReference,
+  proofs: List<LegacyHandleProof>,
+  legacy_policy_id: PolicyId,
+) -> Bool {
+  trace @"can_burn_legacy_handles"
+  process_legacy_handles(
+    transaction,
+    spending_output_reference,
+    proofs,
+    legacy_policy_id,
+    -1,
+  )
+}
+
+// Shared mint/burn logic for legacy handles. `amount` is 1 for minting,
+// -1 for burning; it drives both the MPT update (insert/delete) and the
+// expected (positive/negative) mint value.
+fn process_legacy_handles(
+  transaction: Transaction,
+  spending_output_reference: OutputReference,
+  proofs: List<LegacyHandleProof>,
+  legacy_policy_id: PolicyId,
+  amount: Int,
+) -> Bool {
   let Transaction { inputs, outputs, mint, .. } = transaction
 
   // find minting data input which is own input
@@ -193,11 +237,11 @@ pub fn can_mint_legacy_handles(
   // build merkle patricia trie from old root hash
   let root = mpt.from_root(mpt_root_hash)
 
-  // check orders with proofs
+  // check proofs and accumulate new root + expected mint value
   let
     new_root,
     expected_mint_value,
-  <- all_proofs_are_valid(proofs, root, legacy_policy_id, value.zero())
+  <- all_proofs_are_valid(proofs, root, legacy_policy_id, amount, value.zero())
 
   // calculate new root and expected mint value
   let new_mpt_root_hash = new_root |> mpt.root
@@ -214,7 +258,102 @@ pub fn can_mint_legacy_handles(
     )
   expect minting_data_output.reference_script == None
 
-  // check minted handles
+  // check minted/burned handles match the proofs exactly
+  expect value.from_minted_value(mint) == expected_mint_value
+
+  True
+}
+
+// Validation:
+// WS1 — Label-asset registry minting (001 settings, future 002, …).
+//
+// DeMi becomes the minter of the per-handle label assets. For each proof, the handle's MPT
+// value (its canonical label set) is updated to add (+1) or remove (−1) the label, and the tx
+// `mint` must carry exactly the matching ±1 of `(policy, label ‖ handle_name)`. Authorization:
+//   - an `allowed_minter` (from settings, selected by `minter_index`) signs the tx, AND
+//   - the tx references the root handle's 222 owner NFT (per proof, via `find_owner_policy`),
+//     which also fixes the policy the label asset is minted under (legacy vs new).
+// The contract records label *existence* only — it never interprets the label or its datum.
+//
+pub fn can_mint_label_assets(
+  transaction: Transaction,
+  spending_output_reference: OutputReference,
+  proofs: List<LabelAssetProof>,
+  legacy_policy_id: PolicyId,
+  minter_index: Int,
+) -> Bool {
+  trace @"can_mint_label_assets"
+  let Transaction {
+    inputs,
+    reference_inputs,
+    outputs,
+    extra_signatories,
+    mint,
+    ..
+  } = transaction
+
+  // settings: allowed minter + the new policy id
+  let Settings { data: settings_data, .. } = find_settings(reference_inputs)
+  expect settings_datum: SettingsV1 = settings_data
+  let SettingsV1 {
+    policy_id: new_policy_id,
+    allowed_minters,
+    valid_handle_price_assets,
+    ..
+  } = settings_datum
+
+  let (allowed_minter, _valid_handle_price_asset) =
+    get_allowed_minter_and_valid_handle_price_asset(
+      allowed_minters,
+      valid_handle_price_assets,
+      minter_index,
+    )
+  expect list.has(extra_signatories, allowed_minter)
+
+  // find minting data input which is own input
+  expect Some(spending_input) = find_input(inputs, spending_output_reference)
+  let Input { output: minting_data_input, .. } = spending_input
+  let MintingData { mpt_root_hash } = resolve_minting_data(minting_data_input)
+
+  // parse outputs
+  expect [minting_data_output, ..] = outputs
+
+  // expect proofs are not empty
+  expect list.length(proofs) > 0
+
+  // build merkle patricia trie from old root hash
+  let root = mpt.from_root(mpt_root_hash)
+
+  // process label proofs, accumulating new root + expected mint value
+  let
+    new_root,
+    expected_mint_value,
+  <-
+    all_label_proofs_are_valid(
+      proofs,
+      root,
+      reference_inputs,
+      legacy_policy_id,
+      new_policy_id,
+      value.zero(),
+    )
+
+  // calculate new root
+  let new_mpt_root_hash = new_root |> mpt.root
+
+  // check minting data output (unchanged except the root hash)
+  expect minting_data_output.address == minting_data_input.address
+  expect
+    value.without_lovelace(minting_data_output.value) == value.without_lovelace(
+      minting_data_input.value,
+    )
+  expect
+    minting_data_output.datum == InlineDatum(
+      MintingData { mpt_root_hash: new_mpt_root_hash },
+    )
+  expect minting_data_output.reference_script == None
+
+  // minted/burned label assets must match the proofs exactly
   expect value.from_minted_value(mint) == expected_mint_value
 
   True
