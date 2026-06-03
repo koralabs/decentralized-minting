@@ -1,5 +1,6 @@
 import { invariant } from "../../helpers/index.js";
 import {
+  FreeVirtualData,
   LabelAssetProof,
   LegacyHandleProof,
   MintingData,
@@ -33,12 +34,21 @@ const decodeMintingDataDatum = (
   return { mpt_root_hash };
 };
 
+const buildFreeVirtualData = (fv: FreeVirtualData): PlutusData =>
+  mkConstr(0, [
+    buildMPTProofData(fv.root_proof),
+    mkInt(fv.root_pre_count),
+    mkBytes(fv.root_labels),
+  ]);
+
 const buildLegacyHandleProofData = (proof: LegacyHandleProof): PlutusData => {
-  const { mpt_proof, handle_name, is_virtual } = proof;
+  const { mpt_proof, handle_name, is_virtual, free_virtual } = proof;
   return mkConstr(0, [
     buildMPTProofData(mpt_proof),
     mkBytes(handle_name),
     mkInt(is_virtual),
+    // Option<FreeVirtualData>: Some(data) / None
+    free_virtual ? mkConstr(0, [buildFreeVirtualData(free_virtual)]) : mkConstr(1, []),
   ]);
 };
 
@@ -64,12 +74,14 @@ const buildMintingDataBurnLegacyHandlesRedeemer = (
 
 // WS1 — LabelAssetProof: { mpt_proof, handle_name, label, old_value, amount } (constructor 0).
 const buildLabelAssetProofData = (proof: LabelAssetProof): PlutusData => {
-  const { mpt_proof, handle_name, label, old_value, amount } = proof;
+  const { mpt_proof, handle_name, label, old_free_virtual_count, old_labels, amount } =
+    proof;
   return mkConstr(0, [
     buildMPTProofData(mpt_proof),
     mkBytes(handle_name),
     mkBytes(label),
-    mkBytes(old_value),
+    mkInt(old_free_virtual_count),
+    mkBytes(old_labels),
     mkInt(amount),
   ]);
 };

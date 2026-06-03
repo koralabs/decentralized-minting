@@ -15,7 +15,11 @@ import {
 import { getBlockfrostBuildContext } from "../helpers/cardano-sdk/blockfrostContext.js";
 import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
 import { getNetwork } from "../helpers/index.js";
-import { apply as applyLabelSet, valueBuffer } from "../store/labelSet.js";
+import {
+  apply as applyLabelSet,
+  encodeRegistryValue,
+  valueBuffer,
+} from "../store/labelSet.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 import { reconstructUtxo } from "./prepareLegacyMint.js";
 import type { TxPlan } from "./txPlan.js";
@@ -30,8 +34,10 @@ interface LabelAssetRequest {
   label: string;
   /** +1 to add the label (mint the asset) / -1 to remove it (burn). */
   amount: bigint;
-  /** The key's current canonical label-set value (hex; "" if none yet). */
-  oldValue: string;
+  /** The key's current label set (hex; "" if none yet). */
+  oldLabels: string;
+  /** The key's current private-virtual counter (0 unless the root has private virtuals). */
+  oldFreeVirtualCount?: bigint;
   /** The root's 222 owner-NFT UTxO to reference (proves ownership + fixes the policy). */
   ownerRefInput: { txHash: string; outputIndex: number };
 }
@@ -124,10 +130,11 @@ const prepareLabelAssetsTransaction = async (
   // both old and new — `mpt.update` re-uses it (the key's neighbours don't change).
   const proofs: LabelAssetProof[] = [];
   for (const request of requests) {
-    const { utf8Name, hexName, label, amount, oldValue } = request;
-    let newValue: string;
+    const { utf8Name, hexName, label, amount, oldLabels } = request;
+    const oldFreeVirtualCount = request.oldFreeVirtualCount ?? 0n;
+    let newLabels: string;
     try {
-      newValue = applyLabelSet(oldValue, label, amount);
+      newLabels = applyLabelSet(oldLabels, label, amount);
     } catch (e) {
       return Err(
         new Error(
@@ -135,13 +142,16 @@ const prepareLabelAssetsTransaction = async (
         ),
       );
     }
+    // the stored value is encode(count, labels); a label change preserves the counter
+    const newValue = encodeRegistryValue(oldFreeVirtualCount, newLabels);
     try {
       const mpfProof = await db.prove(utf8Name);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
         handle_name: hexName,
         label,
-        old_value: oldValue,
+        old_free_virtual_count: oldFreeVirtualCount,
+        old_labels: oldLabels,
         amount,
       });
       // advance the local trie: replace old value with new value at the same key

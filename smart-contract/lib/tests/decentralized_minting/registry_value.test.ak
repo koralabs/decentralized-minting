@@ -90,3 +90,19 @@ test public_virtual_never_free() {
     virtual_mint_is_free(2, 3, True) == False,
   }
 }
+
+// --- exact bytes (so the off-chain replicates encode precisely) ---
+
+test encode_one_exact_bytes() {
+  // 0xff marker ++ CBOR(1)=0x01 ++ labels
+  encode(1, #"00001070") == #"ff0100001070"
+}
+
+test encode_three_empty_labels() {
+  encode(3, #"") == #"ff03"
+}
+
+test encode_count_24_two_byte_cbor() {
+  // CBOR(24) = 0x18 0x18
+  encode(24, #"00001070") == #"ff181800001070"
+}

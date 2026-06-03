@@ -18,7 +18,7 @@ const HELIOS_PINNED_HASHES = {
   // anchor_slot, anchor_time_ms, slot_length_ms). The old 2-param helios pin no longer
   // applies; this locks the current aiken-compiled validator's applied hash as a regression.
   mintingDataSpend5Params:
-    "79276fc224cf4c20cbb29431090c073a0897e2cd23126ab4aaabb6bd",
+    "cb5a1b1a8b6d3fa12ffd61b803e652b59679371e15eb63fa2932c33d",
 };
 
 const findValidator = (title: string) => {

@@ -1,4 +1,5 @@
 use aiken/builtin
+use aiken/bytearray
 
 // WS5 (free virtual mints) — the registry value carries, alongside the WS1 label set, a
 // counter of the root's current *private* virtual sub-handles. The first 3 private virtuals
@@ -19,7 +20,14 @@ pub fn encode(free_virtual_count: Int, labels: ByteArray) -> ByteArray {
   if free_virtual_count <= 0 {
     labels
   } else {
-    builtin.serialise_data((free_virtual_count, labels))
+    // Label sets are concatenated 4-byte CIP-67 prefixes (always starting 0x00), so a leading
+    // 0xff marker can never collide with a pure label set. After it, the count is CBOR-encoded
+    // (`serialise_data` of the Int) — self-delimiting, so `marker ++ count ++ labels` is
+    // injective and trivial to reproduce off-chain.
+    bytearray.concat(
+      #"ff",
+      bytearray.concat(builtin.serialise_data(free_virtual_count), labels),
+    )
   }
 }
 
