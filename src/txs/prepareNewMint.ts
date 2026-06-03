@@ -41,6 +41,13 @@ interface PrepareNewMintParams {
   collateralUtxo?: CardanoTypes.Utxo;
   db: Trie;
   blockfrostApiKey: string;
+  /**
+   * WS5 — extra reference inputs required to satisfy discounted orders: each qualifying asset
+   * (rare/OG handle, partner/HAL NFT) plus the $pfp_policy_ids allowlist-root UTxO. Resolved by
+   * the caller (it has the orders + chain access via `resolveDiscountReferenceInputs`). The mint
+   * validator reads these to re-verify every discount claim.
+   */
+  discountReferenceInputs?: { txHash: string; outputIndex: number }[];
 }
 
 interface PrepareNewMintDeps {
@@ -238,6 +245,14 @@ const prepareNewMintTransaction = async (
       index: ordersScript.refScriptUtxo.outputIndex,
     },
   ]);
+
+  // WS5 — attach the qualifying-asset + allowlist-root reference inputs for discounted orders.
+  for (const ref of params.discountReferenceInputs ?? []) {
+    referenceInputs.add({
+      txId: Cardano.TransactionId(ref.txHash as HexBlob),
+      index: ref.outputIndex,
+    });
+  }
 
   const mintV1StakingCredential = {
     type: Cardano.CredentialType.ScriptHash,

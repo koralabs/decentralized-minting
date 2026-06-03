@@ -6,9 +6,11 @@ import { fetchHandlePriceInfoData } from "../configs/index.js";
 import { HANDLE_PRICE_INFO_HANDLE_NAME } from "../constants/index.js";
 import { plutusDataToCbor } from "../contracts/data/plutusData.js";
 import {
+  buildDiscountClaimData,
   buildOrderCancelRedeemer,
   buildOrderData,
   decodeOrderDatum,
+  DiscountClaim,
   HandlePrices,
   makeSignatureMultiSigScriptData,
   OrderDatum,
@@ -32,7 +34,18 @@ interface RequestParams {
   address: string;
   /** Handle name (UTF8). */
   handle: string;
+  /**
+   * WS5 — optional minting-discount. `bps` is the configured basis-points percent-off for the
+   * claimed class (read from on-chain SettingsV1.discount_config); `claim` names the qualifying
+   * asset, which the fulfilment tx must reference (sharing a credential with `address`). The
+   * order pays the discounted price; the validator re-verifies the claim + bps on-chain.
+   */
+  discount?: { claim: DiscountClaim; bps: number };
 }
+
+// price - price * bps / 10000 (mirrors discount.ak apply_discount)
+const applyDiscountLovelace = (fullLovelace: bigint, bps: number): bigint =>
+  fullLovelace - (fullLovelace * BigInt(bps)) / 10000n;
 
 /**
  * Build the inline datum + lovelace value for a new order output. The caller
@@ -99,11 +112,19 @@ const request = async (params: RequestParams): Promise<
     owner: makeSignatureMultiSigScriptData(paymentCred.hash as unknown as string),
     requested_handle: Buffer.from(handle).toString("hex"),
     destination_address: address,
+    discount_claim: params.discount
+      ? buildDiscountClaimData(params.discount.claim)
+      : undefined,
   };
+
+  const fullLovelace = BigInt(Math.ceil(Number(handlePrice) * 1_000_000));
+  const lovelace = params.discount
+    ? applyDiscountLovelace(fullLovelace, params.discount.bps)
+    : fullLovelace;
 
   return Ok({
     scriptAddress,
-    lovelace: BigInt(Math.ceil(Number(handlePrice) * 1_000_000)),
+    lovelace,
     orderDatumCbor: plutusDataToCbor(buildOrderData(order)),
   });
 };
@@ -202,8 +223,15 @@ const isValidOrderTxInput = async (
       new Error(`Failed to decode order datum: ${orderDatumResult.error}`),
     );
   }
-  const { requested_handle } = orderDatumResult.data;
+  const { requested_handle, discount_claim } = orderDatumResult.data;
   const handleName = Buffer.from(requested_handle, "hex").toString("utf8");
+
+  // WS5: discounted orders legitimately pay below the full price. The mint validator
+  // re-verifies the claim + the configured discount + the discounted price on-chain
+  // (forge-proof), so the off-chain pre-filter only enforces the floor for full-price orders.
+  if (discount_claim) {
+    return Ok(true);
+  }
 
   const handlePrice = Math.min(
     calculateHandlePriceFromHandlePrices(handleName, prevHandlePrices),
