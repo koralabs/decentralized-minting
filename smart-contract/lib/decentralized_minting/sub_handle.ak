@@ -1,8 +1,10 @@
 use aiken/bytearray
 use aiken/list
+use aiken/math
 use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/value.{PolicyId}
 use common/cip68.{prefix_001}
+use decentralized_minting/settings_v1.{min_treasury_fee}
 
 // struct SubHandleSettings {
 //     public_minting_enabled: Int
@@ -78,6 +80,22 @@ pub fn get_sub_handle_price(
 
   let (_, _, tier_pricing, _, _) = sub_handle_settings
   get_sub_handle_price_from_tier_pricing(tier_pricing, sub_handle_length)
+}
+
+// WS4 — the minimum Kora (treasury) fee that must be covered on a subhandle mint. The owner
+// sets the subhandle price via their tier pricing (nft vs virtual); Kora's cut is the treasury
+// percentage of that price, floored at `min_treasury_fee`. This guarantees Kora's fee on every
+// subhandle mint while the owner's price floats above it.
+pub fn sub_handle_kora_fee(
+  owner_settings: OwnerSettings,
+  sub_handle_length: Int,
+  is_virtual: Bool,
+  treasury_fee_percentage: Int,
+) -> Int {
+  expect treasury_fee_percentage >= 0
+  expect treasury_fee_percentage <= 100
+  let price = get_sub_handle_price(owner_settings, sub_handle_length, is_virtual)
+  math.max(price * treasury_fee_percentage / 100, min_treasury_fee)
 }
 
 pub fn get_sub_handle_price_from_tier_pricing(

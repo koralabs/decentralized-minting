@@ -1,5 +1,5 @@
 use decentralized_minting/registry_value.{
-  apply_virtual_delta, encode, is_free_virtual,
+  apply_virtual_delta, encode, is_free_virtual, virtual_mint_is_free,
 }
 
 // --- encode: backward-compatible with WS1 label sets ---
@@ -31,16 +31,16 @@ test encode_distinct_counts_distinct_values() {
 
 test free_for_first_three() {
   and {
-    is_free_virtual(0),
-    is_free_virtual(1),
-    is_free_virtual(2),
+    is_free_virtual(0, 3),
+    is_free_virtual(1, 3),
+    is_free_virtual(2, 3),
   }
 }
 
 test paid_from_fourth() {
   and {
-    is_free_virtual(3) == False,
-    is_free_virtual(4) == False,
+    is_free_virtual(3, 3) == False,
+    is_free_virtual(4, 3) == False,
   }
 }
 
@@ -59,7 +59,7 @@ test delta_burn_refunds_a_slot() {
   let after_burn = apply_virtual_delta(3, -1)
   and {
     after_burn == 2,
-    is_free_virtual(after_burn),
+    is_free_virtual(after_burn, 3),
   }
 }
 
@@ -69,4 +69,24 @@ test delta_burn_below_zero_fails() fail {
 
 test delta_invalid_amount_fails() fail {
   apply_virtual_delta(0, 2) == 0
+}
+
+// --- virtual_mint_is_free: private draws from the free allowance; public always pays ---
+
+test private_virtual_free_when_slots_remain() {
+  and {
+    virtual_mint_is_free(0, 3, False),
+    virtual_mint_is_free(2, 3, False),
+  }
+}
+
+test private_virtual_paid_when_slots_used() {
+  virtual_mint_is_free(3, 3, False) == False
+}
+
+test public_virtual_never_free() {
+  and {
+    virtual_mint_is_free(0, 3, True) == False,
+    virtual_mint_is_free(2, 3, True) == False,
+  }
 }

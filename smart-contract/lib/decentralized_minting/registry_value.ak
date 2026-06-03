@@ -23,9 +23,24 @@ pub fn encode(free_virtual_count: Int, labels: ByteArray) -> ByteArray {
   }
 }
 
-// The first 3 private virtuals are free: free iff the pre-mint counter < 3.
-pub fn is_free_virtual(pre_mint_count: Int) -> Bool {
-  pre_mint_count < 3
+// Free iff the root's pre-mint private-virtual counter is below the configured free count
+// (legacy = 3; sourced from SettingsV1.discount_config.free_virtual_count).
+pub fn is_free_virtual(pre_mint_count: Int, free_virtual_count: Int) -> Bool {
+  pre_mint_count < free_virtual_count
+}
+
+// A virtual-sub mint is free iff it's PRIVATE and the root still has a free slot. Public
+// virtuals never count toward / draw from the free allowance — they always pay.
+pub fn virtual_mint_is_free(
+  pre_mint_private_count: Int,
+  free_virtual_count: Int,
+  is_public: Bool,
+) -> Bool {
+  if is_public {
+    False
+  } else {
+    is_free_virtual(pre_mint_private_count, free_virtual_count)
+  }
 }
 
 // Apply a private-virtual mint (+1) / burn (-1) to the counter. Burning below 0 is impossible
