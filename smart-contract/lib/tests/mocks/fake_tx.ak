@@ -7,6 +7,7 @@ use aiken/transaction.{
 use aiken/transaction/credential.{Address, StakeCredential}
 use aiken/transaction/value.{AssetName, PolicyId, Value}
 use common/hashes.{ScriptHash, VerificationKeyHash}
+use decentralized_minting/discount.{DiscountConfig}
 use decentralized_minting/handle_price.{HandlePriceInfo}
 use decentralized_minting/minting_data.{MintingData}
 use decentralized_minting/orders.{OrderDatum}
@@ -46,6 +47,7 @@ pub fn make_order_input(
       destination_address: credential.from_verification_key(
         owner_verification_key_hash,
       ),
+      discount_claim: None,
     }
   Input {
     output_reference: OutputReference {
@@ -80,6 +82,16 @@ pub fn make_settings_reference_input() -> Input {
       pz_script_address: pz_script_address(),
       order_script_hash,
       minting_data_script_hash,
+      discount_config: DiscountConfig {
+        partner_nft_bps: 0,
+        hal_bps: 0,
+        og_bps: 0,
+        legendary_bps: 0,
+        ultra_rare_bps: 0,
+        rare_bps: 0,
+        free_virtual_count: 3,
+        hal_policy_id: #"",
+      },
     }
   let settings: Settings =
     Settings { mint_governor, mint_version, data: settings_v1 }

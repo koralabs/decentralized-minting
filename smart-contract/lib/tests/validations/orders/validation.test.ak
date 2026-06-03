@@ -18,6 +18,7 @@ fn order_datum() -> OrderDatum {
     owner: Signature(owner_vkh),
     requested_handle: "test",
     destination_address: from_verification_key(owner_vkh),
+    discount_claim: None,
   }
 }
 

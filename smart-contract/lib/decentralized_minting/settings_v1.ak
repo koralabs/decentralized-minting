@@ -2,6 +2,7 @@ use aiken/list
 use aiken/transaction/credential.{Address}
 use aiken/transaction/value.{AssetName, PolicyId}
 use common/hashes.{ScriptHash, VerificationKeyHash}
+use decentralized_minting/discount.{DiscountConfig}
 
 // constants
 pub const min_treasury_fee: Int = 2_000_000
@@ -27,6 +28,9 @@ pub type SettingsV1 {
   // all minting handles logic (for both new and legacy)
   // minting_data_asset is locked inside that script
   minting_data_script_hash: ScriptHash,
+  // WS5: minting-discount configuration (basis-points percent-off per class + free-virtual
+  // count + H.A.L. policy). Appended last to keep the prefix decode stable.
+  discount_config: DiscountConfig,
 }
 
 //

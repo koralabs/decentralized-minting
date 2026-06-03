@@ -5,10 +5,71 @@ use aiken/transaction/value.{PolicyId, quantity_of}
 use common/cip68.{prefix_100, prefix_222}
 use decentralized_minting/discount.{
   DiscountClaim, DiscountConfig, HalClaim, OgClaim, PartnerClaim, RarityClaim,
+  apply_discount,
 }
 use decentralized_minting/discounts.{
   Cip68Datum, is_legendary, is_og, is_rare, is_ultra_rare, partner_policy_in_root,
   shares_credential,
+}
+
+// $pfp_policy_ids admin handle — its 100 reference token's datum is the partner-allowlist MPF
+// root (a 32-byte ByteArray; see handles-personalization PolicyIndexRoot).
+const pfp_policy_ids_name: ByteArray = "pfp_policy_ids"
+
+// Everything the order loop needs to price a discount, bundled so it threads as one param.
+pub type DiscountContext {
+  config: DiscountConfig,
+  reference_inputs: List<Input>,
+  legacy_policy_id: PolicyId,
+  new_policy_id: PolicyId,
+  partner_root: ByteArray,
+}
+
+// Price a single order's handle after applying its (validated) discount claim. Verification
+// fails the tx on a forged claim; an absent claim yields the full price.
+pub fn effective_handle_price(
+  handle_price: Int,
+  claim: Option<DiscountClaim>,
+  destination: Address,
+  ctx: DiscountContext,
+) -> Int {
+  let bps =
+    discount_bps_for_claim(
+      claim,
+      ctx.reference_inputs,
+      destination,
+      ctx.config,
+      ctx.legacy_policy_id,
+      ctx.new_policy_id,
+      ctx.partner_root,
+    )
+  apply_discount(handle_price, bps)
+}
+
+// Read the partner-allowlist MPF root from the $pfp_policy_ids reference input (its 100 token
+// under `admin_policy_id`). Absent -> empty root, so any partner claim then fails its proof.
+pub fn read_partner_root(
+  reference_inputs: List<Input>,
+  admin_policy_id: PolicyId,
+) -> ByteArray {
+  let ref_name = bytearray.concat(prefix_100, pfp_policy_ids_name)
+  when reference_inputs is {
+    [] -> #""
+    [ref_input, ..rest] -> {
+      let Output { value, datum, .. } = ref_input.output
+      if quantity_of(value, admin_policy_id, ref_name) >= 1 {
+        when datum is {
+          InlineDatum(d) -> {
+            expect root: ByteArray = d
+            root
+          }
+          _ -> #""
+        }
+      } else {
+        read_partner_root(rest, admin_policy_id)
+      }
+    }
+  }
 }
 
 // WS5 — verify an order's discount claim and return the basis-points discount it earns

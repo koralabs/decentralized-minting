@@ -16,6 +16,7 @@ use validations/minting_data/utils.{
   all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
   calculate_treasury_fee_and_minter_fee,
 }
+use validations/discount_eligibility.{DiscountContext, read_partner_root}
 use validations/policy_window.{assert_mint_within_policy_window}
 
 // Validation:
@@ -59,6 +60,7 @@ pub fn can_mint_new_handles(
     treasury_fee_percentage,
     pz_script_address,
     order_script_hash,
+    discount_config,
     ..
   } = settings_datum
 
@@ -113,6 +115,17 @@ pub fn can_mint_new_handles(
   // build merkle patricia trie from old root hash
   let root = mpt.from_root(mpt_root_hash)
 
+  // WS5: discount context — config from settings, partner allowlist root from the
+  // $pfp_policy_ids reference input (legacy policy holds the admin handles)
+  let discount_ctx =
+    DiscountContext {
+      config: discount_config,
+      reference_inputs,
+      legacy_policy_id,
+      new_policy_id,
+      partner_root: read_partner_root(reference_inputs, legacy_policy_id),
+    }
+
   // check orders with proofs
   let
     new_root,
@@ -130,6 +143,7 @@ pub fn can_mint_new_handles(
       root,
       value.zero(),
       0,
+      discount_ctx,
     )
 
   // calculate new root and expected mint value

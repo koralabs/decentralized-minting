@@ -18,6 +18,20 @@ interface SettingsV1 {
   // all minting handles logic (for both new and legacy)
   // minting_data_asset is locked inside that script
   minting_data_script_hash: string;
+  // WS5: minting-discount configuration (basis-points percent-off per class).
+  discount_config: DiscountConfig;
 }
 
-export type { SettingsV1 };
+// WS5 — discount config (mirrors decentralized_minting/discount.ak DiscountConfig).
+interface DiscountConfig {
+  partner_nft_bps: bigint;
+  hal_bps: bigint;
+  og_bps: bigint;
+  legendary_bps: bigint;
+  ultra_rare_bps: bigint;
+  rare_bps: bigint;
+  free_virtual_count: bigint;
+  hal_policy_id: string; // hex
+}
+
+export type { DiscountConfig, SettingsV1 };

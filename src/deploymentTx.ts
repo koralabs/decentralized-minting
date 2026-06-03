@@ -399,6 +399,22 @@ export const buildSettingsUpdateTx = async ({
     pz_script_address: desiredSettings.pz_script_address as string,
     order_script_hash: built.orders.validatorHash,
     minting_data_script_hash: built.mintingData.validatorHash,
+    // WS5: discount config from the deployment settings (defaults to all-off / 3 free virtuals).
+    discount_config: (() => {
+      const dc = ((desiredSettings as Record<string, unknown>).discount_config ??
+        {}) as Record<string, unknown>;
+      const n = (v: unknown): bigint => BigInt((v as number | undefined) ?? 0);
+      return {
+        partner_nft_bps: n(dc.partner_nft_bps),
+        hal_bps: n(dc.hal_bps),
+        og_bps: n(dc.og_bps),
+        legendary_bps: n(dc.legendary_bps),
+        ultra_rare_bps: n(dc.ultra_rare_bps),
+        rare_bps: n(dc.rare_bps),
+        free_virtual_count: BigInt((dc.free_virtual_count as number | undefined) ?? 3),
+        hal_policy_id: (dc.hal_policy_id as string | undefined) ?? "",
+      };
+    })(),
   });
 
   const settingsData = buildSettingsData({

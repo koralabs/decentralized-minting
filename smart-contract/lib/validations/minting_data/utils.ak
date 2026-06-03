@@ -12,6 +12,7 @@ use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/label_set
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings_v1.{min_treasury_fee}
+use validations/discount_eligibility.{DiscountContext, effective_handle_price}
 use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 
 // WS6: root-handle character cap. Bumped 15 -> 28 (the on-chain gatekeeper that actually
@@ -33,6 +34,8 @@ pub fn all_orders_are_satisfied(
   root: mpt.MerklePatriciaForestry,
   expected_mint_value: Value,
   total_handles_price: Int,
+  // WS5: discount context (config + ref inputs + policies + partner root)
+  discount_ctx: DiscountContext,
   continuation: fn(mpt.MerklePatriciaForestry, Value, Int) -> result,
 ) -> result {
   // go through inputs and process order UTxO
@@ -46,7 +49,12 @@ pub fn all_orders_are_satisfied(
           // parse order datum
           expect InlineDatum(datum) = datum
           expect datum: OrderDatum = datum
-          let OrderDatum { requested_handle, destination_address, .. } = datum
+          let OrderDatum {
+            requested_handle,
+            destination_address,
+            discount_claim,
+            ..
+          } = datum
 
           // parse proofs
           expect [mpt_proof, ..rest_proofs] = proofs
@@ -57,20 +65,30 @@ pub fn all_orders_are_satisfied(
               requested_handle,
               handle_price_info,
             )
+
+          // WS5: apply any (validated) discount claim to the required price. A forged claim
+          // fails the tx; no claim leaves the price unchanged.
+          let effective_price =
+            effective_handle_price(
+              handle_price,
+              discount_claim,
+              destination_address,
+              discount_ctx,
+            )
           //
           // update root
           // NOTE:
           // for now we assume that all order is for minting (not burning)
           let new_root = update_root(root, requested_handle, 1, mpt_proof)
 
-          // check order input has enough lovelace for handle price
+          // check order input has enough lovelace for the (possibly discounted) price
           let order_input_lovelace =
             value.quantity_of(
               order_input.output.value,
               ada_policy_id,
               ada_asset_name,
             )
-          let order_is_enough = order_input_lovelace >= handle_price
+          let order_is_enough = order_input_lovelace >= effective_price
           expect order_is_enough
 
           // extract ref & user output (or virtual output)
@@ -96,7 +114,9 @@ pub fn all_orders_are_satisfied(
             rest_proofs,
             new_root,
             new_mint_value,
-            total_handles_price + handle_price,
+            // fees compute on what the user actually pays (the discounted price)
+            total_handles_price + effective_price,
+            discount_ctx,
             continuation,
           )
         }
@@ -113,6 +133,7 @@ pub fn all_orders_are_satisfied(
             root,
             expected_mint_value,
             total_handles_price,
+            discount_ctx,
             continuation,
           )
       }
