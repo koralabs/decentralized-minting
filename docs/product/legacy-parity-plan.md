@@ -30,12 +30,21 @@ Status: **IN PROGRESS** · Last updated: 2026-06-02
 > - WS5 partner: MPF membership against the `$pfp_policy_ids`/`$bg_policy_ids` allowlist root
 >   (`partner_policy_in_root` via `mpt.has`) — the same root handles-personalization reads.
 >
-> **Remaining (code wiring, not blocked):** thread these into `can_mint_*` — WS7 read the
-> `$handle_policies` ref input + gate the validity interval (network slot-anchor from settings);
-> WS5 reduce the order price in `all_orders_are_satisfied` when eligibility is proven (ref the
-> qualifying asset + shared credential + the OG/partner read), plus `orders.ak` discount fields +
-> the engine attaching the ref inputs. Also: MPT-redeemer full-tx tests (need `mpt.Proof`
-> fixtures — use the off-chain round-trip + scalus); the coordinated validator **redeploy**
+> **WS7 + WS5 now wired into `can_mint_*` (2026-06-02), policy-stable (demimntprx 02333b54).**
+> - WS7: `assert_mint_within_policy_window` gates new- and legacy-policy mints on the
+>   `$handle_policies` window (ref-input read + slot→posix conversion via the validator's network
+>   anchor params); dormant until a sunset is set. demimntmpt gains 3 anchor params; off-chain
+>   `getSlotAnchor(network)` + blueprints regenerated.
+> - WS5: `SettingsV1.discount_config` (6-class bps, confirmed schema) + `OrderDatum.discount_claim`
+>   (Option); `all_orders_are_satisfied` charges `effective_handle_price` after validating the
+>   claim (forge-proof: referenced qualifying asset + shared credential + rarity/OG/partner/HAL
+>   read); partner allowlist root read from `$pfp_policy_ids`. Off-chain: DiscountConfig +
+>   DiscountClaim builders/decoders, lenient SettingsV1 decode for the migration.
+> - Verified: aiken 150 checks / 0 warnings; engine tsc clean + 50 vitest.
+>
+> **Remaining:** WS5 order-builder UX glue (`src/txs/order.ts` + engine attaching the
+> qualifying-asset ref inputs) + free-virtual (deferred); MPT-redeemer full-tx tests (need
+> `mpt.Proof` fixtures — off-chain round-trip + scalus); the coordinated validator **redeploy**
 > (preview→preprod→mainnet, mainnet needs explicit auth) + kora-labs-common republish.
 
 This document tracks the work required to bring **decentralized minting (DeMi)** to
