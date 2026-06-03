@@ -87,16 +87,36 @@ describe("decentralized minting deployment plan", () => {
     ]);
   });
 
-  it("fetches live scripts for each desired contract", async () => {
+  it("fetches live scripts for each desired contract (address-keyed api shape + old-slug fallback)", async () => {
+    // The handles api returns an address-keyed map keyed by the script address,
+    // and was migrated from the legacy `demi_*` type slugs to the contract slug.
+    // demimntprx resolves on the current slug; demimntmpt only resolves on the
+    // legacy slug here, exercising the fallback. The picked entry is the one
+    // flagged `latest: true`.
     const live = await fetchLiveContractStates({
       network: "preview",
       contracts: desiredState.contracts,
       userAgent: "codex-test",
       fetchFn: vi.fn(async (url) => {
-        if (String(url).includes("demi_mint_proxy")) {
-          return new Response(JSON.stringify({ validatorHash: "aa", handle: "demimntprx1@handlecontract" }), { status: 200 });
+        const target = String(url);
+        // current slug for the proxy
+        if (target.includes("type=demimntprx")) {
+          return new Response(JSON.stringify({
+            addr_proxy: { validatorHash: "stale", handle: "demimntprx0@handlecontract", latest: false, type: "demimntprx" },
+            addr_proxy_latest: { validatorHash: "aa", handle: "demimntprx1@handlecontract", latest: true, type: "demimntprx" },
+          }), { status: 200 });
         }
-        return new Response(JSON.stringify({ validatorHash: "bb", handle: "demimntmpt1@handlecontract" }), { status: 200 });
+        // current slug for minting_data is not yet migrated → empty
+        if (target.includes("type=demimntmpt")) {
+          return new Response(JSON.stringify({}), { status: 200 });
+        }
+        // legacy slug fallback for minting_data
+        if (target.includes("type=demi_minting_data")) {
+          return new Response(JSON.stringify({
+            addr_mpt: { validatorHash: "bb", handle: "demimntmpt1@handlecontract", latest: true, type: "demi_minting_data" },
+          }), { status: 200 });
+        }
+        throw new Error(`unexpected url ${target}`);
       }) as typeof fetch,
     });
 

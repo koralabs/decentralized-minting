@@ -32,6 +32,16 @@ settings:
       pz_script_address: addr_test1wp70zp2cdamexjjjfj0837y8nge5vqgyl9tcaxkfyl6h0cc9ad65m
       order_script_hash: 24fe9a2abd4fa926677a65bc8424c755b054790599d4474911a06553
       minting_data_script_hash: dae8d5a285087589316f8047cd546edf27c4512ba656faf54e986fdb
+      # WS5 discount config — all discounts off at launch; 3 free virtual subs; no HAL policy.
+      discount_config:
+        partner_nft_bps: 0
+        hal_bps: 0
+        og_bps: 0
+        legendary_bps: 0
+        ultra_rare_bps: 0
+        rare_bps: 0
+        free_virtual_count: 3
+        hal_policy_id: ""
     handle_root@handle_settings:
       mpt_root_hash: c614162a20649af2093df773ec4bb1c7d957fe79a1d9d586ac5ce0a2506e2209
     kora@handle_prices:

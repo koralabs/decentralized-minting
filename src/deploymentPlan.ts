@@ -272,6 +272,29 @@ const expectedScriptHashForContract = (
   }
 };
 
+// The handles api returns one of two shapes for `/scripts?latest=true&type=...`:
+//   flat:         { validatorHash, handle, ... }
+//   address-keyed: { "<scriptAddr>": { validatorHash, handle, latest, type, ... }, ... }
+// Extract the deployed (script hash, subhandle), preferring the entry flagged latest.
+const extractDeployedScript = (
+  payload: any
+): { scriptHash: string; subhandle: string | null } | null => {
+  if (!payload || typeof payload !== "object") return null;
+  const flatHash = String(payload.validatorHash ?? payload.scriptHash ?? "").trim();
+  if (flatHash) {
+    return { scriptHash: flatHash, subhandle: String(payload.handle ?? "").trim() || null };
+  }
+  const entries = Object.values(payload).filter(
+    (v): v is Record<string, unknown> => !!v && typeof v === "object"
+  );
+  const candidates = entries.filter((e) => e.validatorHash || e.scriptHash);
+  if (candidates.length === 0) return null;
+  const chosen = candidates.find((e) => e.latest === true) ?? candidates[0];
+  const scriptHash = String(chosen.validatorHash ?? chosen.scriptHash ?? "").trim();
+  if (!scriptHash) return null;
+  return { scriptHash, subhandle: String(chosen.handle ?? "").trim() || null };
+};
+
 export const fetchLiveContractStates = async ({
   network,
   contracts,
@@ -286,23 +309,32 @@ export const fetchLiveContractStates = async ({
   const baseUrl = handlesApiBaseUrlForNetwork(network);
   return Promise.all(
     contracts.map(async (contract) => {
-      const response = await fetchFn(
-        `${baseUrl}/scripts?latest=true&type=${encodeURIComponent(contract.oldScriptType ?? contract.scriptType)}`,
-        { headers: { "User-Agent": userAgent } }
+      // The api migrated from the legacy `demi_*` type slugs to the contract
+      // slug (e.g. demimntmpt). Prefer the current slug; fall back to the
+      // legacy slug only if the api hasn't migrated yet for this network.
+      const typeCandidates = [contract.scriptType, contract.oldScriptType].filter(
+        (t): t is string => !!t
       );
-      if (!response.ok) {
-        throw new Error(`failed to load live ${contract.contractSlug} script: HTTP ${response.status}`);
+      let deployed: { scriptHash: string; subhandle: string | null } | null = null;
+      for (const type of typeCandidates) {
+        const response = await fetchFn(
+          `${baseUrl}/scripts?latest=true&type=${encodeURIComponent(type)}`,
+          { headers: { "User-Agent": userAgent } }
+        );
+        if (!response.ok) {
+          throw new Error(`failed to load live ${contract.contractSlug} script: HTTP ${response.status}`);
+        }
+        deployed = extractDeployedScript(await response.json());
+        if (deployed) break;
       }
-      const payload = await response.json();
-      const currentScriptHash = String(payload.validatorHash ?? payload.scriptHash ?? "").trim();
-      if (!currentScriptHash) {
+      if (!deployed) {
         throw new Error(`live ${contract.contractSlug} script response missing validatorHash/scriptHash`);
       }
       return {
         contractSlug: contract.contractSlug,
         scriptType: contract.scriptType,
-        currentScriptHash,
-        currentSubhandle: String(payload.handle ?? "").trim() || null,
+        currentScriptHash: deployed.scriptHash,
+        currentSubhandle: deployed.subhandle,
       };
     })
   );
