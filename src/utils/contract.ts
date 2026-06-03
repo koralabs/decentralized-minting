@@ -66,7 +66,7 @@ const fetchDeployedScript = async (
   return {
     ...(details as Record<string, unknown>),
     scriptAddress,
-  } as ScriptDetails;
+  } as unknown as ScriptDetails;
 };
 
 // TODO:
