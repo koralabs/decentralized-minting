@@ -53,12 +53,16 @@ Status: **IN PROGRESS** · Last updated: 2026-06-02
 > (The earlier "migration fork" was my error — the legacy path mints paid-session handles under
 > the legacy policy, not free re-mints.)
 >
-> **Remaining:** WS5 **free-virtual** — waive the fee for the first N private virtuals. Logic
-> done; the wiring (per-mint `is_public` + the root private-virtual counter via a two-key MPT
-> update) must be applied atomically with the fee waiver (desync = free-mint exploit), so it's a
-> security-sensitive single-pass restructure of the legacy virtual-sub path. Also: MPT-redeemer
-> full-tx tests (need `mpt.Proof` fixtures — off-chain round-trip + scalus); the coordinated
-> validator **redeploy** (preview→preprod→mainnet, mainnet=explicit auth) + kora-labs-common republish.
+> **All eight workstreams implemented + tested (2026-06-02).** WS5 free-virtual is wired (one
+> unified legacy-mint pass: counter bump + fee waiver decided together; WS1 reconciled via
+> `registry_value.encode`). MPT-redeemer full-tx tests added (single-element tries / empty
+> proofs) covering mint/burn/label incl. negative cases. **aiken 165 checks / 0 warnings; engine
+> tsc clean + 54 vitest. Policy-stable throughout (`demimntprx 02333b54`).**
+>
+> **Only deploy-side work remains:** the coordinated validator **redeploy**
+> (preview→preprod→mainnet, mainnet=explicit auth; re-parameterize `demimnt`/`demiord` + update
+> `Settings`) and the **kora-labs-common republish** (28-char regex). Plus the engine's per-root
+> private-virtual count/labels tracking to populate `LegacyHandle.privateVirtual` at fulfilment.
 
 This document tracks the work required to bring **decentralized minting (DeMi)** to
 feature parity with the **legacy** minting system (`minting.handle.me`) and to close
@@ -374,12 +378,15 @@ fee**.
       `02333b54` unchanged).
 - [x] Tests: virtual/nft fee, summed across subs, root=0, missing-settings-ref fails (5 full-tx
       fee tests). aiken 160 checks.
-- [ ] **Free-virtual (WS5) remaining** — waive the fee for the first N **private** virtuals.
-      Logic done (`registry_value` counter + gates). Wiring is security-sensitive: the per-mint
-      `is_public` signal + the root private-virtual counter (a two-key MPT update on the root
-      value via `registry_value.encode`) must be applied **atomically with** the fee waiver — a
-      desync between the fee pass and the MPT pass is a free-mint exploit. Build as one coherent
-      virtual-sub pass (not bolted across `all_proofs_are_valid` + `sub_handle_fees_covered`).
+- [x] **Free-virtual (WS5) wired (2026-06-02).** `all_proofs_are_valid` is now ONE unified pass:
+      per proof it updates the handle's MPT key + mint value and — for a private virtual
+      (`LegacyHandleProof.free_virtual = Some`) — bumps the root counter (a second `mpt.update` via
+      `registry_value.encode`) AND waives the fee while `root_pre_count < free_virtual_count`,
+      else charges. Burns refund a slot. The waiver and the counter bump are decided together (no
+      cross-pass desync). WS1 reconciled: `LabelAssetProof` carries `(old_free_virtual_count,
+      old_labels)`; `encode` switched to `0xff ++ CBOR(count) ++ labels` so the engine reproduces
+      it byte-for-byte. Off-chain `prepareLegacyMint/Burn` do the root-counter second update +
+      proof. aiken 165 checks; engine 54 vitest. demimntmpt `0da92196`, demimntprx `02333b54`.
 
 ---
 
