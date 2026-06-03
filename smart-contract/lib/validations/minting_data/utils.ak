@@ -12,6 +12,9 @@ use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
 use decentralized_minting/label_set
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings_v1.{min_treasury_fee}
+use decentralized_minting/sub_handle.{
+  find_root_handle_settings, sub_handle_kora_fee,
+}
 use validations/discount_eligibility.{DiscountContext, effective_handle_price}
 use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 
@@ -233,6 +236,52 @@ pub fn all_label_proofs_are_valid(
         new_policy_id,
         new_mint_value,
         continuation,
+      )
+    }
+  }
+}
+
+// WS4 — total Kora (treasury) fee owed across a batch of legacy proofs. Only SUBHANDLE mints
+// owe a fee (root handles are priced off-chain via the session flow); for each, the fee is the
+// treasury cut of the root owner's tier price for that sub's length + kind (nft/virtual). The
+// root's OwnerSettings is read from a reference input. Burns/root mints contribute 0.
+pub fn sub_handle_kora_fee_total(
+  proofs: List<LegacyHandleProof>,
+  reference_inputs: List<Input>,
+  new_policy_id: PolicyId,
+  legacy_policy_id: PolicyId,
+  treasury_fee_percentage: Int,
+) -> Int {
+  when proofs is {
+    [] -> 0
+    [proof, ..rest] -> {
+      let LegacyHandleProof { handle_name, is_virtual, .. } = proof
+      let (root_handle_name, is_sub_handle, sub_handle_name) =
+        parse_handle_name(handle_name)
+      let fee =
+        if is_sub_handle {
+          let owner_settings =
+            find_root_handle_settings(
+              reference_inputs,
+              root_handle_name,
+              new_policy_id,
+              legacy_policy_id,
+            )
+          sub_handle_kora_fee(
+            owner_settings,
+            bytearray.length(sub_handle_name),
+            parse_bool_from_int(is_virtual),
+            treasury_fee_percentage,
+          )
+        } else {
+          0
+        }
+      fee + sub_handle_kora_fee_total(
+        rest,
+        reference_inputs,
+        new_policy_id,
+        legacy_policy_id,
+        treasury_fee_percentage,
       )
     }
   }

@@ -3,7 +3,7 @@ import type { Cardano as CardanoTypes } from "@cardano-sdk/core";
 import type { Ed25519KeyHashHex } from "@cardano-sdk/crypto";
 import { Err, Ok, Result } from "ts-res";
 
-import { fetchMintingData } from "../configs/index.js";
+import { fetchMintingData, fetchSettings } from "../configs/index.js";
 import {
   buildMintingData,
   buildMintingDataMintLegacyHandlesRedeemer,
@@ -31,6 +31,15 @@ interface PrepareLegacyMintParams {
   handles: LegacyHandle[];
   db: Trie;
   blockfrostApiKey: string;
+  /**
+   * WS4 — for subhandle mints: each root's 001 OwnerSettings reference input (the validator
+   * reads the owner's tier pricing to derive Kora's fee) plus a single `treasuryOutput`
+   * covering the summed Kora fee. The caller computes these from the batch's subhandles. Root
+   * mints need neither. The settings reference input (for `find_settings`) is attached
+   * automatically for every legacy mint.
+   */
+  subHandleReferenceInputs?: { txHash: string; outputIndex: number }[];
+  treasuryOutput?: CardanoTypes.TxOut;
 }
 
 interface PrepareLegacyMintDeps {
@@ -84,6 +93,14 @@ const prepareLegacyMintTransaction = async (
     );
   }
   const { mintingData, mintingDataUtxo } = mintingDataResult.data;
+
+  // WS4 — settings reference input (the mint path now reads find_settings for the treasury
+  // address + percentage when enforcing subhandle fees).
+  const settingsResult = await fetchSettings(network);
+  if (!settingsResult.ok) {
+    return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
+  }
+  const { settingsUtxo } = settingsResult.data;
 
   // Ensure local MPT matches on-chain root.
   if (
@@ -149,12 +166,30 @@ const prepareLegacyMintTransaction = async (
       ),
       index: mintingDataScript.refScriptUtxo.outputIndex,
     },
+    // WS4 — settings ref input (find_settings on the mint path)
+    {
+      txId: Cardano.TransactionId(settingsUtxo.txHash as HexBlob),
+      index: settingsUtxo.outputIndex,
+    },
   ]);
+
+  // WS4 — each subhandle's root OwnerSettings reference input
+  for (const ref of params.subHandleReferenceInputs ?? []) {
+    referenceInputs.add({
+      txId: Cardano.TransactionId(ref.txHash as HexBlob),
+      index: ref.outputIndex,
+    });
+  }
+
+  // WS4 — the treasury output covering Kora's summed subhandle fee (omitted for root-only batches)
+  const outputs: CardanoTypes.TxOut[] = params.treasuryOutput
+    ? [mintingDataOutput, params.treasuryOutput]
+    : [mintingDataOutput];
 
   const plan: TxPlan = {
     preSelectedUtxos: [mintingDataCoreUtxo],
     spareUtxos: walletUtxos,
-    outputs: [mintingDataOutput],
+    outputs,
     referenceInputs,
     redeemers: [spendRedeemer],
     requiredSigners: [minterKeyHash as Ed25519KeyHashHex],

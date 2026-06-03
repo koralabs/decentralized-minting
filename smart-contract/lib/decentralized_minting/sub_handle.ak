@@ -57,6 +57,42 @@ pub fn get_root_handle_settings(
   owner_settings
 }
 
+// WS4 — locate a root handle's OwnerSettings by searching the reference inputs for its 001
+// settings token (under the new or legacy policy). Unlike `get_root_handle_settings` (index
+// based), this scans, so the caller needn't thread a per-proof index. Fails if not referenced.
+pub fn find_root_handle_settings(
+  reference_inputs: List<Input>,
+  root_handle_name: ByteArray,
+  new_policy_id: PolicyId,
+  legacy_policy_id: PolicyId,
+) -> OwnerSettings {
+  let settings_asset_name = bytearray.concat(prefix_001, root_handle_name)
+  when reference_inputs is {
+    [] -> fail @"ROOT_HANDLE_SETTINGS_NOT_REFERENCED"
+    [ref_input, ..rest] -> {
+      let Input { output: Output { value: v, datum, .. }, .. } = ref_input
+      let has_settings =
+        value.quantity_of(v, new_policy_id, settings_asset_name) + value.quantity_of(
+          v,
+          legacy_policy_id,
+          settings_asset_name,
+        ) == 1
+      if has_settings {
+        expect InlineDatum(inline_datum) = datum
+        expect owner_settings: OwnerSettings = inline_datum
+        owner_settings
+      } else {
+        find_root_handle_settings(
+          rest,
+          root_handle_name,
+          new_policy_id,
+          legacy_policy_id,
+        )
+      }
+    }
+  }
+}
+
 //
 // this function gets sub handle price
 // from root handle owner settings

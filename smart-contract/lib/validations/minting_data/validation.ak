@@ -14,7 +14,7 @@ use decentralized_minting/settings_v1.{
 use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 use validations/minting_data/utils.{
   all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
-  calculate_treasury_fee_and_minter_fee,
+  calculate_treasury_fee_and_minter_fee, sub_handle_kora_fee_total,
 }
 use validations/discount_eligibility.{DiscountContext, read_partner_root}
 use validations/policy_window.{assert_mint_within_policy_window}
@@ -270,7 +270,7 @@ fn process_legacy_handles(
   legacy_policy_id: PolicyId,
   amount: Int,
 ) -> Bool {
-  let Transaction { inputs, outputs, mint, .. } = transaction
+  let Transaction { inputs, reference_inputs, outputs, mint, .. } = transaction
 
   // find minting data input which is own input
   expect Some(spending_input) = find_input(inputs, spending_output_reference)
@@ -310,7 +310,56 @@ fn process_legacy_handles(
   // check minted/burned handles match the proofs exactly
   expect value.from_minted_value(mint) == expected_mint_value
 
+  // WS4: subhandle mints must cover Kora's fee (root mints + all burns owe nothing)
+  expect
+    sub_handle_fees_covered(
+      amount,
+      proofs,
+      reference_inputs,
+      outputs,
+      legacy_policy_id,
+    )
+
   True
+}
+
+// WS4 — every SUBHANDLE mint must cover Kora's fee via a treasury output (root handles are
+// priced off-chain via the session flow; burns owe nothing). The fee is the treasury cut of the
+// owner's tier price (`sub_handle_kora_fee_total`); the treasury address + percentage come from
+// settings (read as a reference input on mint txs). A single treasury output must cover the sum.
+fn sub_handle_fees_covered(
+  amount: Int,
+  proofs: List<LegacyHandleProof>,
+  reference_inputs: List<Input>,
+  outputs: List<Output>,
+  legacy_policy_id: PolicyId,
+) -> Bool {
+  if amount != 1 {
+    True
+  } else {
+    let Settings { data: settings_data, .. } = find_settings(reference_inputs)
+    expect settings_datum: SettingsV1 = settings_data
+    let SettingsV1 {
+      policy_id: new_policy_id,
+      treasury_address,
+      treasury_fee_percentage,
+      ..
+    } = settings_datum
+    let total_kora_fee =
+      sub_handle_kora_fee_total(
+        proofs,
+        reference_inputs,
+        new_policy_id,
+        legacy_policy_id,
+        treasury_fee_percentage,
+      )
+    total_kora_fee <= 0 || list.any(
+      outputs,
+      fn(output) {
+        output.address == treasury_address && value.lovelace_of(output.value) >= total_kora_fee
+      },
+    )
+  }
 }
 
 // Validation:
