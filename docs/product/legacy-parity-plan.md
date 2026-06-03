@@ -42,10 +42,20 @@ Status: **IN PROGRESS** · Last updated: 2026-06-02
 >   DiscountClaim builders/decoders, lenient SettingsV1 decode for the migration.
 > - Verified: aiken 150 checks / 0 warnings; engine tsc clean + 50 vitest.
 >
-> **Remaining:** WS5 order-builder UX glue (`src/txs/order.ts` + engine attaching the
-> qualifying-asset ref inputs) + free-virtual (deferred); MPT-redeemer full-tx tests (need
-> `mpt.Proof` fixtures — off-chain round-trip + scalus); the coordinated validator **redeploy**
-> (preview→preprod→mainnet, mainnet needs explicit auth) + kora-labs-common republish.
+> **WS5 fully wired incl. order-builder UX (2026-06-02).** `order.ts request()` takes a discount
+> { claim, bps }; `prepareNewMint` attaches the qualifying-asset + `$pfp_policy_ids` ref inputs;
+> `decodeDiscountClaimInfo` lets the engine resolve them. Engine tsc + 52 vitest.
+>
+> **WS4 + free-virtual: logic built + tested, wiring blocked on a design fork.** `sub_handle_kora_fee`
+> + the configurable `is_free_virtual` / `virtual_mint_is_free` gates are done (aiken 155 checks).
+> The legacy/subhandle mint path (`process_legacy_handles`) is overloaded for migration (free) +
+> new subhandle mints (must pay); enforcing the Kora fee correctly needs a migration-vs-new-mint
+> distinction (a dedicated new-subhandle redeemer or proof flag) — see WS4 tasks. Free-virtual
+> rides that wiring + a two-key MPT counter update (root counter via `registry_value.encode`).
+>
+> **Remaining:** the WS4/free-virtual wiring (above, design-gated); MPT-redeemer full-tx tests
+> (need `mpt.Proof` fixtures — off-chain round-trip + scalus); the coordinated validator
+> **redeploy** (preview→preprod→mainnet, mainnet needs explicit auth) + kora-labs-common republish.
 
 This document tracks the work required to bring **decentralized minting (DeMi)** to
 feature parity with the **legacy** minting system (`minting.handle.me`) and to close
@@ -346,12 +356,22 @@ fee**.
 
 ### Tasks
 
-- [ ] Confirm which validation branch SubHandle mints (NFT + virtual) actually traverse,
-      and whether the Kora fee target is enforced there today.
-- [ ] Enforce a minimum Kora fee (treasury cut) on **every** SubHandle mint regardless of
-      branch — owner price floats above it, Kora's cut is mandatory.
-- [ ] Tests: subhandle mint with owner price below the Kora fee floor fails; above it
-      succeeds with the correct treasury output; NFT and virtual both covered.
+- [x] **Confirmed the branch (2026-06-02).** The order path (`can_mint_new_handles`) rejects
+      subhandles (`expect !is_sub_handle`), so **all** subhandle mints — NFT + virtual — traverse
+      `MintLegacyHandles` → `process_legacy_handles`, which enforces **no** treasury/fee today.
+- [x] **Fee logic built + tested:** `sub_handle.ak sub_handle_kora_fee` = the treasury cut of the
+      owner's tier price (nft/virtual), floored at `min_treasury_fee` — the mandatory Kora fee.
+- [ ] **Wiring blocked on a design fork (the legacy path is overloaded).** `process_legacy_handles`
+      serves *both* legacy **migration** (the owner already paid in legacy — must NOT be charged
+      again) and any new subhandle mint (must pay). The `LegacyHandleProof` carries no
+      migration-vs-new signal, so a blanket fee check would wrongly charge migrations. Resolving
+      this needs an architecture call: a dedicated **new-subhandle-mint redeemer** (cleanest), or
+      a proof flag, that pays the fee while leaving migration free. Once decided, wiring is:
+      extend the proof, read the root `OwnerSettings` ref input per sub (`get_root_handle_settings`),
+      enforce a `treasury_output ≥ Σ sub_handle_kora_fee` (read `treasury_address` + percentage
+      from settings — `process_legacy_handles` would also need the settings ref).
+- [ ] Tests: subhandle mint below the Kora fee floor fails; above succeeds with the correct
+      treasury output; NFT + virtual; migration stays free.
 
 ---
 
