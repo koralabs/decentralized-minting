@@ -97,13 +97,19 @@ def network_env(network: str) -> dict[str, str]:
     return env
 
 
-# BREADCRUMB / KNOWN-BROKEN (2026-06-02): the script invoked below,
-# `src/scripts/ensureHandlecontractSession.ts`, NO LONGER EXISTS in the
-# minting engine. It was DELETED by the Helios -> @cardano-sdk/core cutover
-# (minting.handle.me commit b95feb2), whose message says: "Operator scripts
-# bound to helios: buildUnsignedHandlecontractPayment, ensureHandlecontractSession,
+# BREADCRUMB (regression 2026-04-19 → FIXED 2026-06-02): the script invoked
+# below, `src/scripts/ensureHandlecontractSession.ts`, was DELETED from the
+# minting engine by the Helios -> @cardano-sdk/core cutover (minting.handle.me
+# commit b95feb2: "Operator scripts bound to helios:
+# buildUnsignedHandlecontractPayment, ensureHandlecontractSession,
 # handlecontractPayment ... Replacements (if needed) should be written fresh
-# against the new cardano-sdk primitives." They were never rewritten.
+# against the new cardano-sdk primitives") and not rewritten for ~6 weeks.
+#
+# It has been rebuilt against @cardano-sdk/core on branch
+# `fix/handlecontract-session-cardano-sdk` (commit 5ce3e3b, off origin/preview).
+# MUST be merged to the engine's network branches (preview/preprod/mainnet) for
+# this caller to work — the Deployment Plan workflow checks out
+# koralabs/minting.handle.me at `ref: <network>`.
 #
 # Effect: this step (the `Deployment Plan` workflow's "Ensure handlecontract
 # sessions" job) FAILS whenever a brand-new `<slug><ordinal>@handlecontract`
