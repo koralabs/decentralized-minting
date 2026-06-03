@@ -97,6 +97,38 @@ def network_env(network: str) -> dict[str, str]:
     return env
 
 
+# BREADCRUMB / KNOWN-BROKEN (2026-06-02): the script invoked below,
+# `src/scripts/ensureHandlecontractSession.ts`, NO LONGER EXISTS in the
+# minting engine. It was DELETED by the Helios -> @cardano-sdk/core cutover
+# (minting.handle.me commit b95feb2), whose message says: "Operator scripts
+# bound to helios: buildUnsignedHandlecontractPayment, ensureHandlecontractSession,
+# handlecontractPayment ... Replacements (if needed) should be written fresh
+# against the new cardano-sdk primitives." They were never rewritten.
+#
+# Effect: this step (the `Deployment Plan` workflow's "Ensure handlecontract
+# sessions" job) FAILS whenever a brand-new `<slug><ordinal>@handlecontract`
+# SubHandle must be minted (e.g. a 404 next-ordinal like demiord2@handlecontract).
+# This is the real reason DeMi contract deploys to preview stall at the
+# session step — NOT a missing multisig key.
+#
+# Correct model (from the ORIGINAL ensureHandlecontractSession.ts @ c3a8ecf):
+#   - the handlecontract ROOT-owner payment wallet is a POLICY_KEY derivation
+#     (getPolicyWalletDetails(HANDLECONTRACT_PAYMENT_WALLET_INDEX) ->
+#      getPolicyWallet(index) in src/helpers/cardano/wallet.ts). So the
+#     root-owner payment is AUTOMATABLE with POLICY_KEY; no Eternl needed for it.
+#   - the old script built+signed+submitted that 2 ADA payment, then created
+#     the pending session. The split replacement
+#     (createHandlecontractPendingSession.ts, which still exists but now needs
+#     a pre-existing --tx-hash) lost the payment-building half.
+#
+# The fix is upstream in minting.handle.me: rewrite the
+# build+sign+submit-payment step against @cardano-sdk/core and either restore
+# an `ensureHandlecontractSession.ts --handle` entrypoint or update this caller
+# to (1) build/submit the payment then (2) call createHandlecontractPendingSession
+# --handle --tx-hash. See adahandle-deployments/docs/deployment-automation-roadmap.md
+# (P2c-bis "Next-ordinal SubHandle allocation" claims this is automated — it
+# regressed) and demi-mainnet-cutover.md. Same stale call lives in
+# adahandle-deployments/common/ensure_handlecontract_sessions.py.
 def ensure_session(minting_repo: Path, network: str, handle: str) -> dict:
     cmd = [
         "node",
