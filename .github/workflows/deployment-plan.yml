@@ -137,6 +137,35 @@ jobs:
           NETWORK: ${{ matrix.network }}
         run: python3 scripts/ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
 
+      # Each ref-script deploy sources its inputs from the handlecontract script
+      # home and needs its own ~56 ADA ada-only UTxO; with one big UTxO there the
+      # planner can only deploy one contract per run. Seed the shortfall by
+      # borrowing from a minting wallet via POLICY_KEY (idempotent; no-op when
+      # enough usable UTxOs already exist). On testnet, if the minting wallets are
+      # empty the engine script fails loudly with the addresses to faucet-fund.
+      - name: Ensure deploy funding (seed UTxOs at script home)
+        env:
+          NETWORK: ${{ matrix.network }}
+        run: |
+          set -eu
+          summary="artifacts/${{ matrix.network }}/summary.json"
+          if [ ! -f "$summary" ]; then echo "no summary.json; skipping deploy funding"; exit 0; fi
+          N=$(python3 -c "import json; s=json.load(open('$summary')); print(sum(1 for c in s.get('contracts',[]) if c.get('drift_type') in ('script_hash_only','script_hash_and_settings')))")
+          echo "contracts needing a ref-script deploy: $N"
+          if [ "$N" -le 0 ]; then echo "no contract deploys; no funding needed"; exit 0; fi
+          result=$(cd minting.handle.me && node --import tsx src/scripts/ensureDeployFunding.ts --count "$N")
+          echo "$result"
+          txid=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('txId',''))" 2>/dev/null || true)
+          if [ -n "$txid" ]; then
+            echo "waiting for deploy-funding tx $txid to confirm..."
+            for i in $(seq 1 40); do
+              code=$(curl -s -o /dev/null -w "%{http_code}" "https://cardano-${{ matrix.network }}.blockfrost.io/api/v0/txs/$txid" -H "project_id: $BLOCKFROST_API_KEY")
+              if [ "$code" = "200" ]; then echo "deploy-funding confirmed"; break; fi
+              if [ "$i" = "40" ]; then echo "WARNING: funding tx $txid not confirmed after timeout; proceeding"; fi
+              sleep 15
+            done
+          fi
+
       - name: Wait for subhandle mints to confirm
         run: |
           set -eu
