@@ -13,7 +13,8 @@ use validations/minting_data/validation.{
   can_burn_legacy_handles, can_mint_legacy_handles,
 }
 
-const legacy_policy = #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
+const legacy_policy =
+  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
 
 fn spending_ref() -> OutputReference {
   OutputReference {
@@ -132,5 +133,10 @@ test legacy_root_burn_ok() {
       [],
       [],
     )
-  can_burn_legacy_handles(tx, spending_ref(), [root_proof(handle)], legacy_policy)
+  can_burn_legacy_handles(
+    tx,
+    spending_ref(),
+    [root_proof(handle)],
+    legacy_policy,
+  )
 }

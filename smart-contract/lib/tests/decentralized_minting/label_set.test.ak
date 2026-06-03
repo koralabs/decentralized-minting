@@ -3,8 +3,11 @@ use decentralized_minting/label_set.{apply, contains, insert, remove}
 // CIP-67 label prefixes used in the registry (4 bytes each), in ascending byte order:
 //   001 = 00001070, 002 = 000020e0, 100 = 000643b0, 222 = 000de140
 const lbl_001: ByteArray = #"00001070"
+
 const lbl_002: ByteArray = #"000020e0"
+
 const lbl_100: ByteArray = #"000643b0"
+
 const lbl_222: ByteArray = #"000de140"
 
 // --- contains ---

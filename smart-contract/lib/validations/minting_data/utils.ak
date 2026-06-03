@@ -335,7 +335,8 @@ pub fn all_label_proofs_are_valid(
           old_free_virtual_count,
           label_set.apply(old_labels, label, amount),
         )
-      let new_root = mpt.update(root, handle_name, mpt_proof, old_value, new_value)
+      let new_root =
+        mpt.update(root, handle_name, mpt_proof, old_value, new_value)
 
       // expected mint: +/-1 of (policy, label ++ handle_name)
       let label_asset_name = bytearray.concat(label, handle_name)

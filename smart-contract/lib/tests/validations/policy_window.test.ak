@@ -1,6 +1,8 @@
 use aiken/bytearray
 use aiken/interval
-use aiken/transaction.{InlineDatum, Input, Output, OutputReference, TransactionId}
+use aiken/transaction.{
+  InlineDatum, Input, Output, OutputReference, TransactionId,
+}
 use aiken/transaction/credential.{from_verification_key}
 use aiken/transaction/value
 use common/cip68.{prefix_100}

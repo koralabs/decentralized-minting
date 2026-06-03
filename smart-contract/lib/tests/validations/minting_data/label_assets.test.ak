@@ -12,7 +12,8 @@ use tests/mocks/fake_tx.{
 use validations/minting_data/types.{LabelAssetProof}
 use validations/minting_data/validation.{can_mint_label_assets}
 
-const legacy_policy = #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
+const legacy_policy =
+  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
 
 const lbl_001 = #"00001070"
 
@@ -66,8 +67,7 @@ fn label_mint_value(handle: ByteArray, qty: Int) -> Value {
 test mint_label_asset_ok() {
   let handle = "abc"
   let old_root = mpt.root(base(handle))
-  let new_root =
-    mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
+  let new_root = mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
   let tx =
     make_transaction(
       [make_minting_data_input(old_root, minting_data_script_hash)],
@@ -77,15 +77,20 @@ test mint_label_asset_ok() {
       [],
       [allowed_minter_0],
     )
-  can_mint_label_assets(tx, spending_ref(), [label_proof(handle, 1)], legacy_policy, 0)
+  can_mint_label_assets(
+    tx,
+    spending_ref(),
+    [label_proof(handle, 1)],
+    legacy_policy,
+    0,
+  )
 }
 
 // the owner 222 must be referenced — otherwise a minter can't fabricate label assets
 test mint_label_asset_without_owner_ref_fails() fail {
   let handle = "abc"
   let old_root = mpt.root(base(handle))
-  let new_root =
-    mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
+  let new_root = mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
   let tx =
     make_transaction(
       [make_minting_data_input(old_root, minting_data_script_hash)],
@@ -96,15 +101,20 @@ test mint_label_asset_without_owner_ref_fails() fail {
       [],
       [allowed_minter_0],
     )
-  can_mint_label_assets(tx, spending_ref(), [label_proof(handle, 1)], legacy_policy, 0)
+  can_mint_label_assets(
+    tx,
+    spending_ref(),
+    [label_proof(handle, 1)],
+    legacy_policy,
+    0,
+  )
 }
 
 // the allowed_minter must sign
 test mint_label_asset_unsigned_fails() fail {
   let handle = "abc"
   let old_root = mpt.root(base(handle))
-  let new_root =
-    mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
+  let new_root = mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
   let tx =
     make_transaction(
       [make_minting_data_input(old_root, minting_data_script_hash)],
@@ -115,5 +125,11 @@ test mint_label_asset_unsigned_fails() fail {
       // no allowed_minter signature
       [],
     )
-  can_mint_label_assets(tx, spending_ref(), [label_proof(handle, 1)], legacy_policy, 0)
+  can_mint_label_assets(
+    tx,
+    spending_ref(),
+    [label_proof(handle, 1)],
+    legacy_policy,
+    0,
+  )
 }

@@ -1,7 +1,8 @@
 use aiken/bytearray
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction.{InlineDatum, Input, NoDatum, Output, OutputReference,
-  TransactionId}
+use aiken/transaction.{
+  InlineDatum, Input, NoDatum, Output, OutputReference, TransactionId,
+}
 use aiken/transaction/credential.{
   Address, Inline, VerificationKeyCredential, from_verification_key,
 }
@@ -13,13 +14,15 @@ use decentralized_minting/discount.{
 use decentralized_minting/discounts.{Cip68Datum}
 use validations/discount_eligibility.{discount_bps_for_claim}
 
-const legacy_policy = #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
+const legacy_policy =
+  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
 
 const new_policy = #"00000000000000000000000000000000000000000000000000000001"
 
 const hal_policy = #"00000000000000000000000000000000000000000000000000000002"
 
-const partner_policy = #"00000000000000000000000000000000000000000000000000000003"
+const partner_policy =
+  #"00000000000000000000000000000000000000000000000000000003"
 
 // holder + destination share a stake credential (possession proof passes)
 fn holder_addr() -> Address {
@@ -94,17 +97,20 @@ test no_claim_is_zero() {
 // --- rarity ---
 
 test rarity_ultra_rare() {
-  let refs = [owner_222("ab", holder_addr())]
+  let refs =
+    [owner_222("ab", holder_addr())]
   bps(Some(RarityClaim { handle_name: "ab" }), refs, #"") == 3000
 }
 
 test rarity_legendary() {
-  let refs = [owner_222("a", holder_addr())]
+  let refs =
+    [owner_222("a", holder_addr())]
   bps(Some(RarityClaim { handle_name: "a" }), refs, #"") == 9000
 }
 
 test rarity_rare() {
-  let refs = [owner_222("abc", holder_addr())]
+  let refs =
+    [owner_222("abc", holder_addr())]
   bps(Some(RarityClaim { handle_name: "abc" }), refs, #"") == 2000
 }
 
@@ -115,13 +121,15 @@ test rarity_not_referenced_fails() fail {
 
 // forged: holder doesn't share a credential with the destination
 test rarity_unshared_credential_fails() fail {
-  let refs = [owner_222("ab", unrelated_addr())]
+  let refs =
+    [owner_222("ab", unrelated_addr())]
   bps(Some(RarityClaim { handle_name: "ab" }), refs, #"") == 0
 }
 
 // forged: 4-char handle isn't rare
 test rarity_not_rare_fails() fail {
-  let refs = [owner_222("abcd", holder_addr())]
+  let refs =
+    [owner_222("abcd", holder_addr())]
   bps(Some(RarityClaim { handle_name: "abcd" }), refs, #"") == 0
 }
 
@@ -147,26 +155,30 @@ fn og_100(handle: ByteArray, n: Int) -> Input {
 }
 
 test og_claim_ok() {
-  let refs = [owner_222("alice", holder_addr()), og_100("alice", 5)]
+  let refs =
+    [owner_222("alice", holder_addr()), og_100("alice", 5)]
   bps(Some(OgClaim { handle_name: "alice" }), refs, #"") == 7500
 }
 
 // not actually OG (og_number 0) -> rejected
 test og_claim_zero_fails() fail {
-  let refs = [owner_222("alice", holder_addr()), og_100("alice", 0)]
+  let refs =
+    [owner_222("alice", holder_addr()), og_100("alice", 0)]
   bps(Some(OgClaim { handle_name: "alice" }), refs, #"") == 0
 }
 
 // --- HAL ---
 
 test hal_claim_ok() {
-  let refs = [ref_input(holder_addr(), hal_policy, "halnft", NoDatum)]
+  let refs =
+    [ref_input(holder_addr(), hal_policy, "halnft", NoDatum)]
   bps(Some(HalClaim { asset_name: "halnft" }), refs, #"") == 4000
 }
 
 test hal_wrong_policy_fails() fail {
   // asset under a non-HAL policy -> not found under hal_policy_id
-  let refs = [ref_input(holder_addr(), new_policy, "halnft", NoDatum)]
+  let refs =
+    [ref_input(holder_addr(), new_policy, "halnft", NoDatum)]
   bps(Some(HalClaim { asset_name: "halnft" }), refs, #"") == 0
 }
 
@@ -175,7 +187,8 @@ test hal_wrong_policy_fails() fail {
 test partner_claim_ok() {
   let trie = mpt.insert(mpt.empty(), partner_policy, #"00", [])
   let root = mpt.root(trie)
-  let refs = [ref_input(holder_addr(), partner_policy, "pnft", NoDatum)]
+  let refs =
+    [ref_input(holder_addr(), partner_policy, "pnft", NoDatum)]
   bps(
     Some(
       PartnerClaim {
@@ -194,7 +207,8 @@ test partner_claim_ok() {
 test partner_not_in_root_fails() fail {
   let trie = mpt.insert(mpt.empty(), partner_policy, #"00", [])
   let root = mpt.root(trie)
-  let refs = [ref_input(holder_addr(), new_policy, "pnft", NoDatum)]
+  let refs =
+    [ref_input(holder_addr(), new_policy, "pnft", NoDatum)]
   bps(
     Some(
       PartnerClaim {

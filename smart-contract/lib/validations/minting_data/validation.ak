@@ -11,12 +11,12 @@ use decentralized_minting/settings.{Settings, find_settings}
 use decentralized_minting/settings_v1.{
   SettingsV1, get_allowed_minter_and_valid_handle_price_asset,
 }
+use validations/discount_eligibility.{DiscountContext, read_partner_root}
 use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 use validations/minting_data/utils.{
   all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
   calculate_treasury_fee_and_minter_fee,
 }
-use validations/discount_eligibility.{DiscountContext, read_partner_root}
 use validations/policy_window.{assert_mint_within_policy_window}
 
 // Validation:
@@ -349,16 +349,19 @@ fn process_legacy_handles(
 
   // WS4: subhandle mints must cover Kora's fee via a treasury output (a single output covers the
   // batch sum; free private virtuals already contributed 0). Burns enforce nothing.
-  expect when treasury is {
-    Some(treasury_address) ->
-      total_kora_fee <= 0 || list.any(
-        outputs,
-        fn(output) {
-          output.address == treasury_address && value.lovelace_of(output.value) >= total_kora_fee
-        },
-      )
-    None -> True
-  }
+  expect
+    when treasury is {
+      Some(treasury_address) ->
+        total_kora_fee <= 0 || list.any(
+          outputs,
+          fn(output) {
+            output.address == treasury_address && value.lovelace_of(
+              output.value,
+            ) >= total_kora_fee
+          },
+        )
+      None -> True
+    }
 
   True
 }

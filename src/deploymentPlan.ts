@@ -277,14 +277,15 @@ const expectedScriptHashForContract = (
 //   address-keyed: { "<scriptAddr>": { validatorHash, handle, latest, type, ... }, ... }
 // Extract the deployed (script hash, subhandle), preferring the entry flagged latest.
 const extractDeployedScript = (
-  payload: any
+  payload: unknown
 ): { scriptHash: string; subhandle: string | null } | null => {
   if (!payload || typeof payload !== "object") return null;
-  const flatHash = String(payload.validatorHash ?? payload.scriptHash ?? "").trim();
+  const obj = payload as Record<string, unknown>;
+  const flatHash = String(obj.validatorHash ?? obj.scriptHash ?? "").trim();
   if (flatHash) {
-    return { scriptHash: flatHash, subhandle: String(payload.handle ?? "").trim() || null };
+    return { scriptHash: flatHash, subhandle: String(obj.handle ?? "").trim() || null };
   }
-  const entries = Object.values(payload).filter(
+  const entries = Object.values(obj).filter(
     (v): v is Record<string, unknown> => !!v && typeof v === "object"
   );
   const candidates = entries.filter((e) => e.validatorHash || e.scriptHash);

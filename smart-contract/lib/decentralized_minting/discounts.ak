@@ -46,7 +46,9 @@ pub fn is_legendary(handle_name: ByteArray) -> Bool {
 }
 
 pub fn qualifies_for_rarity_discount(handle_name: ByteArray) -> Bool {
-  is_legendary(handle_name) || is_ultra_rare(handle_name) || is_rare(handle_name)
+  is_legendary(handle_name) || is_ultra_rare(handle_name) || is_rare(
+    handle_name,
+  )
 }
 
 // H.A.L.-holder eligibility: the referenced asset is under the configured H.A.L. policy.

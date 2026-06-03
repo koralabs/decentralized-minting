@@ -5,7 +5,8 @@ use decentralized_minting/handle_policies.{
 }
 
 // real on-chain values from api.handle.me /policies (mainnet $handle_policies)
-const legacy_policy = #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
+const legacy_policy =
+  #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
 
 const policy_2 = #"6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e"
 
@@ -30,12 +31,20 @@ fn open_window() -> PolicyWindow {
 
 // legacy policy: opened at 100, no last, sunsets (cutover) at 1000
 fn legacy_window() -> PolicyWindow {
-  PolicyWindow { first_minting_slot: 100, last_minting_slot: 0, sunset_slot: 1000 }
+  PolicyWindow {
+    first_minting_slot: 100,
+    last_minting_slot: 0,
+    sunset_slot: 1000,
+  }
 }
 
 // new policy: opened at 500, last 2000, no sunset
 fn new_window() -> PolicyWindow {
-  PolicyWindow { first_minting_slot: 500, last_minting_slot: 2000, sunset_slot: 0 }
+  PolicyWindow {
+    first_minting_slot: 500,
+    last_minting_slot: 2000,
+    sunset_slot: 0,
+  }
 }
 
 // --- is_within_window ---
@@ -170,8 +179,12 @@ test posix_gate_before_sunset_ok() {
       last_minting_slot: 0,
       sunset_slot: anchor_slot + 1000,
     }
-  let posix_window = window_to_posix(slot_window, anchor_slot, anchor_time_ms, slot_ms)
-  mint_allowed_in_window(posix_window, interval.before(anchor_time_ms + 500_000))
+  let posix_window =
+    window_to_posix(slot_window, anchor_slot, anchor_time_ms, slot_ms)
+  mint_allowed_in_window(
+    posix_window,
+    interval.before(anchor_time_ms + 500_000),
+  )
 }
 
 test posix_gate_after_sunset_rejected() {
@@ -181,7 +194,11 @@ test posix_gate_after_sunset_rejected() {
       last_minting_slot: 0,
       sunset_slot: anchor_slot + 1000,
     }
-  let posix_window = window_to_posix(slot_window, anchor_slot, anchor_time_ms, slot_ms)
+  let posix_window =
+    window_to_posix(slot_window, anchor_slot, anchor_time_ms, slot_ms)
   // tx valid-to anchor_time+1_000_000 == the sunset -> rejected (exclusive)
-  mint_allowed_in_window(posix_window, interval.before(anchor_time_ms + 1_000_000)) == False
+  mint_allowed_in_window(
+    posix_window,
+    interval.before(anchor_time_ms + 1_000_000),
+  ) == False
 }

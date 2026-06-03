@@ -130,7 +130,8 @@ pub fn sub_handle_kora_fee(
 ) -> Int {
   expect treasury_fee_percentage >= 0
   expect treasury_fee_percentage <= 100
-  let price = get_sub_handle_price(owner_settings, sub_handle_length, is_virtual)
+  let price =
+    get_sub_handle_price(owner_settings, sub_handle_length, is_virtual)
   math.max(price * treasury_fee_percentage / 100, min_treasury_fee)
 }
 

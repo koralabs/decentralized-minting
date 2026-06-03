@@ -46,12 +46,7 @@ pub fn assert_mint_within_policy_window(
         None -> True
         Some(window) ->
           mint_allowed_in_window(
-            window_to_posix(
-              window,
-              anchor_slot,
-              anchor_time_ms,
-              slot_length_ms,
-            ),
+            window_to_posix(window, anchor_slot, anchor_time_ms, slot_length_ms),
             validity_range,
           )
       }

@@ -14,10 +14,10 @@ import {
   parseMPTProofJSON,
   plutusDataToCbor,
 } from "../contracts/index.js";
-import { encodeRegistryValue, valueBuffer } from "../store/labelSet.js";
 import { getBlockfrostBuildContext } from "../helpers/cardano-sdk/blockfrostContext.js";
 import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
 import { getNetwork } from "../helpers/index.js";
+import { encodeRegistryValue, valueBuffer } from "../store/labelSet.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 import type { TxPlan } from "./txPlan.js";
 

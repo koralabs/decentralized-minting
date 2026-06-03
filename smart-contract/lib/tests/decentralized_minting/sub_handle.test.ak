@@ -1,5 +1,6 @@
-use decentralized_minting/sub_handle.{get_sub_handle_price_from_tier_pricing,
-  sub_handle_kora_fee}
+use decentralized_minting/sub_handle.{
+  get_sub_handle_price_from_tier_pricing, sub_handle_kora_fee,
+}
 
 fn tier_pricing_0() -> List<(Int, Int)> {
   [(1, 100_000_000), (3, 50_000_000), (6, 5_000_000)]

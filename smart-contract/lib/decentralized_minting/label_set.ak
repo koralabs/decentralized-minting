@@ -46,7 +46,10 @@ fn do_insert(set: ByteArray, label: ByteArray) -> ByteArray {
       Equal -> fail @"LABEL_ALREADY_PRESENT"
       // keep head, recurse into the tail
       Greater ->
-        bytearray.concat(head, do_insert(bytearray.drop(set, label_width), label))
+        bytearray.concat(
+          head,
+          do_insert(bytearray.drop(set, label_width), label),
+        )
     }
   }
 }

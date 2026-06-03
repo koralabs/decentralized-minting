@@ -1,5 +1,7 @@
 use aiken/transaction.{ScriptContext, Spend}
-use decentralized_minting/orders.{Cancel, Execute, OrderDatum, OrderRedeemer, Refund}
+use decentralized_minting/orders.{
+  Cancel, Execute, OrderDatum, OrderRedeemer, Refund,
+}
 use validations/orders/validation.{
   can_cancel_order, can_execute_order, can_refund_order,
 }

@@ -69,15 +69,17 @@ test refund_overpay_ok() {
 
 // no admin withdrawal -> not authorized
 test refund_without_admin_fails() fail {
-  let (tx, order_ref) =
-    refund_tx([], [owner_refund_output(min_order_lovelace)])
+  let (tx, order_ref) = refund_tx([], [owner_refund_output(min_order_lovelace)])
   can_refund_order(tx, order_ref, order_datum())
 }
 
 // refund underpays the owner -> rejected
 test refund_underpay_rejected() {
   let (tx, order_ref) =
-    refund_tx(governor_executed(), [owner_refund_output(min_order_lovelace - 1)])
+    refund_tx(
+      governor_executed(),
+      [owner_refund_output(min_order_lovelace - 1)],
+    )
   can_refund_order(tx, order_ref, order_datum()) == False
 }
 
