@@ -66,6 +66,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The planner delegates next-ordinal SubHandle discovery to the canonical
+      # adahandle-deployments/common/discover_subhandles.py (since the
+      # 2026-05-14 "delegate SubHandle ordinal discovery" refactor) and resolves
+      # it from DISCOVER_SUBHANDLES_PATH. The shared
+      # adahandle-deployments/.github/workflows/contract-deployment-plan.yml
+      # stages it; this caller must do the same or the planner fails with
+      # "discover_subhandles.py not found". Source of truth:
+      # koralabs/adahandle-deployments/common/discover_subhandles.py
+      - name: Stage canonical SubHandle ordinal-discovery helper
+        shell: bash
+        run: |
+          set -eu
+          discover_dir="$RUNNER_TEMP/adahandle-deployments-common"
+          mkdir -p "$discover_dir"
+          curl -fsSL -H "Authorization: Bearer ${{ secrets.DEPLOYMENT_ACCESS_TOKEN }}" \
+            "https://raw.githubusercontent.com/koralabs/adahandle-deployments/master/common/discover_subhandles.py" \
+            -o "$discover_dir/discover_subhandles.py"
+          chmod +x "$discover_dir/discover_subhandles.py"
+          echo "DISCOVER_SUBHANDLES_PATH=$discover_dir/discover_subhandles.py" >> "$GITHUB_ENV"
+
       - name: Decrypt KMS environment bundle
         env:
           KMS_ENV_BUNDLE_ENC: ${{ secrets.KMS_ENV_BUNDLE_ENC }}
