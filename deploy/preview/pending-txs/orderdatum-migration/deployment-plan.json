@@ -1,0 +1,255 @@
+{
+  "plan_id": "c8eda0069c2a6160624c686f80885eaa1054b0f05f36b74980993aacb1903f2a",
+  "repo": "decentralized-minting",
+  "network": "preview",
+  "contracts": [
+    {
+      "repo": "decentralized-minting",
+      "network": "preview",
+      "contract_slug": "demimntprx",
+      "expected_script_hash": "6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e",
+      "expected_subhandle": "demimntprx1@handlecontract",
+      "assigned_handles": {
+        "settings": [
+          "demi@handle_settings",
+          "handle_root@handle_settings",
+          "kora@handle_prices"
+        ],
+        "scripts": [
+          "mint_proxy@demi_scripts",
+          "mint_data_v1@demi_scripts",
+          "mint_v1@demi_scripts",
+          "orders@demi_scripts"
+        ]
+      },
+      "settings": {
+        "type": "decentralized_minting_settings",
+        "values": {
+          "demi@handle_settings": {
+            "mint_governor": "9b587f894bb07cec57fe7dcd36063513a0d6ec1c2121540861d2f812",
+            "mint_version": 0,
+            "policy_id": "6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e",
+            "allowed_minters": [
+              "976ec349c3a14f58959088e13e98f6cd5a1e8f27f6f3160b25e415ca"
+            ],
+            "valid_handle_price_assets": [
+              "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406b6f72614068616e646c655f707269636573"
+            ],
+            "treasury_address": "addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j",
+            "treasury_fee_percentage": 10,
+            "pz_script_address": "addr_test1wr74zaescr2m2tw9uzl47pwyq4zucjn6q5hs2ylhe7yma7cqst650",
+            "order_script_hash": "1113f6b2fdbd5dad15d99c17d00052fc84391d723e03c30e950ee673",
+            "minting_data_script_hash": "83c5ceb05253827296df7033f774462fb51356023d0cc8112eea00fc"
+          },
+          "handle_root@handle_settings": {},
+          "kora@handle_prices": {
+            "current_data": [
+              995000000,
+              445000000,
+              150000000,
+              35000000
+            ],
+            "prev_data": [
+              640000000,
+              320000000,
+              80000000,
+              10000000
+            ]
+          }
+        },
+        "ignored_paths": [
+          "settings.values.handle_root@handle_settings.mpt_root_hash"
+        ]
+      }
+    },
+    {
+      "repo": "decentralized-minting",
+      "network": "preview",
+      "contract_slug": "demimntmpt",
+      "expected_script_hash": "83c5ceb05253827296df7033f774462fb51356023d0cc8112eea00fc",
+      "expected_subhandle": "demimntmpt4@handlecontract",
+      "assigned_handles": {
+        "settings": [
+          "demi@handle_settings",
+          "handle_root@handle_settings",
+          "kora@handle_prices"
+        ],
+        "scripts": [
+          "demimntmpt4@handlecontract"
+        ]
+      },
+      "settings": {
+        "type": "decentralized_minting_settings",
+        "values": {
+          "demi@handle_settings": {
+            "mint_governor": "9b587f894bb07cec57fe7dcd36063513a0d6ec1c2121540861d2f812",
+            "mint_version": 0,
+            "policy_id": "6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e",
+            "allowed_minters": [
+              "976ec349c3a14f58959088e13e98f6cd5a1e8f27f6f3160b25e415ca"
+            ],
+            "valid_handle_price_assets": [
+              "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406b6f72614068616e646c655f707269636573"
+            ],
+            "treasury_address": "addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j",
+            "treasury_fee_percentage": 10,
+            "pz_script_address": "addr_test1wr74zaescr2m2tw9uzl47pwyq4zucjn6q5hs2ylhe7yma7cqst650",
+            "order_script_hash": "1113f6b2fdbd5dad15d99c17d00052fc84391d723e03c30e950ee673",
+            "minting_data_script_hash": "83c5ceb05253827296df7033f774462fb51356023d0cc8112eea00fc"
+          },
+          "handle_root@handle_settings": {},
+          "kora@handle_prices": {
+            "current_data": [
+              995000000,
+              445000000,
+              150000000,
+              35000000
+            ],
+            "prev_data": [
+              640000000,
+              320000000,
+              80000000,
+              10000000
+            ]
+          }
+        },
+        "ignored_paths": [
+          "settings.values.handle_root@handle_settings.mpt_root_hash"
+        ]
+      }
+    },
+    {
+      "repo": "decentralized-minting",
+      "network": "preview",
+      "contract_slug": "demimnt",
+      "expected_script_hash": "9b587f894bb07cec57fe7dcd36063513a0d6ec1c2121540861d2f812",
+      "expected_subhandle": "demimnt4@handlecontract",
+      "assigned_handles": {
+        "settings": [
+          "demi@handle_settings",
+          "handle_root@handle_settings",
+          "kora@handle_prices"
+        ],
+        "scripts": [
+          "demimnt4@handlecontract"
+        ]
+      },
+      "settings": {
+        "type": "decentralized_minting_settings",
+        "values": {
+          "demi@handle_settings": {
+            "mint_governor": "9b587f894bb07cec57fe7dcd36063513a0d6ec1c2121540861d2f812",
+            "mint_version": 0,
+            "policy_id": "6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e",
+            "allowed_minters": [
+              "976ec349c3a14f58959088e13e98f6cd5a1e8f27f6f3160b25e415ca"
+            ],
+            "valid_handle_price_assets": [
+              "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406b6f72614068616e646c655f707269636573"
+            ],
+            "treasury_address": "addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j",
+            "treasury_fee_percentage": 10,
+            "pz_script_address": "addr_test1wr74zaescr2m2tw9uzl47pwyq4zucjn6q5hs2ylhe7yma7cqst650",
+            "order_script_hash": "1113f6b2fdbd5dad15d99c17d00052fc84391d723e03c30e950ee673",
+            "minting_data_script_hash": "83c5ceb05253827296df7033f774462fb51356023d0cc8112eea00fc"
+          },
+          "handle_root@handle_settings": {},
+          "kora@handle_prices": {
+            "current_data": [
+              995000000,
+              445000000,
+              150000000,
+              35000000
+            ],
+            "prev_data": [
+              640000000,
+              320000000,
+              80000000,
+              10000000
+            ]
+          }
+        },
+        "ignored_paths": [
+          "settings.values.handle_root@handle_settings.mpt_root_hash"
+        ]
+      }
+    },
+    {
+      "repo": "decentralized-minting",
+      "network": "preview",
+      "contract_slug": "demiord",
+      "expected_script_hash": "1113f6b2fdbd5dad15d99c17d00052fc84391d723e03c30e950ee673",
+      "expected_subhandle": "demiord3@handlecontract",
+      "assigned_handles": {
+        "settings": [
+          "demi@handle_settings",
+          "handle_root@handle_settings",
+          "kora@handle_prices"
+        ],
+        "scripts": [
+          "demiord3@handlecontract"
+        ]
+      },
+      "settings": {
+        "type": "decentralized_minting_settings",
+        "values": {
+          "demi@handle_settings": {
+            "mint_governor": "9b587f894bb07cec57fe7dcd36063513a0d6ec1c2121540861d2f812",
+            "mint_version": 0,
+            "policy_id": "6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e",
+            "allowed_minters": [
+              "976ec349c3a14f58959088e13e98f6cd5a1e8f27f6f3160b25e415ca"
+            ],
+            "valid_handle_price_assets": [
+              "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406b6f72614068616e646c655f707269636573"
+            ],
+            "treasury_address": "addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j",
+            "treasury_fee_percentage": 10,
+            "pz_script_address": "addr_test1wr74zaescr2m2tw9uzl47pwyq4zucjn6q5hs2ylhe7yma7cqst650",
+            "order_script_hash": "1113f6b2fdbd5dad15d99c17d00052fc84391d723e03c30e950ee673",
+            "minting_data_script_hash": "83c5ceb05253827296df7033f774462fb51356023d0cc8112eea00fc"
+          },
+          "handle_root@handle_settings": {},
+          "kora@handle_prices": {
+            "current_data": [
+              995000000,
+              445000000,
+              150000000,
+              35000000
+            ],
+            "prev_data": [
+              640000000,
+              320000000,
+              80000000,
+              10000000
+            ]
+          }
+        },
+        "ignored_paths": [
+          "settings.values.handle_root@handle_settings.mpt_root_hash"
+        ]
+      }
+    }
+  ],
+  "transaction_order": [
+    "tx-01.cbor",
+    "tx-02.cbor",
+    "tx-03.cbor",
+    "tx-04-mpt-migration.cbor"
+  ],
+  "deployer_address": "addr_test1vqwg4hlph5k947cqt88xlryxk6ufl9qymac33dr4aenmhrqgs8ql0",
+  "tx_artifact_generated": true,
+  "artifact_files": [
+    "summary.json",
+    "summary.md",
+    "deployment-plan.json",
+    "tx-01.cbor",
+    "tx-01.cbor.hex",
+    "tx-02.cbor",
+    "tx-02.cbor.hex",
+    "tx-03.cbor",
+    "tx-03.cbor.hex",
+    "tx-04-mpt-migration.cbor",
+    "tx-04-mpt-migration.cbor.hex"
+  ]
+}
