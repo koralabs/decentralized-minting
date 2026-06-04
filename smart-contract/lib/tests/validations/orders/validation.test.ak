@@ -19,6 +19,7 @@ fn order_datum() -> OrderDatum {
     requested_handle: "test",
     destination_address: from_verification_key(owner_vkh),
     discount_claim: None,
+    is_virtual: 0,
   }
 }
 

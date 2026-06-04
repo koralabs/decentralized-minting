@@ -115,6 +115,8 @@ const request = async (params: RequestParams): Promise<
     discount_claim: params.discount
       ? buildDiscountClaimData(params.discount.claim)
       : undefined,
+    // Root-handle order built by the package helper; roots are never virtual.
+    is_virtual: 0n,
   };
 
   const fullLovelace = BigInt(Math.ceil(Number(handlePrice) * 1_000_000));

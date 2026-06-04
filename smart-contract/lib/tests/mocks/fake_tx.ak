@@ -48,6 +48,7 @@ pub fn make_order_input(
         owner_verification_key_hash,
       ),
       discount_claim: None,
+      is_virtual: 0,
     }
   Input {
     output_reference: OutputReference {

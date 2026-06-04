@@ -19,6 +19,13 @@ pub type OrderDatum {
   // WS5: optional minting-discount claim (which class + the referenced qualifying asset).
   // None = full price. Appended last to keep the prefix decode stable.
   discount_claim: Option<DiscountClaim>,
+  // Subhandle mint kind, so the engine knows whether to mint a virtual (000) or
+  // an NFT (100/222) subhandle. 0 = root / NFT subhandle, 1 = virtual subhandle.
+  // Appended last. Decoded by every validator that parses OrderDatum (demiord
+  // spend + minting_data's all_orders_are_satisfied) — both ignore the value
+  // today; mint correctness is still enforced by the per-handle proof's
+  // is_virtual. Carried here so type is unambiguous on-chain at order time.
+  is_virtual: Int,
 }
 
 pub type OrderRedeemer {
