@@ -29,7 +29,13 @@ settings:
         - f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406b6f72614068616e646c655f707269636573
       treasury_address: addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j
       treasury_fee_percentage: 10
-      pz_script_address: addr_test1wp70zp2cdamexjjjfj0837y8nge5vqgyl9tcaxkfyl6h0cc9ad65m
+      # Current persprx (persprx1@handlecontract, validatorHash fd517730…). The old
+      # value (addr_test1wp70zp2… / 7cf10558) was a RETIRED persprx no longer in the
+      # api script registry — DeMi mints sent the 100 ref there, so the handle landed
+      # on a dead personalization contract and could not be personalized (app tried to
+      # migrate it and failed "No script found"). Legacy mints already use fd517730;
+      # keep this in sync whenever persprx is redeployed.
+      pz_script_address: addr_test1wr74zaescr2m2tw9uzl47pwyq4zucjn6q5hs2ylhe7yma7cqst650
       order_script_hash: f6604607b5a10786b0def29b48ea3bb7f8562953eb3f577a66236e8d
       minting_data_script_hash: c01540060c07aa7967e7fd8bc42ba8df2fd0ec87f26b80cfcfe7f178
       # WS5 discount config — all discounts off at launch; 3 free virtual subs; no HAL policy.
