@@ -1,0 +1,72 @@
+# Task State
+
+## Run Metadata
+
+- run_id: `demi-subhandle-burn-unattended-2026-06-05`
+- prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
+- backlog_file: `tasks/TODO.md`
+- working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
+- current_task_id: `none`
+- next_task_id: `DSH-101`
+- total_tasks: `18`
+- completed_tasks: `4`
+- blocked_tasks: `0`
+- overall_status: `ready`
+- last_updated_utc: `2026-06-05T23:53:31Z`
+
+## Concurrency guard (no double-work)
+
+- Iterations are **serial**: each loop iteration first reads this file, picks the single
+  next `pending` task whose deps are all `done`, sets `current_task_id` + status `in_progress`
+  + `Started UTC`, then implements it. Never start a task already `in_progress` or `done`.
+- If an iteration finds a task `in_progress` with a `Started UTC` but no matching open work
+  (stale, e.g. a crashed iteration), verify against git/test state: if its commit landed,
+  mark it `done`; otherwise reset it to `pending` and restart cleanly. Do this BEFORE picking
+  a new task.
+- Only one task is `in_progress` at any time.
+
+## Status Legend
+
+- `pending` · `in_progress` · `blocked` · `done`
+
+## Phase Coverage
+
+- `PHASE-0-DONE`: `DSH-001`, `DSH-002`, `DSH-003`, `DSH-004`
+- `PHASE-1-FREEVIRTUAL`: `DSH-101`, `DSH-102`, `DSH-103`
+- `PHASE-2-DEMI-BURN`: `DSH-201`, `DSH-202`, `DSH-203`
+- `PHASE-3-PZ-BURN`: `DSH-301`, `DSH-302`
+- `PHASE-4-CASCADE`: `DSH-401`, `DSH-402`, `DSH-403`, `DSH-501`, `DSH-502`, `DSH-503`
+- `PHASE-5-DEPLOY`: `DSH-601`, `DSH-602`
+
+## Gap Coverage
+
+- No `docs/spec/gaps.md` in this repo; `tasks/TODO.md` is the coverage map.
+
+## Tasks
+
+| id | status | deps | repo | started_utc | finished_utc | commit | notes |
+|----|--------|------|------|-------------|--------------|--------|-------|
+| DSH-001 | done | — | decentralized-minting | — | 2026-06-05 | 91b204c | legacy path stripped; 167 checks |
+| DSH-002 | done | — | decentralized-minting | — | 2026-06-05 | (pre-existing) | orders already DeMi-only (Execute/Cancel/Refund) |
+| DSH-003 | done | — | decentralized-minting | — | 2026-06-05 | 2a379d2 | subhandle minting on orders path; fee folding A |
+| DSH-004 | done | DSH-003 | decentralized-minting | — | 2026-06-05 | 97a36ba | owner-fee double-satisfaction tests; 173 checks |
+| DSH-101 | pending | DSH-003 | decentralized-minting | — | — | — | registry_value count→free_names |
+| DSH-102 | pending | DSH-101 | decentralized-minting | — | — | — | per-order free_virtual proof + MintNewHandles ABI |
+| DSH-103 | pending | DSH-102 | decentralized-minting | — | — | — | free-virtual mint tests |
+| DSH-201 | pending | DSH-003 | decentralized-minting | — | — | — | governor can_burn_handles |
+| DSH-202 | pending | DSH-102, DSH-201 | decentralized-minting | — | — | — | demimntmpt BurnNewHandles + free-name reopen |
+| DSH-203 | pending | DSH-202 | decentralized-minting | — | — | — | burn-path contract tests |
+| DSH-301 | pending | — | handles-personalization | — | — | — | nft/root burn redeemer (release 100 iff 222 burned) |
+| DSH-302 | pending | DSH-301 | handles-personalization | — | — | — | pz burn tests |
+| DSH-401 | pending | DSH-102 | decentralized-minting | — | — | — | pkg: subhandle build legacy→orders + free-virtual proofs |
+| DSH-402 | pending | DSH-202, DSH-301 | decentralized-minting | — | — | — | pkg: burn tx builders |
+| DSH-403 | pending | DSH-102, DSH-202 | decentralized-minting | — | — | — | pkg: regenerate blueprints + pinned hashes + config |
+| DSH-501 | pending | DSH-401 | minting.handle.me | — | — | — | engine: fee outputs on orders path + tx metadata |
+| DSH-502 | pending | DSH-402, DSH-501 | minting.handle.me | — | — | — | engine: burn txs |
+| DSH-503 | pending | DSH-401 | handle.me/bff | — | — | — | bff: buy_down gone + fee display |
+| DSH-601 | pending | DSH-403, DSH-302, DSH-502, DSH-503 | decentralized-minting + adahandle-deployments | — | — | — | deploy; **needs user multisig + admin sign** → USER_ACTIONS |
+| DSH-602 | pending | DSH-601 | preview | — | — | — | on-chain verification |
+
+## Run Log
+
+- 2026-06-05T23:53:31Z — Task system created from `docs/product/demi-subhandle-minting.md` roadmap. DSH-001..004 recorded as done (committed earlier this session). Queue `ready`; next `DSH-101`.
