@@ -14,13 +14,8 @@ use decentralized_minting/label_set
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/registry_value
 use decentralized_minting/settings_v1.{min_treasury_fee}
-use decentralized_minting/sub_handle.{
-  find_root_handle_settings, get_sub_handle_price, owner_payment_credential,
-}
 use validations/discount_eligibility.{DiscountContext, effective_handle_price}
-use validations/minting_data/types.{
-  FreeVirtualData, LabelAssetProof, LegacyHandleProof,
-}
+use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 
 // WS6: root-handle character cap. Bumped 15 -> 28 (the on-chain gatekeeper that actually
 // lets 28-char roots mint). `max_sub_handle_length` is the full `sub@root` cap and stays 28,
@@ -153,11 +148,12 @@ pub fn all_orders_are_satisfied(
 // consistent (a fee waiver and a counter bump are decided together — never across passes).
 // `amount` is 1 for minting (insert key, add mint value) or -1 for burning (delete, subtract).
 //
-// Add `fee` lovelace to `cred`'s running total in the per-owner royalty list, MERGED by credential
+// Add `fee` lovelace to `cred`'s running total in the per-owner owner-fee list, MERGED by credential
 // so multiple subhandles from the same owner roll into one required output — which clears the
 // min-UTxO floor and stops a single output from being double-counted across proofs. Zero/negative
-// fees are dropped (a free or zero-priced subhandle owes the owner nothing).
-fn add_owner_fee(
+// fees are dropped (a free or zero-priced subhandle owes the owner nothing). Shared helper for the
+// DeMi subhandle path (all_orders_are_satisfied).
+pub fn add_owner_fee(
   owner_fees: List<(Credential, Int)>,
   cred: Credential,
   fee: Int,
@@ -199,60 +195,32 @@ pub fn owner_fees_all_paid(
   }
 }
 
-// Per proof:
-//   - update the handle's own MPT key (insert/delete) + the expected mint value
-//   - SUBHANDLE MINT: owes three additive fees — the owner royalty (the owner's tier price) to the
-//     owner's payment_address, plus a flat minter fee and a flat treasury fee — UNLESS it's a free
-//     private virtual (`free_virtual = Some` and the root's pre-mint count < the allowance)
-//   - PRIVATE virtual (mint or burn, `free_virtual = Some`): bump the ROOT key's counter ±1
-//     (a second `mpt.update` on the root value, preserving its WS1 label set via `encode`)
-//   - root mints + all burns owe no fee
-// Returns the accumulated `total_minter_fee`, `total_treasury_fee`, and the merged per-owner
-// royalty list, which `process_legacy_handles` enforces as outputs.
+// Per proof: update the handle's own MPT key (insert on mint / delete on burn) and the expected
+// mint value. The legacy path enforces ONLY uniqueness (the MPT root) + the correct ±tokens (000
+// for a virtual, 100/222 for an nft) under `legacy_policy_id`. Fees, the free-virtual allowance,
+// and discounts are DeMi-path-only (see all_orders_are_satisfied) — legacy mints as it does on
+// mainnet today. `amount` is 1 for minting, -1 for burning.
 pub fn all_proofs_are_valid(
   proofs: List<LegacyHandleProof>,
   root: mpt.MerklePatriciaForestry,
-  reference_inputs: List<Input>,
-  new_policy_id: PolicyId,
   legacy_policy_id: PolicyId,
-  sub_handle_minter_fee: Int,
-  sub_handle_treasury_fee: Int,
-  free_virtual_count: Int,
   amount: Int,
   expected_mint_value: Value,
-  total_minter_fee: Int,
-  total_treasury_fee: Int,
-  owner_fees: List<(Credential, Int)>,
-  continuation: fn(
-    mpt.MerklePatriciaForestry,
-    Value,
-    Int,
-    Int,
-    List<(Credential, Int)>,
-  ) ->
-    result,
+  continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
 ) -> result {
   when proofs is {
-    [] ->
-      continuation(
-        root,
-        expected_mint_value,
-        total_minter_fee,
-        total_treasury_fee,
-        owner_fees,
-      )
+    [] -> continuation(root, expected_mint_value)
     [proof, ..rest_proofs] -> {
-      let LegacyHandleProof { mpt_proof, handle_name, is_virtual, free_virtual } =
-        proof
+      let LegacyHandleProof { mpt_proof, handle_name, is_virtual } = proof
       let is_virtual_bool = parse_bool_from_int(is_virtual)
 
       // check handle is valid
       expect check_legacy_handle_validity(handle_name, is_virtual_bool)
 
-      // 1) update this handle's own MPT key (insert when minting, delete when burning)
-      let root_after_handle = update_root(root, handle_name, amount, mpt_proof)
+      // update the handle's MPT key (insert on mint, delete on burn)
+      let new_root = update_root(root, handle_name, amount, mpt_proof)
 
-      // 2) update mint value (positive when minting, negative when burning)
+      // update mint value (positive on mint, negative on burn)
       let new_mint_value =
         update_mint_value(
           expected_mint_value,
@@ -262,116 +230,16 @@ pub fn all_proofs_are_valid(
           amount,
         )
 
-      // 3) subhandle fees + free-virtual counter (decided together). Three additive fees: the
-      //    owner royalty (tier price) -> owner payment_address, plus a flat minter fee and a flat
-      //    treasury fee. Free private virtuals (under the allowance) owe nothing.
-      let (root_name, is_sub, sub_name) = parse_handle_name(handle_name)
-      let (root_after_counter, minter_delta, treasury_delta, new_owner_fees) =
-        if is_sub && amount == 1 {
-          let owner_settings =
-            find_root_handle_settings(
-              reference_inputs,
-              root_name,
-              new_policy_id,
-              legacy_policy_id,
-            )
-          let owner_fee =
-            get_sub_handle_price(
-              owner_settings,
-              bytearray.length(sub_name),
-              is_virtual_bool,
-            )
-          let (_nft, _virtual, _r0, _r1, _r2, _terms, _msig, payment_address) =
-            owner_settings
-          let owner_cred = owner_payment_credential(payment_address)
-          when free_virtual is {
-            // private virtual MINT: bump the root counter; free while under the allowance
-            Some(FreeVirtualData { root_proof, root_pre_count, root_labels }) -> {
-              let bumped =
-                bump_root_counter(
-                  root_after_handle,
-                  root_name,
-                  root_proof,
-                  root_pre_count,
-                  root_labels,
-                  1,
-                )
-              if root_pre_count < free_virtual_count {
-                // free: owes nothing to owner, minter, or treasury
-                (bumped, 0, 0, owner_fees)
-              } else {
-                (
-                  bumped,
-                  sub_handle_minter_fee,
-                  sub_handle_treasury_fee,
-                  add_owner_fee(owner_fees, owner_cred, owner_fee),
-                )
-              }
-            }
-            // nft sub or public virtual: pay all three fees, no counter
-            None ->
-              (
-                root_after_handle,
-                sub_handle_minter_fee,
-                sub_handle_treasury_fee,
-                add_owner_fee(owner_fees, owner_cred, owner_fee),
-              )
-          }
-        } else if is_sub && amount == -1 {
-          // subhandle BURN: no fee; a private virtual burn refunds a counter slot
-          when free_virtual is {
-            Some(FreeVirtualData { root_proof, root_pre_count, root_labels }) -> {
-              let bumped =
-                bump_root_counter(
-                  root_after_handle,
-                  root_name,
-                  root_proof,
-                  root_pre_count,
-                  root_labels,
-                  -1,
-                )
-              (bumped, 0, 0, owner_fees)
-            }
-            None -> (root_after_handle, 0, 0, owner_fees)
-          }
-        } else {
-          // root handle mint/burn: no subhandle fees, no counter
-          (root_after_handle, 0, 0, owner_fees)
-        }
-
       all_proofs_are_valid(
         rest_proofs,
-        root_after_counter,
-        reference_inputs,
-        new_policy_id,
+        new_root,
         legacy_policy_id,
-        sub_handle_minter_fee,
-        sub_handle_treasury_fee,
-        free_virtual_count,
         amount,
         new_mint_value,
-        total_minter_fee + minter_delta,
-        total_treasury_fee + treasury_delta,
-        new_owner_fees,
         continuation,
       )
     }
   }
-}
-
-// Bump the ROOT handle key's private-virtual counter by `delta`, preserving its label set. The
-// value is `encode(count, labels)`, so this and WS1 label updates compose on the same key.
-fn bump_root_counter(
-  root: mpt.MerklePatriciaForestry,
-  root_name: ByteArray,
-  root_proof: mpt.Proof,
-  pre_count: Int,
-  root_labels: ByteArray,
-  delta: Int,
-) -> mpt.MerklePatriciaForestry {
-  let old_value = registry_value.encode(pre_count, root_labels)
-  let new_value = registry_value.encode(pre_count + delta, root_labels)
-  mpt.update(root, root_name, root_proof, old_value, new_value)
 }
 
 // WS1 — process each label-asset proof, accumulating the new MPT root and the expected

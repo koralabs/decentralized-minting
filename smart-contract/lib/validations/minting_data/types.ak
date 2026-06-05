@@ -1,28 +1,14 @@
 use aiken/merkle_patricia_forestry as mpt
 
-// WS5 free-virtual — for a PRIVATE virtual sub-handle mint/burn, the data needed to bump the
-// root's private-virtual counter atomically. The counter lives in the ROOT handle's MPT value,
-// alongside the WS1 label set, encoded by `registry_value.encode(count, labels)`. `Some` marks
-// a private virtual (counter ±1, free while count < free_virtual_count); `None` = a public
-// virtual / nft sub / root handle (no counter, pays the normal fee).
-//   root_proof:      MPT proof for the ROOT handle key (to update its value)
-//   root_pre_count:  the root's current private-virtual count
-//   root_labels:     the root's current label set (preserved across the counter bump)
-pub type FreeVirtualData {
-  root_proof: mpt.Proof,
-  root_pre_count: Int,
-  root_labels: ByteArray,
-}
-
 // legacy handle proof
 // handle_name is the asset name of the handle in hex format
 //
+// Legacy mints enforce only uniqueness + correct tokens — no free-virtual allowance (that is
+// DeMi-path-only), so there is no per-proof free-virtual data here.
 pub type LegacyHandleProof {
   mpt_proof: mpt.Proof,
   handle_name: ByteArray,
   is_virtual: Int,
-  // WS5 free-virtual: Some for a PRIVATE virtual sub (the root counter update), else None.
-  free_virtual: Option<FreeVirtualData>,
 }
 
 // WS1 — label-asset registry proof.

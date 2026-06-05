@@ -24,12 +24,7 @@ fn spending_ref() -> OutputReference {
 }
 
 fn root_proof(handle: ByteArray) -> LegacyHandleProof {
-  LegacyHandleProof {
-    mpt_proof: [],
-    handle_name: handle,
-    is_virtual: 0,
-    free_virtual: None,
-  }
+  LegacyHandleProof { mpt_proof: [], handle_name: handle, is_virtual: 0 }
 }
 
 // a non-virtual root legacy handle mints its 100 + 222 tokens
