@@ -72,6 +72,13 @@ that shape this work:
 - Burning a *paid* sub touches the set not at all
 - Public virtuals never consume the allowance
 
+> **No DeMi burn path yet (found 2026-06-05).** The only burn redeemer is `BurnLegacyHandles`
+> (legacy policy `f0ff48bb`). DeMi handles mint under `6c32db33` via `MintNewHandles` (orders,
+> mint-only) — nothing can burn a DeMi-policy handle today. So "reopen on burn" is the correct
+> intended semantics but is **pending a DeMi subhandle burn path that doesn't exist**. Move 3's
+> *mint side* (track free names, free while `|set| < 3`, add the name) is implementable now; the
+> *burn side* (remove the name → reopen the slot) gets wired when a DeMi burn redeemer is added.
+
 **Mechanism (move 3).** Re-introduce a per-order `free_virtual: Option<FreeVirtualData>`
 on the DeMi orders path (the same shape removed from the legacy path in move 2, now where
 it belongs). For a private-virtual order it carries the **root key's MPT proof + current
