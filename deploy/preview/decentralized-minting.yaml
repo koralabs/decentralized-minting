@@ -20,7 +20,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: 9b587f894bb07cec57fe7dcd36063513a0d6ec1c2121540861d2f812
+      mint_governor: 5f8cc2b71b60c93a49b7ca09e45cc5913cb465758ce1cb70d4d40201
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -37,7 +37,7 @@ settings:
       # keep this in sync whenever persprx is redeployed.
       pz_script_address: addr_test1wr74zaescr2m2tw9uzl47pwyq4zucjn6q5hs2ylhe7yma7cqst650
       order_script_hash: 1113f6b2fdbd5dad15d99c17d00052fc84391d723e03c30e950ee673
-      minting_data_script_hash: 83c5ceb05253827296df7033f774462fb51356023d0cc8112eea00fc
+      minting_data_script_hash: f2c9e3ef2896ee95a0dcf12937338cb6498e4c31a513afcdf38238af
       # WS5 discount config — all discounts off at launch; 3 free virtual subs; no HAL policy.
       discount_config:
         partner_nft_bps: 0

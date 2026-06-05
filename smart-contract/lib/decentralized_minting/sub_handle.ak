@@ -139,14 +139,13 @@ pub fn get_sub_handle_price_from_tier_pricing(
   tier_pricing: List<(Int, Int)>,
   sub_handle_length: Int,
 ) -> Int {
-  let sub_handle_price =
-    do_get_sub_handle_price_from_tier_pricing(
-      tier_pricing,
-      sub_handle_length,
-      0,
-    )
-  expect sub_handle_price > 0
-  sub_handle_price
+  // The owner's tier price may legitimately be 0 (a free subhandle, e.g. the
+  // handlecontract deployment subhandles or any zero-priced root tier). We do
+  // NOT require price > 0 here — the actual constraint is that Kora's fee is
+  // paid, and `sub_handle_kora_fee` floors the fee at `min_treasury_fee` (2 ADA)
+  // regardless of the owner's price. A `price > 0` assertion here wrongly blocks
+  // every zero-priced subhandle even though the Kora fee would still be covered.
+  do_get_sub_handle_price_from_tier_pricing(tier_pricing, sub_handle_length, 0)
 }
 
 fn do_get_sub_handle_price_from_tier_pricing(

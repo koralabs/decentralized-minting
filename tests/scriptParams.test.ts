@@ -17,10 +17,11 @@ const HELIOS_PINNED_HASHES = {
   // demimntmpt now takes 5 params (legacy_policy_id, admin_vkh + WS7 slot anchor:
   // anchor_slot, anchor_time_ms, slot_length_ms). The old 2-param helios pin no longer
   // applies; this locks the current aiken-compiled validator's applied hash as a regression.
-  // Updated when OrderDatum gained `is_virtual` (subhandle type): demimntmpt decodes
-  // OrderDatum in all_orders_are_satisfied, so its compiled code + applied hash changed.
+  // Updated when OrderDatum gained `is_virtual` (subhandle type) AND when the
+  // zero-price `expect sub_handle_price > 0` was dropped (Kora fee floors at
+  // min_treasury_fee regardless) — both change demimntmpt's compiled code + hash.
   mintingDataSpend5Params:
-    "5325f18629b1e84b7b35e851ce898a6d27dddf9867c0e45dfde7570e",
+    "d6dae9437baf7fd99e5c8666247c2bcec099d62877741f475383729f",
 };
 
 const findValidator = (title: string) => {
