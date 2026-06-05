@@ -14,6 +14,9 @@ use decentralized_minting/label_set
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/registry_value
 use decentralized_minting/settings_v1.{min_treasury_fee}
+use decentralized_minting/sub_handle.{
+  find_root_handle_settings, get_sub_handle_price, owner_payment_credential,
+}
 use validations/discount_eligibility.{DiscountContext, effective_handle_price}
 use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 
@@ -24,25 +27,60 @@ const max_handle_length = 28
 
 const max_sub_handle_length = 28
 
-// This function checks only new handles orders are satisfied
+// Process each order UTxO. Two kinds of order:
+//   ROOT handle  -> rarity price (handle_price_info) minus any discount; mint 100->pz + 222->dest;
+//                   the price feeds `total_handles_price` (Kora's percentage treasury/minter split).
+//   SUBHANDLE    -> the OWNER fee is the owner's tier price (read from the root's 001 settings, a
+//                   reference input), plus a FLAT minter fee + FLAT treasury fee. Mint 000->pz for a
+//                   virtual sub, or 100->pz + 222->dest for an nft sub. The owner fee accrues per
+//                   owner (merged); the flat minter/treasury totals fold into Kora's batch outputs.
+//
+// Token outputs are consumed POSITIONALLY (each output is used exactly once) — never list.any — so
+// one mint can never satisfy two orders (no double-satisfaction). Owner fees are enforced by the
+// caller over the LEFTOVER outputs returned here, so a fixed fee/token output can't double-count.
 pub fn all_orders_are_satisfied(
   order_script_hash: ScriptHash,
   inputs: List<Input>,
   outputs: List<Output>,
+  reference_inputs: List<Input>,
   policy_id: PolicyId,
+  legacy_policy_id: PolicyId,
   pz_script_address: Address,
   handle_price_info: HandlePriceInfo,
+  sub_handle_minter_fee: Int,
+  sub_handle_treasury_fee: Int,
   proofs: List<mpt.Proof>,
   root: mpt.MerklePatriciaForestry,
   expected_mint_value: Value,
   total_handles_price: Int,
+  total_sub_minter_fee: Int,
+  total_sub_treasury_fee: Int,
+  owner_fees: List<(Credential, Int)>,
   // WS5: discount context (config + ref inputs + policies + partner root)
   discount_ctx: DiscountContext,
-  continuation: fn(mpt.MerklePatriciaForestry, Value, Int) -> result,
+  continuation: fn(
+    mpt.MerklePatriciaForestry,
+    Value,
+    Int,
+    Int,
+    Int,
+    List<(Credential, Int)>,
+    List<Output>,
+  ) ->
+    result,
 ) -> result {
   // go through inputs and process order UTxO
   when inputs is {
-    [] -> continuation(root, expected_mint_value, total_handles_price)
+    [] ->
+      continuation(
+        root,
+        expected_mint_value,
+        total_handles_price,
+        total_sub_minter_fee,
+        total_sub_treasury_fee,
+        owner_fees,
+        outputs,
+      )
     [order_input, ..rest_inputs] -> {
       let Output { address, datum, .. } = order_input.output
       let is_order = is_order_script_address(address, order_script_hash)
@@ -55,69 +93,140 @@ pub fn all_orders_are_satisfied(
             requested_handle,
             destination_address,
             discount_claim,
+            is_virtual,
             ..
           } = datum
 
           // parse proofs
           expect [mpt_proof, ..rest_proofs] = proofs
 
-          // check handle validity and get price
-          let handle_price =
-            check_new_handle_validity_and_get_price(
-              requested_handle,
-              handle_price_info,
-            )
-
-          // WS5: apply any (validated) discount claim to the required price. A forged claim
-          // fails the tx; no claim leaves the price unchanged.
-          let effective_price =
-            effective_handle_price(
-              handle_price,
-              discount_claim,
-              destination_address,
-              discount_ctx,
-            )
-          //
-          // update root
-          // NOTE:
-          // for now we assume that all order is for minting (not burning)
-          let new_root = update_root(root, requested_handle, 1, mpt_proof)
-
-          // check order input has enough lovelace for the (possibly discounted) price
           let order_input_lovelace =
             value.quantity_of(
               order_input.output.value,
               ada_policy_id,
               ada_asset_name,
             )
-          let order_is_enough = order_input_lovelace >= effective_price
-          expect order_is_enough
 
-          // extract ref & user output (or virtual output)
-          // check minted assets are correctly sent to correct address
-          // and returns rest_outputs and new_mint_value to continue processing
-          let (rest_outputs, new_mint_value) =
-            check_ref_and_user_outputs(
-              outputs,
-              policy_id,
-              requested_handle,
-              pz_script_address,
-              destination_address,
-              expected_mint_value,
-            )
+          // update root (mint only)
+          let new_root = update_root(root, requested_handle, 1, mpt_proof)
+
+          let (root_name, is_sub, sub_name) = parse_handle_name(requested_handle)
+
+          let (
+            rest_outputs,
+            new_mint_value,
+            new_total_handles_price,
+            new_total_sub_minter_fee,
+            new_total_sub_treasury_fee,
+            new_owner_fees,
+          ) =
+            if is_sub {
+              // SUBHANDLE: owner fee (tier price) + flat minter + flat treasury
+              let is_virtual_bool = parse_bool_from_int(is_virtual)
+              expect check_legacy_handle_validity(requested_handle, is_virtual_bool)
+
+              let owner_settings =
+                find_root_handle_settings(
+                  reference_inputs,
+                  root_name,
+                  policy_id,
+                  legacy_policy_id,
+                )
+              let owner_fee =
+                get_sub_handle_price(
+                  owner_settings,
+                  bytearray.length(sub_name),
+                  is_virtual_bool,
+                )
+              let (_n, _v, _r0, _r1, _r2, _t, _m, payment_address) =
+                owner_settings
+              let owner_cred = owner_payment_credential(payment_address)
+
+              // the order UTxO must fund all three additive fees
+              expect
+                order_input_lovelace >= owner_fee + sub_handle_minter_fee + sub_handle_treasury_fee
+
+              // mint the sub's tokens (positional output consumption)
+              let (rest, mint_v) =
+                if is_virtual_bool {
+                  check_virtual_sub_output(
+                    outputs,
+                    policy_id,
+                    requested_handle,
+                    pz_script_address,
+                    expected_mint_value,
+                  )
+                } else {
+                  check_ref_and_user_outputs(
+                    outputs,
+                    policy_id,
+                    requested_handle,
+                    pz_script_address,
+                    destination_address,
+                    expected_mint_value,
+                  )
+                }
+              (
+                rest,
+                mint_v,
+                total_handles_price,
+                total_sub_minter_fee + sub_handle_minter_fee,
+                total_sub_treasury_fee + sub_handle_treasury_fee,
+                add_owner_fee(owner_fees, owner_cred, owner_fee),
+              )
+            } else {
+              // ROOT handle: rarity price minus any discount; feeds the percentage split
+              let handle_price =
+                check_new_handle_validity_and_get_price(
+                  requested_handle,
+                  handle_price_info,
+                )
+              // WS5: apply any (validated) discount claim. A forged claim fails the tx.
+              let effective_price =
+                effective_handle_price(
+                  handle_price,
+                  discount_claim,
+                  destination_address,
+                  discount_ctx,
+                )
+              expect order_input_lovelace >= effective_price
+              let (rest, mint_v) =
+                check_ref_and_user_outputs(
+                  outputs,
+                  policy_id,
+                  requested_handle,
+                  pz_script_address,
+                  destination_address,
+                  expected_mint_value,
+                )
+              (
+                rest,
+                mint_v,
+                total_handles_price + effective_price,
+                total_sub_minter_fee,
+                total_sub_treasury_fee,
+                owner_fees,
+              )
+            }
 
           all_orders_are_satisfied(
             order_script_hash,
             rest_inputs,
             rest_outputs,
+            reference_inputs,
             policy_id,
+            legacy_policy_id,
             pz_script_address,
             handle_price_info,
+            sub_handle_minter_fee,
+            sub_handle_treasury_fee,
             rest_proofs,
             new_root,
             new_mint_value,
-            // fees compute on what the user actually pays (the discounted price)
-            total_handles_price + effective_price,
+            new_total_handles_price,
+            new_total_sub_minter_fee,
+            new_total_sub_treasury_fee,
+            new_owner_fees,
             discount_ctx,
             continuation,
           )
@@ -128,13 +237,20 @@ pub fn all_orders_are_satisfied(
             order_script_hash,
             rest_inputs,
             outputs,
+            reference_inputs,
             policy_id,
+            legacy_policy_id,
             pz_script_address,
             handle_price_info,
+            sub_handle_minter_fee,
+            sub_handle_treasury_fee,
             proofs,
             root,
             expected_mint_value,
             total_handles_price,
+            total_sub_minter_fee,
+            total_sub_treasury_fee,
+            owner_fees,
             discount_ctx,
             continuation,
           )
@@ -443,6 +559,41 @@ fn check_ref_and_user_outputs(
     mint_value
       |> value.add(policy_id, ref_asset_name, 1)
       |> value.add(policy_id, user_asset_name, 1)
+
+  (rest_outputs, new_mint_value)
+}
+
+// Virtual subhandle: a single 000 token (it carries the datum) sent to the pz_script_address — the
+// same place an nft sub's 100 ref token goes. There is no user-held 222. The datum content is set
+// by the minter (the contract records token existence only, as with the ref token). Consumes ONE
+// output positionally, mirroring check_ref_and_user_outputs.
+fn check_virtual_sub_output(
+  outputs: List<Output>,
+  policy_id: PolicyId,
+  handle_name: ByteArray,
+  pz_script_address: Address,
+  mint_value: Value,
+) -> (List<Output>, Value) {
+  let virtual_asset_name = bytearray.concat(prefix_000, handle_name)
+
+  expect [virtual_output, ..rest_outputs] = outputs
+  let Output {
+    address: virtual_output_address,
+    value: virtual_output_value,
+    reference_script: virtual_output_reference_script,
+    ..
+  } = virtual_output
+
+  expect virtual_output_address == pz_script_address
+  let expected_virtual_value =
+    value.zero()
+      |> value.add(policy_id, virtual_asset_name, 1)
+  expect value.without_lovelace(virtual_output_value) == expected_virtual_value
+  expect virtual_output_reference_script == None
+
+  let new_mint_value =
+    mint_value
+      |> value.add(policy_id, virtual_asset_name, 1)
 
   (rest_outputs, new_mint_value)
 }

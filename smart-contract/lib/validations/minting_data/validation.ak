@@ -15,7 +15,7 @@ use validations/discount_eligibility.{DiscountContext, read_partner_root}
 use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 use validations/minting_data/utils.{
   all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
-  calculate_treasury_fee_and_minter_fee,
+  calculate_treasury_fee_and_minter_fee, owner_fees_all_paid,
 }
 use validations/policy_window.{assert_mint_within_policy_window}
 
@@ -61,6 +61,8 @@ pub fn can_mint_new_handles(
     pz_script_address,
     order_script_hash,
     discount_config,
+    sub_handle_minter_fee,
+    sub_handle_treasury_fee,
     ..
   } = settings_datum
 
@@ -126,23 +128,36 @@ pub fn can_mint_new_handles(
       partner_root: read_partner_root(reference_inputs, legacy_policy_id),
     }
 
-  // check orders with proofs
+  // check orders with proofs. Root orders feed `total_handles_price` (percentage split); subhandle
+  // orders accumulate flat minter/treasury totals + the merged per-owner fee list, and return the
+  // leftover outputs (everything after the consumed token outputs) for the owner-fee check.
   let
     new_root,
     expected_mint_value,
     total_handles_price,
+    total_sub_minter_fee,
+    total_sub_treasury_fee,
+    owner_fees,
+    leftover_outputs,
   <-
     all_orders_are_satisfied(
       order_script_hash,
       inputs,
       rest_outputs,
+      reference_inputs,
       new_policy_id,
+      legacy_policy_id,
       pz_script_address,
       handle_price_info,
+      sub_handle_minter_fee,
+      sub_handle_treasury_fee,
       proofs,
       root,
       value.zero(),
       0,
+      0,
+      0,
+      [],
       discount_ctx,
     )
 
@@ -161,14 +176,22 @@ pub fn can_mint_new_handles(
     )
   expect minting_data_output.reference_script == None
 
-  // calculate treasury fee and minter fee
-  let (treasury_fee, minter_fee) =
-    calculate_treasury_fee_and_minter_fee(
-      total_handles_price,
-      treasury_fee_percentage,
-    )
+  // Root-handle treasury/minter fee = percentage split of the root prices, with the 2-ADA floor.
+  // The floor is a per-root-mint minimum, so it only applies when there ARE root handles in the
+  // batch (total_handles_price > 0); an all-subhandle batch owes only the flat sub fees below.
+  let (root_treasury_fee, root_minter_fee) =
+    if total_handles_price > 0 {
+      calculate_treasury_fee_and_minter_fee(
+        total_handles_price,
+        treasury_fee_percentage,
+      )
+    } else {
+      (0, 0)
+    }
 
-  // check treasury output
+  // Design A — the subhandle flat minter/treasury fees fold into Kora's single batch outputs, so
+  // one treasury UTxO + one minter UTxO cover the whole mixed root+sub batch.
+  // check treasury output (root percentage + all sub flat treasury fees)
   let Output {
     address: treasury_output_address,
     value: treasury_output_value,
@@ -177,10 +200,11 @@ pub fn can_mint_new_handles(
   } = treasury_output
   expect treasury_output_address == treasury_address
   expect treasury_output_datum == InlineDatum(Void)
-  expect value.lovelace_of(treasury_output_value) >= treasury_fee
+  expect
+    value.lovelace_of(treasury_output_value) >= root_treasury_fee + total_sub_treasury_fee
   expect treasury_output_reference_script == None
 
-  // check minter output
+  // check minter output (root percentage + all sub flat minter fees)
   let Output {
     value: minter_output_value,
     datum: minter_output_datum,
@@ -188,8 +212,14 @@ pub fn can_mint_new_handles(
     ..
   } = minter_output
   expect minter_output_datum == InlineDatum(Void)
-  expect value.lovelace_of(minter_output_value) >= minter_fee
+  expect
+    value.lovelace_of(minter_output_value) >= root_minter_fee + total_sub_minter_fee
   expect minter_output_reference_script == None
+
+  // Owner fees — each owner (merged across the batch) must receive an output paying >= their total
+  // to their payment credential. Checked over the LEFTOVER outputs only (the fee/token outputs are
+  // already accounted for positionally), so no output can double-satisfy.
+  expect owner_fees_all_paid(owner_fees, leftover_outputs)
 
   // check minted handles
   expect value.from_minted_value(mint) == expected_mint_value
