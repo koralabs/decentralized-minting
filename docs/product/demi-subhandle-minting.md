@@ -72,17 +72,21 @@ There are two independent mint paths. They do not share enforcement.
 - Admin `Refund` redeemer for stuck/unfulfillable orders
 - Admin can refund but never redirect funds
 - Refund returns lovelace to the original owner
-- Refund works for **single-signature** owners only; composite-multisig owners
-  reclaim via owner-authorized `Cancel`
+- Refund covers **every order that can be placed** (see below)
 
-#### Why "single-signature owners only"
-The order owner is stored as a Sundae-style multisig — a single key *or* a
-composite (2-of-3, a script, …). Admin `Refund` must guarantee the operator can't
-redirect funds to themselves, so it requires exactly one signature
-(`multisig.Signature { key_hash }`) to have one unambiguous payout address.
-Composite owners have no single forced target, so the contract can't safely
-admin-refund them — they self-`Cancel`. Almost all orders are single-wallet, so
-admin-refund covers the common case.
+#### Refund and "single-signature owners"
+The order owner is stored as a Sundae multisig, and admin `Refund` matches
+`multisig.Signature { key_hash }` and pays the lovelace back to that key's
+credential. This is **not** a restriction relative to who can order: order
+placement ([`txs/order.ts`](../../src/txs/order.ts)) already requires the buyer's
+payment credential to be a **key hash** (`"Payment credential must be a key hash"`)
+and encodes the owner as exactly that `Signature { key_hash }`. So a *simple payment
+address* is the canonical — and only — supported owner, and Refund covers 100% of
+placeable orders. The genuinely unsupported case is the inverse: **script-credential
+wallets** (smart-contract wallets) are rejected at order *placement*, so they can't
+place a DeMi order at all today — independent of Refund. Supporting them later means
+relaxing the placement check *and* adding a `ScriptCredential` arm to the Refund
+payout match.
 
 ## Implementation divergences to fix
 
