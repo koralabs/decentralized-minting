@@ -31,6 +31,13 @@ pub type SettingsV1 {
   // WS5: minting-discount configuration (basis-points percent-off per class + free-virtual
   // count + H.A.L. policy). Appended last to keep the prefix decode stable.
   discount_config: DiscountConfig,
+  // SubHandle fees (additive model — see sub_handle.ak). The Kora Labs minting fee and the
+  // treasury fee are FLAT per subhandle (independent of the owner's tier price), and are paid
+  // combined into one UTxO to `treasury_address` (a single sub-min-UTxO split is illegal, so we
+  // bundle them; treasury can be split out once it clears the min-UTxO floor). Configurable here
+  // so amounts tune without a contract redeploy. Today: minter = 2 ADA, treasury = 0.
+  sub_handle_minter_fee: Int,
+  sub_handle_treasury_fee: Int,
 }
 
 //

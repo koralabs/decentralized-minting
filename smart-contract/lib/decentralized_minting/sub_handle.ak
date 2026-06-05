@@ -1,10 +1,29 @@
+use aiken/builtin
 use aiken/bytearray
 use aiken/list
 use aiken/math
 use aiken/transaction.{InlineDatum, Input, Output}
+use aiken/transaction/credential.{
+  Credential, ScriptCredential, VerificationKeyCredential,
+}
 use aiken/transaction/value.{PolicyId}
 use common/cip68.{prefix_001}
 use decentralized_minting/settings_v1.{min_treasury_fee}
+
+// Extract the payment credential embedded in a raw Cardano address (the OwnerSettings
+// `payment_address` bytes): byte 0 is the header — its bit 4 (0x10) flags a script vs key
+// payment credential — and bytes 1..28 are the 28-byte credential hash. Used to verify an
+// output pays the root owner's fee without parsing the full address (the stake part is
+// irrelevant to who controls the funds).
+pub fn owner_payment_credential(payment_address: ByteArray) -> Credential {
+  let header = builtin.index_bytearray(payment_address, 0)
+  let cred_hash = bytearray.slice(payment_address, 1, 28)
+  if header / 16 % 2 == 1 {
+    ScriptCredential(cred_hash)
+  } else {
+    VerificationKeyCredential(cred_hash)
+  }
+}
 
 // struct SubHandleSettings {
 //     public_minting_enabled: Int
@@ -19,13 +38,15 @@ type SubHandleSettings =
 // struct OwnerSettings {
 //     nft: SubHandleSettings
 //     virtual: SubHandleSettings
-//     buy_down_price: Int
-//     buy_down_paid: Int
-//     buy_down_percent: Int
+//     reserved_0: Int          // RESERVED — formerly buy_down_price (never implemented, removed)
+//     reserved_1: Int          // RESERVED — formerly buy_down_paid
+//     reserved_2: Int          // RESERVED — formerly buy_down_percent
 //     agreed_terms: Data
 //     migrate_sig_required: Int
-//     payment_address: ByteArray
+//     payment_address: ByteArray   // raw Cardano address bytes; owner fee is paid here
 // }
+// NOTE: the three reserved Ints keep the on-chain datum arity stable so existing 001 settings
+// keep decoding — buy-down was never implemented and carries no logic anywhere.
 type OwnerSettings =
   (SubHandleSettings, SubHandleSettings, Int, Int, Int, Data, Int, ByteArray)
 

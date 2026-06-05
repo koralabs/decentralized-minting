@@ -93,6 +93,8 @@ pub fn make_settings_reference_input() -> Input {
         free_virtual_count: 3,
         hal_policy_id: #"",
       },
+      sub_handle_minter_fee: 2_000_000,
+      sub_handle_treasury_fee: 0,
     }
   let settings: Settings =
     Settings { mint_governor, mint_version, data: settings_v1 }
