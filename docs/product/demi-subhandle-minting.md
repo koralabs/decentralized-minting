@@ -7,6 +7,49 @@ architectural mistakes in the current implementation. It supersedes the relevant
 parts of [`legacy-parity-plan.md`](./legacy-parity-plan.md); that plan's progress log
 describes some of these features as wired onto the **legacy** path, which is wrong.
 
+## Work breakdown (roadmap)
+
+**Done & green (committed, 173 aiken checks):**
+- Move 2 — legacy path stripped to uniqueness + tokens only (`91b204c`)
+- Move 4 — orders already DeMi-only (no change)
+- Move 1 — DeMi subhandle minting on the orders path: owner fee + folded flat minter/treasury,
+  virtual `000`→pz / nft `100`+`222`, double-satisfaction-safe (`2a379d2`, tests `97a36ba`)
+
+**Remaining — contracts (decentralized-minting / Aiken):**
+1. **Move 3 — free-virtual name-set (mint side).** `registry_value` `(count,labels)`→`(free_names,labels)`;
+   re-introduce per-order `free_virtual: Option<FreeVirtualData>` carrying the root key's MPT proof +
+   current `free_names`; free while `|free_names| < 3` (add name), else paid; `MintNewHandles` proof
+   element changes; ripple to `LabelAssetProof` (`old_free_names`); tests.
+2. **DeMi burn path.** Enable `can_burn_handles` in the governor (`demimnt`, currently `False`); add a
+   `demimntmpt` `BurnNewHandles` redeemer = MPT delete (existence-before/absence-after) + expect `−1`
+   mint + **remove a free virtual's name → reopen its slot** (free-virtual burn side); tests.
+
+**Remaining — contracts (handles-personalization / Aiken):**
+3. **New NFT/root burn redeemer** (net-new): release the held `100` ref iff the matching `222` is also
+   being burned in the tx (= owner consent). Covers roots + nft subs, DeMi + legacy.
+   - Virtual burn already exists (`Revoke`: private→root-signed, public→lease-expired) — no change.
+
+**Remaining — off-chain cascade:**
+4. **Package** (`@koralabs/handles-decentralized-minting`): relocate subhandle build from the legacy
+   path to the orders/new-mint path; build the richer proofs (free-virtual root proofs); build burn
+   txs (governor `BurnHandles` + `demimntmpt` `BurnNewHandles` + pz burn/`Revoke`); regenerate
+   blueprints (redeemer ABI changed → new hashes); update pinned-hash + deploy config.
+5. **Engine** (`minting.handle.me`): move the additive fee outputs from the legacy path to the orders
+   path (owner fee→payment_address, flat minter→allowed_minter, flat treasury→treasury_address, folded;
+   token outputs before owner-fee outputs); write free-virtual names to **tx metadata**; build burn txs.
+6. **BFF** (`handle.me/bff`): order placement already emits `is_virtual`; verify buy_down fully gone;
+   align fee display with the additive model.
+
+**Remaining — deploy:**
+7. Regenerate the Phase-1 bundle (new `demimntmpt`/`demimnt` hashes); **multisig sign** (handlecontract
+   native script in Eternl) for ref-script deploys + settings update, admin-sign the MPT migration;
+   deploy the new personalization contract (with the nft burn redeemer); publish package; deploy engine.
+8. **Verify on preview:** nft sub mint, virtual sub mint, owner-fee payout, 3 free virtuals, admin
+   refund, and burns (nft via 222-check, virtual via `Revoke`, MPT delete) — all on-chain.
+
+**Deferred (explicitly later):** voluntary holder-burn UX; migrating the 50k+ tokens at old pz
+contracts into the burn-capable new contract (route via admin `Migrate`).
+
 ## Core principle
 
 There are two independent mint paths. They do not share enforcement.
