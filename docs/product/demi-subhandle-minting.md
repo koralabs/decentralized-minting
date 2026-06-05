@@ -19,9 +19,20 @@ There are two independent mint paths. They do not share enforcement.
   Plutus `mint_governor` (decentralized, no policy key). **Everything below lives
   here.** Roots and subhandles alike are DeMi-policy assets.
 
-> The legacy path may *reuse* DeMi's fee/allowance code if that's cleaner and more
-> resource-efficient than duplicating logic — but it must stay behaviorally
-> identical to today (charges nothing new). Sharing code ≠ sharing behavior.
+(See [Resolved: separate enforcement paths, shared pure helpers](#resolved-separate-enforcement-paths-shared-pure-helpers) for how the two paths share code without sharing behavior.)
+
+## Principle: chain is the source of truth
+
+The per-root label tokens (`001` settings, and the `000`/`100`/`222` handle assets)
+must on their own be a **complete, accurate record** — the off-chain index should be
+rebuildable from chain data alone, with no external state required. Two consequences
+that shape this work:
+
+- The root's **MPT value** (carried on the latest `001`-token tx) holds the current set
+  of free virtual sub names — so the free-allowance state is on-chain, not just in a DB.
+- Each subhandle mint also writes its record to **tx metadata**. Validators can't read
+  metadata, so it's not load-bearing for enforcement — it's a redundant, chain-native
+  trail to rebuild the index from if the off-chain store is ever lost or wrong.
 
 ## Features we are adding (DeMi path only)
 
@@ -32,23 +43,33 @@ There are two independent mint paths. They do not share enforcement.
 
 ### Additive subhandle fees
 - Three separate fees, all additive
-- Owner royalty enforced → owner's `payment_address`
+- **Owner fee** enforced → owner's `payment_address`
 - Flat minter fee enforced → an allowed minter
 - Flat treasury fee enforced → `treasury_address`
 - Owner fee may be zero (output skipped)
 - Minter/treasury fees may be zero (output skipped)
 - Owner fees merged per owner across the batch
+- Flat minter/treasury fold into the batch minter/treasury outputs (design A)
+- Roots keep their percentage split; only subs use the flat amounts
 - Two new settings: `sub_handle_minter_fee`, `sub_handle_treasury_fee`
 - Parses `payment_address` to key-or-script credential
 - Dropped "price must exceed zero" check
-- Removed the old percentage-based fee model
+- Removed the old percentage-based subhandle fee model
+
+> **Terminology:** call it the **owner fee**, not "royalty" — "royalty" has a
+> specific CIP-27 meaning in Cardano and is not what this is.
 
 ### Free virtual allowance
 - First 3 **private** virtual subs per root are free
-- Tracks the **set of free names** (≤3), **not** a counter
-- Burning a *paid* sub never reopens a free slot
+- Tracks the **3 free names**, not a decrementing counter
+- The free names live in the root's **MPT value** (at the `001` key)
+- The latest `001`-token tx is the authoritative record of current free virtuals
+- Also written to **tx metadata** each mint (contracts can't read metadata, but it
+  lets the off-chain index be rebuilt from chain if ever needed)
+- Minting a free virtual adds its name to the set (while < 3)
+- Burning a *free* name reopens only that slot; burning a *paid* sub touches nothing
 - Public virtuals never consume the allowance
-- Encoding stays backward-compatible (no 001 migration)
+- Capturing already-minted free virtuals may need a one-time update tx (later)
 
 ### Discounts
 - Discount config in basis points
@@ -104,9 +125,22 @@ the **legacy** path. These need rework before deploy:
 4. **Orders execute for legacy.** Commit `97a9998` made `can_execute_order` serve
    both new and legacy. Revert — orders are DeMi-only.
 
-## Open decision
+## Resolved: separate enforcement paths, shared pure helpers
 
-Do legacy and DeMi **share** the fee/allowance/discount modules (legacy passes
-zeroes / empty config so it charges nothing), or stay **fully separate** code paths?
-Shared is less duplication; separate is less risk of legacy accidentally enforcing
-something. Leaning shared-with-zero-config pending your call.
+(Decided 2026-06-05.) The two mint paths have opposite trust models — legacy is
+permissioned (Kora's policy key signs `f0ff48bb`, minter already trusted, fees are an
+off-chain payment-side concern today), DeMi is permissionless (`6c32db33` Plutus mint,
+nothing trusted, so fees **must** be enforced on-chain). That asymmetry decides it:
+
+- **Enforcement is separate.** `process_legacy_handles` keeps doing only uniqueness +
+  222/100 correctness — byte-for-byte today's behavior — and never calls fee/allowance/
+  discount code. The DeMi subhandle path owns all three fees + the free-name allowance +
+  discounts.
+- **Pure math is shared as library helpers** — tier-price lookup, `owner_payment_credential`
+  parsing, discount-bps arithmetic — imported **only** by the DeMi path. Legacy never
+  invokes them.
+
+Rejected "shared with legacy passing zeros": it burns ex-units on every (high-volume)
+legacy mint for logic it doesn't need, re-couples legacy to DeMi fee code (the exact
+entanglement that caused the original mistake), and makes "legacy behaves as today"
+un-auditable. Separation is also the more resource-efficient option, not less.
