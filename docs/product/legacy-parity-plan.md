@@ -2,6 +2,14 @@
 
 Status: **IN PROGRESS** · Last updated: 2026-06-02
 
+> **⚠️ Correction (2026-06-05).** Parts of this plan describe subhandle fees,
+> free-virtual, discounts, and orders as wired onto the **legacy** mint path. That is
+> wrong: those are **DeMi-path-only** features, and DeMi subhandles must mint under the
+> **DeMi policy `6c32db33`**, not the legacy native policy. The legacy path mints as it
+> does today and gains nothing. See
+> [`demi-subhandle-minting.md`](./demi-subhandle-minting.md) for the corrected spec and
+> the four divergences to fix.
+
 > **Progress (2026-06-02).** Verified green end-to-end: **aiken 109 checks / 0 warnings · DeMi
 > tsc clean · DeMi 46 vitest · kora-labs-common tsc + 9 utils tests · BFF nfts 5 tests.**
 > **Policy-stable** throughout (`demimntprx` hash `02333b54…` unchanged == deployed blueprint;
