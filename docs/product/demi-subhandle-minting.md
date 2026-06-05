@@ -61,15 +61,24 @@ that shape this work:
 
 ### Free virtual allowance
 - First 3 **private** virtual subs per root are free
-- Tracks the **3 free names**, not a decrementing counter
-- The free names live in the root's **MPT value** (at the `001` key)
+- Tracks the **set of free names** (≤3), not a decrementing counter
+- The free names live in the root's **MPT value** (at the root key), alongside its
+  label set — value becomes `(free_names, labels)` (was `(count, labels)`)
 - The latest `001`-token tx is the authoritative record of current free virtuals
 - Also written to **tx metadata** each mint (contracts can't read metadata, but it
   lets the off-chain index be rebuilt from chain if ever needed)
-- Minting a free virtual adds its name to the set (while < 3)
-- Burning a *free* name reopens only that slot; burning a *paid* sub touches nothing
+- Minting a free virtual **adds its name** to the set (free while `|set| < 3`)
+- **Burning a free name removes it → reopens that slot** for another free virtual
+- Burning a *paid* sub touches the set not at all
 - Public virtuals never consume the allowance
-- Capturing already-minted free virtuals may need a one-time update tx (later)
+
+**Mechanism (move 3).** Re-introduce a per-order `free_virtual: Option<FreeVirtualData>`
+on the DeMi orders path (the same shape removed from the legacy path in move 2, now where
+it belongs). For a private-virtual order it carries the **root key's MPT proof + current
+`free_names`**, so the validator can verify the old root value and write the new one
+(add the name on free mint, remove on free burn). `free_virtual = None` for nft/public/root
+orders. This changes the `MintNewHandles` redeemer's proof element and the `(count,labels)`
+registry encoding, which also ripples into the WS1 `LabelAssetProof` (`old_free_names`).
 
 ### Discounts
 - Discount config in basis points
