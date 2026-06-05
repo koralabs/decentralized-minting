@@ -34,14 +34,16 @@ interface PrepareLegacyMintParams {
   db: Trie;
   blockfrostApiKey: string;
   /**
-   * WS4 — for subhandle mints: each root's 001 OwnerSettings reference input (the validator
-   * reads the owner's tier pricing to derive Kora's fee) plus a single `treasuryOutput`
-   * covering the summed Kora fee. The caller computes these from the batch's subhandles. Root
-   * mints need neither. The settings reference input (for `find_settings`) is attached
-   * automatically for every legacy mint.
+   * For subhandle mints: each root's 001 OwnerSettings reference input (the validator's
+   * `find_root_handle_settings` reads the owner's tier pricing + payment_address) plus the
+   * additive fee outputs the contract now enforces — owner royalty → owner's payment_address,
+   * flat minter fee → an allowed minter, flat treasury fee → treasury_address. The caller
+   * computes these from the batch's subhandles (each skipped when its amount is 0); the package
+   * stays fee-agnostic and simply appends them. Root mints need neither. The settings reference
+   * input (for `find_settings`) is attached automatically for every legacy mint.
    */
   subHandleReferenceInputs?: { txHash: string; outputIndex: number }[];
-  treasuryOutput?: CardanoTypes.TxOut;
+  feeOutputs?: CardanoTypes.TxOut[];
 }
 
 interface PrepareLegacyMintDeps {
@@ -204,10 +206,12 @@ const prepareLegacyMintTransaction = async (
     });
   }
 
-  // WS4 — the treasury output covering Kora's summed subhandle fee (omitted for root-only batches)
-  const outputs: CardanoTypes.TxOut[] = params.treasuryOutput
-    ? [mintingDataOutput, params.treasuryOutput]
-    : [mintingDataOutput];
+  // The additive subhandle fee outputs (owner royalty + minter + treasury), computed by the
+  // caller and omitted for root-only batches.
+  const outputs: CardanoTypes.TxOut[] = [
+    mintingDataOutput,
+    ...(params.feeOutputs ?? []),
+  ];
 
   const plan: TxPlan = {
     preSelectedUtxos: [mintingDataCoreUtxo],
