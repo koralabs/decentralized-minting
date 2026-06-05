@@ -72,12 +72,20 @@ that shape this work:
 - Burning a *paid* sub touches the set not at all
 - Public virtuals never consume the allowance
 
-> **No DeMi burn path yet (found 2026-06-05).** The only burn redeemer is `BurnLegacyHandles`
-> (legacy policy `f0ff48bb`). DeMi handles mint under `6c32db33` via `MintNewHandles` (orders,
-> mint-only) — nothing can burn a DeMi-policy handle today. So "reopen on burn" is the correct
-> intended semantics but is **pending a DeMi subhandle burn path that doesn't exist**. Move 3's
-> *mint side* (track free names, free while `|set| < 3`, add the name) is implementable now; the
-> *burn side* (remove the name → reopen the slot) gets wired when a DeMi burn redeemer is added.
+> **DeMi burn path is required (decided 2026-06-05): we must be able to burn any kind of handle**,
+> including DeMi-policy (`6c32db33`) roots and subs. Status of existing surface:
+> - The governor (`demimnt`) already has a `BurnHandles` redeemer, but `can_burn_handles` is a
+>   disabled stub (`False`, "Burn is disabled now") — scaffolding exists.
+> - `demimntmpt` has **no** new-policy burn redeemer (only `BurnLegacyHandles` for `f0ff48bb`).
+>   A `BurnNewHandles` redeemer is needed to delete burned handles from the MPT (and remove a
+>   free virtual's name → reopen its slot).
+> - **Open: burn authorization model.** (A) minter-gated — an allowed_minter signs (mirrors mint;
+>   owner consents off-chain and provides the 222/000 as burned inputs, signing to spend them);
+>   or (B) owner-gated — the owner's signature authorizes directly (more decentralized, but virtual
+>   burns are complicated by the `000` living at the pz_script_address). Decide before building.
+>
+> Consequence for free-virtual: the *mint side* (track free names, add on free mint) is buildable
+> now; the *burn side* (remove name → reopen slot) lands with the DeMi burn path.
 
 **Mechanism (move 3).** Re-introduce a per-order `free_virtual: Option<FreeVirtualData>`
 on the DeMi orders path (the same shape removed from the legacy path in move 2, now where
