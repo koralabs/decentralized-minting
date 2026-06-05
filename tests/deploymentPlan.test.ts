@@ -189,6 +189,8 @@ describe("decentralized minting deployment plan", () => {
         pz_script_address: "addr_test1wzzctdyf9nkgrzqw6vxhaq8mpla7zhzjyjmk6txyu0wsgrgek9nj3",
         order_script_hash: "24fe9a2abd4fa926677a65bc8424c755b054790599d4474911a06553",
         minting_data_script_hash: "553de54adecc5c9bfa806cbe0341de9c8a8f8ef13d28e86a81284333",
+        sub_handle_minter_fee: 0,
+        sub_handle_treasury_fee: 0,
       },
       "handle_root@handle_settings": {
         mpt_root_hash: "c614162a20649af2093df773ec4bb1c7d957fe79a1d9d586ac5ce0a2506e2209",

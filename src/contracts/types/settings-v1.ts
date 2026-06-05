@@ -20,6 +20,10 @@ interface SettingsV1 {
   minting_data_script_hash: string;
   // WS5: minting-discount configuration (basis-points percent-off per class).
   discount_config: DiscountConfig;
+  // SubHandle additive fees (flat lovelace): the Kora Labs minter fee (paid to an allowed minter)
+  // and the treasury fee (paid to treasury_address), enforced per subhandle mint by the contract.
+  sub_handle_minter_fee: bigint;
+  sub_handle_treasury_fee: bigint;
 }
 
 // WS5 — discount config (mirrors decentralized_minting/discount.ak DiscountConfig).

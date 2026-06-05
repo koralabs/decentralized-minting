@@ -25,6 +25,10 @@ const buildSettingsV1Data = (settings: SettingsV1): PlutusData => {
     mkBytes(settings.order_script_hash),
     mkBytes(settings.minting_data_script_hash),
     buildDiscountConfigData(settings.discount_config),
+    // SubHandle additive fees (flat lovelace) — appended last; the contract enforces a minter-fee
+    // output to an allowed minter and a treasury-fee output to treasury_address per subhandle mint.
+    mkInt(settings.sub_handle_minter_fee),
+    mkInt(settings.sub_handle_treasury_fee),
   ]);
 };
 
@@ -74,12 +78,14 @@ const decodeSettingsV1Data = (
   data: PlutusData,
   network: NetworkName,
 ): SettingsV1 => {
-  // Accept 8 (pre-WS5) or 9 (with discount_config) fields so tooling can read both the current
-  // on-chain settings and the post-migration shape; pre-WS5 settings get an all-off default.
+  // Accept 8 (pre-WS5), 9 (with discount_config), or 11 (with the subhandle minter+treasury fees)
+  // fields so tooling reads every historical shape; missing trailing fields get safe defaults.
   const settingsV1ConstrData = expectConstr(data, 0, undefined, "SettingsV1");
   const fields = settingsV1ConstrData.fields.items;
-  if (fields.length !== 8 && fields.length !== 9) {
-    throw new Error(`SettingsV1: expected 8 or 9 fields, got ${fields.length}`);
+  if (fields.length !== 8 && fields.length !== 9 && fields.length !== 11) {
+    throw new Error(
+      `SettingsV1: expected 8, 9, or 11 fields, got ${fields.length}`,
+    );
   }
 
   const policy_id = expectBytesHex(fields[0], "policy_id must be ByteArray");
@@ -124,12 +130,23 @@ const decodeSettingsV1Data = (
           hal_policy_id: "",
         };
 
+  const sub_handle_minter_fee =
+    fields.length >= 11
+      ? expectInt(fields[9], "sub_handle_minter_fee must be Int")
+      : 0n;
+  const sub_handle_treasury_fee =
+    fields.length >= 11
+      ? expectInt(fields[10], "sub_handle_treasury_fee must be Int")
+      : 0n;
+
   return {
     policy_id,
     allowed_minters,
     valid_handle_price_assets,
     treasury_address,
     treasury_fee_percentage,
+    sub_handle_minter_fee,
+    sub_handle_treasury_fee,
     pz_script_address,
     order_script_hash,
     minting_data_script_hash,

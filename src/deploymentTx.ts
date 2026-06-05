@@ -415,6 +415,13 @@ export const buildSettingsUpdateTx = async ({
         hal_policy_id: (dc.hal_policy_id as string | undefined) ?? "",
       };
     })(),
+    // SubHandle additive fees (flat lovelace) from the deployment settings.
+    sub_handle_minter_fee: BigInt(
+      (desiredSettings.sub_handle_minter_fee as number | undefined) ?? 0,
+    ),
+    sub_handle_treasury_fee: BigInt(
+      (desiredSettings.sub_handle_treasury_fee as number | undefined) ?? 0,
+    ),
   });
 
   const settingsData = buildSettingsData({

@@ -394,6 +394,8 @@ export const fetchLiveSettingsState = async ({
         pz_script_address: settingsV1.pz_script_address.toString(),
         order_script_hash: settingsV1.order_script_hash,
         minting_data_script_hash: settingsV1.minting_data_script_hash,
+        sub_handle_minter_fee: Number(settingsV1.sub_handle_minter_fee),
+        sub_handle_treasury_fee: Number(settingsV1.sub_handle_treasury_fee),
       },
       [MINTING_DATA_HANDLE]: {
         mpt_root_hash: mintingData.mpt_root_hash,

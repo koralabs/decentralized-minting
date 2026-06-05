@@ -66,6 +66,8 @@ export interface DesiredDeploymentState {
         pz_script_address: string;
         order_script_hash: string;
         minting_data_script_hash: string;
+        sub_handle_minter_fee: number;
+        sub_handle_treasury_fee: number;
       };
       "handle_root@handle_settings": {
         mpt_root_hash: string;
@@ -224,6 +226,12 @@ const parseDemiSettings = (value: Record<string, unknown>, sourceLabel: string) 
   pz_script_address: requireString(value, "pz_script_address", sourceLabel),
   order_script_hash: requireString(value, "order_script_hash", sourceLabel),
   minting_data_script_hash: requireString(value, "minting_data_script_hash", sourceLabel),
+  // SubHandle fees default to 0 when absent so pre-fee configs (preprod/mainnet, not yet on this
+  // contract) still load; preview sets them explicitly (minter 2 ADA / treasury 0).
+  sub_handle_minter_fee:
+    typeof value.sub_handle_minter_fee === "number" ? value.sub_handle_minter_fee : 0,
+  sub_handle_treasury_fee:
+    typeof value.sub_handle_treasury_fee === "number" ? value.sub_handle_treasury_fee : 0,
 });
 
 const parseMintingDataSettings = (value: Record<string, unknown>, sourceLabel: string) => ({
