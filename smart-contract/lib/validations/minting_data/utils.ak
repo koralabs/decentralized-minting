@@ -1,8 +1,9 @@
 use aiken/bytearray
+use aiken/list
 use aiken/math
 use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/credential.{Address, ScriptCredential}
+use aiken/transaction/credential.{Address, Credential, ScriptCredential}
 use aiken/transaction/value.{PolicyId, Value, ada_asset_name, ada_policy_id}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
 use common/handle.{parse_handle_name}
@@ -14,7 +15,7 @@ use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/registry_value
 use decentralized_minting/settings_v1.{min_treasury_fee}
 use decentralized_minting/sub_handle.{
-  find_root_handle_settings, sub_handle_kora_fee,
+  find_root_handle_settings, get_sub_handle_price, owner_payment_credential,
 }
 use validations/discount_eligibility.{DiscountContext, effective_handle_price}
 use validations/minting_data/types.{
@@ -152,30 +153,94 @@ pub fn all_orders_are_satisfied(
 // consistent (a fee waiver and a counter bump are decided together — never across passes).
 // `amount` is 1 for minting (insert key, add mint value) or -1 for burning (delete, subtract).
 //
+// Add `fee` lovelace to `cred`'s running total in the per-owner royalty list, MERGED by credential
+// so multiple subhandles from the same owner roll into one required output — which clears the
+// min-UTxO floor and stops a single output from being double-counted across proofs. Zero/negative
+// fees are dropped (a free or zero-priced subhandle owes the owner nothing).
+fn add_owner_fee(
+  owner_fees: List<(Credential, Int)>,
+  cred: Credential,
+  fee: Int,
+) -> List<(Credential, Int)> {
+  if fee <= 0 {
+    owner_fees
+  } else {
+    when owner_fees is {
+      [] -> [(cred, fee)]
+      [(c, f), ..rest] ->
+        if c == cred {
+          [(c, f + fee), ..rest]
+        } else {
+          [(c, f), ..add_owner_fee(rest, cred, fee)]
+        }
+    }
+  }
+}
+
+// Each owner in the list must receive an output paying >= their summed royalty to an address whose
+// payment credential matches (the stake part is irrelevant to ownership of the funds).
+pub fn owner_fees_all_paid(
+  owner_fees: List<(Credential, Int)>,
+  outputs: List<Output>,
+) -> Bool {
+  when owner_fees is {
+    [] -> True
+    [(cred, fee), ..rest] -> and {
+        list.any(
+          outputs,
+          fn(output) {
+            output.address.payment_credential == cred && value.lovelace_of(
+              output.value,
+            ) >= fee
+          },
+        ),
+        owner_fees_all_paid(rest, outputs),
+      }
+  }
+}
+
 // Per proof:
 //   - update the handle's own MPT key (insert/delete) + the expected mint value
-//   - SUBHANDLE MINT: owes Kora's fee (treasury cut of the owner's tier price), UNLESS it's a
-//     free private virtual (`free_virtual = Some` and the root's pre-mint count < the allowance)
+//   - SUBHANDLE MINT: owes three additive fees — the owner royalty (the owner's tier price) to the
+//     owner's payment_address, plus a flat minter fee and a flat treasury fee — UNLESS it's a free
+//     private virtual (`free_virtual = Some` and the root's pre-mint count < the allowance)
 //   - PRIVATE virtual (mint or burn, `free_virtual = Some`): bump the ROOT key's counter ±1
 //     (a second `mpt.update` on the root value, preserving its WS1 label set via `encode`)
 //   - root mints + all burns owe no fee
-// Returns the accumulated `total_kora_fee`, which `process_legacy_handles` covers with a
-// treasury output.
+// Returns the accumulated `total_minter_fee`, `total_treasury_fee`, and the merged per-owner
+// royalty list, which `process_legacy_handles` enforces as outputs.
 pub fn all_proofs_are_valid(
   proofs: List<LegacyHandleProof>,
   root: mpt.MerklePatriciaForestry,
   reference_inputs: List<Input>,
   new_policy_id: PolicyId,
   legacy_policy_id: PolicyId,
-  treasury_fee_percentage: Int,
+  sub_handle_minter_fee: Int,
+  sub_handle_treasury_fee: Int,
   free_virtual_count: Int,
   amount: Int,
   expected_mint_value: Value,
-  total_kora_fee: Int,
-  continuation: fn(mpt.MerklePatriciaForestry, Value, Int) -> result,
+  total_minter_fee: Int,
+  total_treasury_fee: Int,
+  owner_fees: List<(Credential, Int)>,
+  continuation: fn(
+    mpt.MerklePatriciaForestry,
+    Value,
+    Int,
+    Int,
+    List<(Credential, Int)>,
+  ) ->
+    result,
 ) -> result {
   when proofs is {
-    [] -> continuation(root, expected_mint_value, total_kora_fee)
+    [] ->
+      continuation(
+        root,
+        expected_mint_value,
+        total_minter_fee,
+        total_treasury_fee,
+        owner_fees,
+      )
     [proof, ..rest_proofs] -> {
       let LegacyHandleProof { mpt_proof, handle_name, is_virtual, free_virtual } =
         proof
@@ -197,9 +262,11 @@ pub fn all_proofs_are_valid(
           amount,
         )
 
-      // 3) subhandle fee + free-virtual counter (decided together)
+      // 3) subhandle fees + free-virtual counter (decided together). Three additive fees: the
+      //    owner royalty (tier price) -> owner payment_address, plus a flat minter fee and a flat
+      //    treasury fee. Free private virtuals (under the allowance) owe nothing.
       let (root_name, is_sub, sub_name) = parse_handle_name(handle_name)
-      let (root_after_counter, fee_delta) =
+      let (root_after_counter, minter_delta, treasury_delta, new_owner_fees) =
         if is_sub && amount == 1 {
           let owner_settings =
             find_root_handle_settings(
@@ -208,13 +275,15 @@ pub fn all_proofs_are_valid(
               new_policy_id,
               legacy_policy_id,
             )
-          let kora_fee =
-            sub_handle_kora_fee(
+          let owner_fee =
+            get_sub_handle_price(
               owner_settings,
               bytearray.length(sub_name),
               is_virtual_bool,
-              treasury_fee_percentage,
             )
+          let (_nft, _virtual, _r0, _r1, _r2, _terms, _msig, payment_address) =
+            owner_settings
+          let owner_cred = owner_payment_credential(payment_address)
           when free_virtual is {
             // private virtual MINT: bump the root counter; free while under the allowance
             Some(FreeVirtualData { root_proof, root_pre_count, root_labels }) -> {
@@ -227,16 +296,26 @@ pub fn all_proofs_are_valid(
                   root_labels,
                   1,
                 )
-              let fee =
-                if root_pre_count < free_virtual_count {
-                  0
-                } else {
-                  kora_fee
-                }
-              (bumped, fee)
+              if root_pre_count < free_virtual_count {
+                // free: owes nothing to owner, minter, or treasury
+                (bumped, 0, 0, owner_fees)
+              } else {
+                (
+                  bumped,
+                  sub_handle_minter_fee,
+                  sub_handle_treasury_fee,
+                  add_owner_fee(owner_fees, owner_cred, owner_fee),
+                )
+              }
             }
-            // nft sub or public virtual: pay the fee, no counter
-            None -> (root_after_handle, kora_fee)
+            // nft sub or public virtual: pay all three fees, no counter
+            None ->
+              (
+                root_after_handle,
+                sub_handle_minter_fee,
+                sub_handle_treasury_fee,
+                add_owner_fee(owner_fees, owner_cred, owner_fee),
+              )
           }
         } else if is_sub && amount == -1 {
           // subhandle BURN: no fee; a private virtual burn refunds a counter slot
@@ -251,13 +330,13 @@ pub fn all_proofs_are_valid(
                   root_labels,
                   -1,
                 )
-              (bumped, 0)
+              (bumped, 0, 0, owner_fees)
             }
-            None -> (root_after_handle, 0)
+            None -> (root_after_handle, 0, 0, owner_fees)
           }
         } else {
-          // root handle mint/burn: no on-chain fee, no counter
-          (root_after_handle, 0)
+          // root handle mint/burn: no subhandle fees, no counter
+          (root_after_handle, 0, 0, owner_fees)
         }
 
       all_proofs_are_valid(
@@ -266,11 +345,14 @@ pub fn all_proofs_are_valid(
         reference_inputs,
         new_policy_id,
         legacy_policy_id,
-        treasury_fee_percentage,
+        sub_handle_minter_fee,
+        sub_handle_treasury_fee,
         free_virtual_count,
         amount,
         new_mint_value,
-        total_kora_fee + fee_delta,
+        total_minter_fee + minter_delta,
+        total_treasury_fee + treasury_delta,
+        new_owner_fees,
         continuation,
       )
     }

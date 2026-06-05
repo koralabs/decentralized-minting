@@ -1,14 +1,12 @@
 use aiken/builtin
 use aiken/bytearray
 use aiken/list
-use aiken/math
 use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/credential.{
   Credential, ScriptCredential, VerificationKeyCredential,
 }
 use aiken/transaction/value.{PolicyId}
 use common/cip68.{prefix_001}
-use decentralized_minting/settings_v1.{min_treasury_fee}
 
 // Extract the payment credential embedded in a raw Cardano address (the OwnerSettings
 // `payment_address` bytes): byte 0 is the header — its bit 4 (0x10) flags a script vs key
@@ -139,33 +137,15 @@ pub fn get_sub_handle_price(
   get_sub_handle_price_from_tier_pricing(tier_pricing, sub_handle_length)
 }
 
-// WS4 — the minimum Kora (treasury) fee that must be covered on a subhandle mint. The owner
-// sets the subhandle price via their tier pricing (nft vs virtual); Kora's cut is the treasury
-// percentage of that price, floored at `min_treasury_fee`. This guarantees Kora's fee on every
-// subhandle mint while the owner's price floats above it.
-pub fn sub_handle_kora_fee(
-  owner_settings: OwnerSettings,
-  sub_handle_length: Int,
-  is_virtual: Bool,
-  treasury_fee_percentage: Int,
-) -> Int {
-  expect treasury_fee_percentage >= 0
-  expect treasury_fee_percentage <= 100
-  let price =
-    get_sub_handle_price(owner_settings, sub_handle_length, is_virtual)
-  math.max(price * treasury_fee_percentage / 100, min_treasury_fee)
-}
-
 pub fn get_sub_handle_price_from_tier_pricing(
   tier_pricing: List<(Int, Int)>,
   sub_handle_length: Int,
 ) -> Int {
   // The owner's tier price may legitimately be 0 (a free subhandle, e.g. the
   // handlecontract deployment subhandles or any zero-priced root tier). We do
-  // NOT require price > 0 here — the actual constraint is that Kora's fee is
-  // paid, and `sub_handle_kora_fee` floors the fee at `min_treasury_fee` (2 ADA)
-  // regardless of the owner's price. A `price > 0` assertion here wrongly blocks
-  // every zero-priced subhandle even though the Kora fee would still be covered.
+  // NOT require price > 0 here — the owner royalty is simply 0 in that case, and
+  // the flat minter/treasury fees (enforced separately) still apply. A `price > 0`
+  // assertion here would wrongly block every zero-priced subhandle.
   do_get_sub_handle_price_from_tier_pricing(tier_pricing, sub_handle_length, 0)
 }
 

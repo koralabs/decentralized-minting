@@ -3,6 +3,7 @@ use aiken/merkle_patricia_forestry as mpt
 use aiken/transaction.{
   InlineDatum, Input, Output, OutputReference, Transaction, find_input,
 }
+use aiken/transaction/credential.{VerificationKeyCredential}
 use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
 use decentralized_minting/handle_price.{resolve_handle_price_info}
@@ -15,7 +16,7 @@ use validations/discount_eligibility.{DiscountContext, read_partner_root}
 use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
 use validations/minting_data/utils.{
   all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
-  calculate_treasury_fee_and_minter_fee,
+  calculate_treasury_fee_and_minter_fee, owner_fees_all_paid,
 }
 use validations/policy_window.{assert_mint_within_policy_window}
 
@@ -286,35 +287,49 @@ fn process_legacy_handles(
   // build merkle patricia trie from old root hash
   let root = mpt.from_root(mpt_root_hash)
 
-  // For mints, read settings (treasury address/percentage, free-virtual allowance, new policy);
-  // burns need none of this. `find_settings` requires the settings reference input on mint txs.
-  let (new_policy_id, treasury_fee_percentage, free_virtual_count, treasury) =
+  // For mints, read settings (new policy, free-virtual allowance, treasury address, the flat
+  // subhandle minter+treasury fees, and the allowed-minter list); burns need none of this.
+  // `find_settings` requires the settings reference input on mint txs.
+  let (
+    new_policy_id,
+    free_virtual_count,
+    treasury,
+    minter_fee,
+    treasury_fee,
+    allowed_minters,
+  ) =
     if amount == 1 {
       let Settings { data: settings_data, .. } = find_settings(reference_inputs)
       expect settings_datum: SettingsV1 = settings_data
       let SettingsV1 {
         policy_id,
+        allowed_minters,
         treasury_address,
-        treasury_fee_percentage,
         discount_config,
+        sub_handle_minter_fee,
+        sub_handle_treasury_fee,
         ..
       } = settings_datum
       (
         policy_id,
-        treasury_fee_percentage,
         discount_config.free_virtual_count,
         Some(treasury_address),
+        sub_handle_minter_fee,
+        sub_handle_treasury_fee,
+        allowed_minters,
       )
     } else {
-      (legacy_policy_id, 0, 0, None)
+      (legacy_policy_id, 0, None, 0, 0, [])
     }
 
   // single unified pass: MPT updates (handle key + private-virtual root counter), expected mint
-  // value, and the total Kora fee — all decided together
+  // value, the flat minter + treasury fee totals, and the per-owner royalty list — all together
   let
     new_root,
     expected_mint_value,
-    total_kora_fee,
+    total_minter_fee,
+    total_treasury_fee,
+    owner_fees,
   <-
     all_proofs_are_valid(
       proofs,
@@ -322,11 +337,14 @@ fn process_legacy_handles(
       reference_inputs,
       new_policy_id,
       legacy_policy_id,
-      treasury_fee_percentage,
+      minter_fee,
+      treasury_fee,
       free_virtual_count,
       amount,
       value.zero(),
       0,
+      0,
+      [],
     )
 
   // calculate new root and expected mint value
@@ -347,19 +365,36 @@ fn process_legacy_handles(
   // check minted/burned handles match the proofs exactly
   expect value.from_minted_value(mint) == expected_mint_value
 
-  // WS4: subhandle mints must cover Kora's fee via a treasury output (a single output covers the
-  // batch sum; free private virtuals already contributed 0). Burns enforce nothing.
+  // SubHandle fees (additive) — three independent payouts every subhandle mint must produce; each
+  // is skipped when its total is 0 (today treasury = 0; free private virtuals and burns owe 0):
+  //   1. treasury fee  -> treasury_address
+  //   2. minter fee    -> one of the allowed minters (Kora Labs); NEVER the treasury (no conflation)
+  //   3. owner royalty -> each owner's payment_address (merged per owner)
   expect
     when treasury is {
-      Some(treasury_address) ->
-        total_kora_fee <= 0 || list.any(
-          outputs,
-          fn(output) {
-            output.address == treasury_address && value.lovelace_of(
-              output.value,
-            ) >= total_kora_fee
-          },
-        )
+      Some(treasury_address) -> and {
+          total_treasury_fee <= 0 || list.any(
+            outputs,
+            fn(output) {
+              output.address == treasury_address && value.lovelace_of(
+                output.value,
+              ) >= total_treasury_fee
+            },
+          ),
+          total_minter_fee <= 0 || list.any(
+            outputs,
+            fn(output) {
+              when output.address.payment_credential is {
+                VerificationKeyCredential(vkh) -> list.has(
+                  allowed_minters,
+                  vkh,
+                ) && value.lovelace_of(output.value) >= total_minter_fee
+                _ -> False
+              }
+            },
+          ),
+          owner_fees_all_paid(owner_fees, outputs),
+        }
       None -> True
     }
 
