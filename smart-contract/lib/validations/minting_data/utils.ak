@@ -19,7 +19,7 @@ use decentralized_minting/sub_handle.{
 }
 use validations/discount_eligibility.{DiscountContext, effective_handle_price}
 use validations/minting_data/types.{
-  FreeVirtualData, LabelAssetProof, LegacyHandleProof, OrderProof,
+  BurnProof, FreeVirtualData, LabelAssetProof, LegacyHandleProof, OrderProof,
 }
 
 // WS6: root-handle character cap. Bumped 15 -> 28 (the on-chain gatekeeper that actually
@@ -652,6 +652,80 @@ fn add_root_free_name(
       root_labels,
     )
   mpt.update(root, root_name, root_proof, old_value, new_value)
+}
+
+// Remove this sub's name from the ROOT key's free-name set (a FREE private-virtual BURN → reopen
+// the slot). The inverse of add_root_free_name: a second mpt.update on the root value, after the
+// sub key was deleted.
+fn remove_root_free_name(
+  root: mpt.MerklePatriciaForestry,
+  root_name: ByteArray,
+  fv: FreeVirtualData,
+  sub_name: ByteArray,
+) -> mpt.MerklePatriciaForestry {
+  let FreeVirtualData { root_proof, root_free_names, root_labels } = fv
+  let old_value = registry_value.encode(root_free_names, root_labels)
+  let new_value =
+    registry_value.encode(
+      registry_value.remove_free_name(root_free_names, sub_name),
+      root_labels,
+    )
+  mpt.update(root, root_name, root_proof, old_value, new_value)
+}
+
+// Process each DeMi-policy BURN proof, accumulating the new MPT root and the expected (negative)
+// mint value. The mirror of all_orders_are_satisfied's mint: delete the handle key (proves it was
+// present), subtract its tokens, and for a free virtual remove its name from the root set (reopen).
+pub fn all_burn_proofs_are_valid(
+  proofs: List<BurnProof>,
+  root: mpt.MerklePatriciaForestry,
+  new_policy_id: PolicyId,
+  expected_mint_value: Value,
+  continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
+) -> result {
+  when proofs is {
+    [] -> continuation(root, expected_mint_value)
+    [proof, ..rest_proofs] -> {
+      let BurnProof { mpt_proof, handle_name, is_virtual, free_virtual } = proof
+      let is_virtual_bool = parse_bool_from_int(is_virtual)
+
+      // check handle is valid
+      expect check_legacy_handle_validity(handle_name, is_virtual_bool)
+
+      // delete the handle's own key (proves existence-before, absence-after)
+      let root_after_handle = update_root(root, handle_name, -1, mpt_proof)
+
+      // -1 of the handle's tokens (000 for a virtual, 100+222 for an nft/root) under the DeMi policy
+      let new_mint_value =
+        update_mint_value(
+          expected_mint_value,
+          new_policy_id,
+          handle_name,
+          is_virtual_bool,
+          -1,
+        )
+
+      // free-virtual reopen: a name in the root's free set is removed (else the set is untouched)
+      let (root_name, _is_sub, sub_name) = parse_handle_name(handle_name)
+      let updated_root =
+        when free_virtual is {
+          Some(fv) -> {
+            expect is_virtual_bool
+            expect registry_value.has_free_name(fv.root_free_names, sub_name)
+            remove_root_free_name(root_after_handle, root_name, fv, sub_name)
+          }
+          None -> root_after_handle
+        }
+
+      all_burn_proofs_are_valid(
+        rest_proofs,
+        updated_root,
+        new_policy_id,
+        new_mint_value,
+        continuation,
+      )
+    }
+  }
 }
 
 fn update_root(

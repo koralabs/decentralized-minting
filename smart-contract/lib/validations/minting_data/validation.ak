@@ -13,10 +13,11 @@ use decentralized_minting/settings_v1.{
 }
 use validations/discount_eligibility.{DiscountContext, read_partner_root}
 use validations/minting_data/types.{
-  LabelAssetProof, LegacyHandleProof, OrderProof,
+  BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
 }
 use validations/minting_data/utils.{
-  all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
+  all_burn_proofs_are_valid, all_label_proofs_are_valid,
+  all_orders_are_satisfied, all_proofs_are_valid,
   calculate_treasury_fee_and_minter_fee, owner_fees_all_paid,
 }
 use validations/policy_window.{assert_mint_within_policy_window}
@@ -340,6 +341,62 @@ fn process_legacy_handles(
   expect minting_data_output.reference_script == None
 
   // check minted/burned handles match the proofs exactly
+  expect value.from_minted_value(mint) == expected_mint_value
+
+  True
+}
+
+// Validation:
+// DeMi-policy handle BURNING. The mirror of can_mint_new_handles: each proof deletes its handle
+// from the MPT (proving it was present) and the tx must burn exactly the matching -1 of that
+// handle's tokens (000 for a virtual, 100+222 for an nft/root) under the DeMi policy. A free
+// virtual's name is removed from the root's free set (reopening the slot). No fees on a burn.
+//
+// Authorization is NOT here: the holder must provide the 222/000 as burned inputs (you can only
+// burn what you hold) and the pz contract must release its held 100/000 — this redeemer only keeps
+// the MPT root in sync with the burn. Gated by the governor (can_burn_handles).
+pub fn can_burn_new_handles(
+  transaction: Transaction,
+  spending_output_reference: OutputReference,
+  proofs: List<BurnProof>,
+) -> Bool {
+  trace @"can_burn_new_handles"
+  let Transaction { inputs, reference_inputs, outputs, mint, .. } = transaction
+
+  // settings -> the DeMi policy id the burned tokens live under
+  let Settings { data: settings_data, .. } = find_settings(reference_inputs)
+  expect settings_datum: SettingsV1 = settings_data
+  let SettingsV1 { policy_id: new_policy_id, .. } = settings_datum
+
+  // find minting data input (own input) + its current root
+  expect Some(spending_input) = find_input(inputs, spending_output_reference)
+  let Input { output: minting_data_input, .. } = spending_input
+  let MintingData { mpt_root_hash } = resolve_minting_data(minting_data_input)
+
+  expect [minting_data_output, ..] = outputs
+  expect list.length(proofs) > 0
+
+  let root = mpt.from_root(mpt_root_hash)
+
+  // delete each burned handle + accumulate the expected (negative) mint value
+  let new_root, expected_mint_value <-
+    all_burn_proofs_are_valid(proofs, root, new_policy_id, value.zero())
+
+  let new_mpt_root_hash = new_root |> mpt.root
+
+  // check minting data output (same address/value, datum carries the new root)
+  expect minting_data_output.address == minting_data_input.address
+  expect
+    value.without_lovelace(minting_data_output.value) == value.without_lovelace(
+      minting_data_input.value,
+    )
+  expect
+    minting_data_output.datum == InlineDatum(
+      MintingData { mpt_root_hash: new_mpt_root_hash },
+    )
+  expect minting_data_output.reference_script == None
+
+  // the tx must burn exactly the tokens the proofs delete
   expect value.from_minted_value(mint) == expected_mint_value
 
   True

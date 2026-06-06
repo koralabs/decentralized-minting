@@ -21,6 +21,18 @@ pub type OrderProof {
   free_virtual: Option<FreeVirtualData>,
 }
 
+// Burn proof for a DeMi-policy handle (root, nft sub, or virtual sub). The mirror of a mint: the
+// `mpt_proof` proves the key is PRESENT and deletes it (absence after); the `-1` mint destroys the
+// tokens (000 for a virtual, 100+222 for an nft/root). `free_virtual = Some` when burning a name
+// that is in the root's free set — it carries the root proof + current free_names so the contract
+// removes the name (reopening that free slot); `None` for nft/root/public/paid burns.
+pub type BurnProof {
+  mpt_proof: mpt.Proof,
+  handle_name: ByteArray,
+  is_virtual: Int,
+  free_virtual: Option<FreeVirtualData>,
+}
+
 // legacy handle proof
 // handle_name is the asset name of the handle in hex format
 //

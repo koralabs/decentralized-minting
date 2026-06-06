@@ -2,17 +2,17 @@ use aiken/transaction.{ScriptContext, Spend}
 use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
 use validations/minting_data/types.{
-  LabelAssetProof, LegacyHandleProof, OrderProof,
+  BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
 }
 use validations/minting_data/validation.{
-  can_burn_legacy_handles, can_mint_label_assets, can_mint_legacy_handles,
-  can_mint_new_handles, can_update_mpt,
+  can_burn_legacy_handles, can_burn_new_handles, can_mint_label_assets,
+  can_mint_legacy_handles, can_mint_new_handles, can_update_mpt,
 }
 
 // NOTE: constructor order is part of the on-chain ABI — the off-chain redeemer builders encode
 // these indices. New variants are APPENDED after `UpdateMPT` so existing indices (0–2) are
 // preserved: MintNewHandles=0, MintLegacyHandles=1, UpdateMPT=2, BurnLegacyHandles=3,
-// MintLabelAssets=4.
+// MintLabelAssets=4, BurnNewHandles=5.
 type MintingDataRedeemer {
   MintNewHandles(List<OrderProof>, Int)
   MintLegacyHandles(List<LegacyHandleProof>)
@@ -23,6 +23,9 @@ type MintingDataRedeemer {
   // WS1: mint/burn per-handle label assets (001 settings, …) and record them in the
   // MPT value (add label ⟺ mint, remove ⟺ burn). Int = minter_index.
   MintLabelAssets(List<LabelAssetProof>, Int)
+  // Burn DeMi-policy handles (root, nft sub, virtual sub): delete from the MPT, burn the tokens,
+  // reopen a free virtual's slot. Gated by the governor (can_burn_handles) + the pz contract.
+  BurnNewHandles(List<BurnProof>)
 }
 
 // NOTE:
@@ -99,6 +102,8 @@ validator(
           minter_index,
         )
       UpdateMPT -> can_update_mpt(transaction, admin_verification_key_hash)
+      BurnNewHandles(proofs) ->
+        can_burn_new_handles(transaction, spending_output_reference, proofs)
     }
   }
 }
