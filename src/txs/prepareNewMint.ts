@@ -19,8 +19,6 @@ import {
   HandlePrices,
   MintingData,
   NewHandle,
-  OrderProof,
-  parseMPTProofJSON,
   plutusDataToCbor,
   Settings,
   SettingsV1,
@@ -29,6 +27,7 @@ import { getBlockfrostBuildContext } from "../helpers/cardano-sdk/blockfrostCont
 import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
 import { getNetwork } from "../helpers/index.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
+import { buildOrderProofs } from "./orderProofs.js";
 import type { TxPlan } from "./txPlan.js";
 
 interface PrepareNewMintParams {
@@ -138,19 +137,13 @@ const prepareNewMintTransaction = async (
   const treasuryFee = handles.reduce((acc, cur) => acc + cur.treasuryFee, 0n);
   const minterFee = handles.reduce((acc, cur) => acc + cur.minterFee, 0n);
 
-  // NOTE: paid OrderProofs only (no free_virtual) — relocating the build onto the orders path and
-  // constructing free-virtual proofs is DSH-403; this keeps the existing bare-key mint working.
-  const proofs: OrderProof[] = [];
-  for (const handle of handles) {
-    const { utf8Name } = handle;
-    try {
-      await db.insert(utf8Name, "");
-      const mpfProof = await db.prove(utf8Name);
-      proofs.push({ mpt_proof: parseMPTProofJSON(mpfProof.toJSON()) });
-    } catch (e) {
-      console.warn("Handle already exists", utf8Name, e);
-      return Err(new Error(`Handle "${utf8Name}" already exists`));
-    }
+  // Build the per-order OrderProofs (sub key insert + free-virtual root bump), advancing the trie.
+  let proofs;
+  try {
+    proofs = await buildOrderProofs(db, handles);
+  } catch (e) {
+    console.warn("Failed to build order proofs", e);
+    return Err(new Error(`Failed to build order proofs: ${(e as Error).message}`));
   }
 
   const newMintingData: MintingData = {

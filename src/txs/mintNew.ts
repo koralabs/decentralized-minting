@@ -2,7 +2,7 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 import type { Cardano as CardanoTypes } from "@cardano-sdk/core";
 import { Err, Ok, Result } from "ts-res";
 
-import { PREFIX_100, PREFIX_222 } from "../constants/index.js";
+import { PREFIX_000, PREFIX_100, PREFIX_222 } from "../constants/index.js";
 import {
   buildOrderExecuteRedeemer,
   decodeOrderDatum,
@@ -25,6 +25,17 @@ interface MintNewHandlesParams {
   collateralUtxo?: CardanoTypes.Utxo;
   db: Trie;
   blockfrostApiKey: string;
+  /**
+   * FREE private virtual claims, keyed by order ref (`${txId}#${index}`). Present only for orders
+   * the engine has determined are free private virtuals under the root's allowance — it carries the
+   * root's CURRENT free-name set + label set (from the engine's trie/settings tracking) so the mint
+   * build can bump the root key and construct the `FreeVirtualData` proof. Absent => the order is
+   * paid (nft sub, public virtual, root, or a private virtual past the allowance).
+   */
+  freeVirtualContexts?: Record<
+    string,
+    { rootFreeNames: string[]; rootLabels: string }
+  >;
 }
 
 /**
@@ -36,7 +47,7 @@ interface MintNewHandlesParams {
 const mintNewHandles = async (
   params: MintNewHandlesParams,
 ): Promise<Result<FinalizedTx, Error>> => {
-  const { ordersTxInputs, blockfrostApiKey } = params;
+  const { ordersTxInputs, blockfrostApiKey, freeVirtualContexts } = params;
   const network = getNetwork(blockfrostApiKey);
 
   ordersTxInputs.sort((a, b) =>
@@ -45,6 +56,9 @@ const mintNewHandles = async (
   if (ordersTxInputs.length === 0) {
     return Err(new Error("No Order requested"));
   }
+
+  const orderRef = (order: CardanoTypes.Utxo): string =>
+    `${order[0].txId}#${order[0].index}`;
 
   const orderedHandles: NewHandle[] = ordersTxInputs.map((order) => {
     const datumCbor = coreInlineDatumToCbor(order[1].datum);
@@ -55,6 +69,8 @@ const mintNewHandles = async (
       destinationAddress: decodedOrder.destination_address,
       treasuryFee: order[1].value.coins,
       minterFee: order[1].value.coins,
+      isVirtual: decodedOrder.is_virtual === 1n,
+      freeVirtual: freeVirtualContexts?.[orderRef(order)],
     };
   });
 
@@ -93,17 +109,8 @@ const mintNewHandles = async (
     const orderTxInput = ordersTxInputs[i];
     const datumCbor = coreInlineDatumToCbor(orderTxInput[1].datum);
     const decodedOrder = decodeOrderDatum(datumCbor, network);
-    const { destination_address, requested_handle } = decodedOrder;
+    const { destination_address, requested_handle, is_virtual } = decodedOrder;
     const utf8Name = Buffer.from(requested_handle, "hex").toString("utf8");
-
-    const refAssetId = Cardano.AssetId.fromParts(
-      Cardano.PolicyId(mintProxyPolicyId as HexBlob),
-      Cardano.AssetName(`${PREFIX_100}${requested_handle}` as HexBlob),
-    );
-    const userAssetId = Cardano.AssetId.fromParts(
-      Cardano.PolicyId(mintProxyPolicyId as HexBlob),
-      Cardano.AssetName(`${PREFIX_222}${requested_handle}` as HexBlob),
-    );
 
     const lovelace = orderTxInput[1].value.coins;
     const handlePrice = calculateHandlePriceFromHandlePriceInfo(
@@ -112,17 +119,43 @@ const mintNewHandles = async (
     );
     invariant(lovelace >= handlePrice, "Order Input lovelace insufficient");
 
-    mint.set(refAssetId, 1n);
-    mint.set(userAssetId, 1n);
+    const pzAddress =
+      settingsV1.pz_script_address as unknown as CardanoTypes.TxOut["address"];
 
-    newOutputs.push({
-      address: settingsV1.pz_script_address as unknown as CardanoTypes.TxOut["address"],
-      value: { coins: 0n, assets: new Map([[refAssetId, 1n]]) },
-    });
-    newOutputs.push({
-      address: destination_address as unknown as CardanoTypes.TxOut["address"],
-      value: { coins: 0n, assets: new Map([[userAssetId, 1n]]) },
-    });
+    if (is_virtual === 1n) {
+      // Virtual sub: mint a single 000 token, sent to the pz script (no user-held 222). Consumes
+      // ONE output positionally (mirrors the contract's check_virtual_sub_output).
+      const virtualAssetId = Cardano.AssetId.fromParts(
+        Cardano.PolicyId(mintProxyPolicyId as HexBlob),
+        Cardano.AssetName(`${PREFIX_000}${requested_handle}` as HexBlob),
+      );
+      mint.set(virtualAssetId, 1n);
+      newOutputs.push({
+        address: pzAddress,
+        value: { coins: 0n, assets: new Map([[virtualAssetId, 1n]]) },
+      });
+    } else {
+      // Root / nft sub: mint 100 (ref -> pz) + 222 (user -> destination). Consumes TWO outputs
+      // positionally (mirrors check_ref_and_user_outputs): ref first, then user.
+      const refAssetId = Cardano.AssetId.fromParts(
+        Cardano.PolicyId(mintProxyPolicyId as HexBlob),
+        Cardano.AssetName(`${PREFIX_100}${requested_handle}` as HexBlob),
+      );
+      const userAssetId = Cardano.AssetId.fromParts(
+        Cardano.PolicyId(mintProxyPolicyId as HexBlob),
+        Cardano.AssetName(`${PREFIX_222}${requested_handle}` as HexBlob),
+      );
+      mint.set(refAssetId, 1n);
+      mint.set(userAssetId, 1n);
+      newOutputs.push({
+        address: pzAddress,
+        value: { coins: 0n, assets: new Map([[refAssetId, 1n]]) },
+      });
+      newOutputs.push({
+        address: destination_address as unknown as CardanoTypes.TxOut["address"],
+        value: { coins: 0n, assets: new Map([[userAssetId, 1n]]) },
+      });
+    }
   }
 
   // Mint redeemer (mint proxy is a native-style V2 script with an index 0
