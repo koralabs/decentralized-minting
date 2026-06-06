@@ -360,6 +360,7 @@ export const buildSettingsUpdateTx = async ({
   blockfrostApiKey,
   userAgent,
   excludeUtxoRefs,
+  orderScriptHashOverride,
 }: {
   desired: DesiredDeploymentState;
   settingsHandleName: string;
@@ -369,6 +370,10 @@ export const buildSettingsUpdateTx = async ({
   blockfrostApiKey?: string;
   userAgent?: string;
   excludeUtxoRefs?: Set<string>;
+  // When set, keep `order_script_hash` at this (current live) value instead of
+  // advancing to the freshly-built demiord hash — used to defer the orders
+  // update until demiord's reference script is deployed (deploy circularity).
+  orderScriptHashOverride?: string;
 }): Promise<BuiltTransaction> => {
   if (!blockfrostApiKey || !userAgent) {
     throw new Error("blockfrostApiKey and userAgent are required for building settings update transactions");
@@ -397,7 +402,7 @@ export const buildSettingsUpdateTx = async ({
     treasury_address: desiredSettings.treasury_address as string,
     treasury_fee_percentage: BigInt(desiredSettings.treasury_fee_percentage as number),
     pz_script_address: desiredSettings.pz_script_address as string,
-    order_script_hash: built.orders.validatorHash,
+    order_script_hash: orderScriptHashOverride ?? built.orders.validatorHash,
     minting_data_script_hash: built.mintingData.validatorHash,
     // WS5: discount config from the deployment settings (defaults to all-off / 3 free virtuals).
     discount_config: (() => {

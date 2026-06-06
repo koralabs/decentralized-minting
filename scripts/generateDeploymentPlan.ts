@@ -58,14 +58,15 @@ const main = async () => {
     contracts: desired.contracts,
     userAgent,
   });
+  const liveSettings = await fetchLiveSettingsState({
+    network: desired.network,
+    userAgent,
+  });
   const plan = buildDeploymentPlan({
     desired,
     expectedContracts,
     liveContracts,
-    liveSettings: await fetchLiveSettingsState({
-      network: desired.network,
-      userAgent,
-    }),
+    liveSettings,
     nextSubhandles: await discoverNextContractSubhandles({
       network: desired.network,
       contracts: desired.contracts,
@@ -139,6 +140,9 @@ const main = async () => {
 
   // Track consumed UTxOs across all txs to prevent input conflicts
   const consumedUtxoRefs = new Set<string>();
+  // Track which contract slugs actually got a reference-script deploy tx this
+  // run — used to gate the settings `order_script_hash` update (see below).
+  const deployedSlugs = new Set<string>();
 
   let txIndex = 0;
   for (const contractPlan of changedContracts) {
@@ -167,6 +171,7 @@ const main = async () => {
       generatedArtifacts.push(fileName, `${fileName}.hex`);
       transactionOrder.push(fileName);
       txArtifactGenerated = true;
+      deployedSlugs.add(contractPlan.contract_slug);
     } catch (error) {
       console.log(`Skipping tx for ${contractPlan.contract_slug} ($${handleName}): ${error instanceof Error ? error.message : error}`);
     }
@@ -177,6 +182,28 @@ const main = async () => {
   );
   if (hasSettingsDrift) {
     const settingsHandleName = "demi@handle_settings";
+    // Two-stage settings split: never point `order_script_hash` at the new
+    // demiord hash until its reference script is actually deployed. If demiord's
+    // hash changed but we did NOT deploy it this run (e.g. its next ordinal
+    // SubHandle slot isn't minted yet), keep `order_script_hash` at the current
+    // live value and let a later run advance it once demiord is deployed. This
+    // breaks the deploy circularity (the demiord slot mint depends on the new
+    // minting_data being live, which depends on this settings update). The
+    // minting_data_script_hash + mint_governor still advance now.
+    const demiordContract = plan.summaryJson.contracts.find((c) => c.contract_slug === "demiord");
+    const demiordHashChanged =
+      demiordContract?.drift_type === "script_hash_only" ||
+      demiordContract?.drift_type === "script_hash_and_settings";
+    const orderRefDeployed = !demiordHashChanged || deployedSlugs.has("demiord");
+    const liveOrderScriptHash = liveSettings.values?.["demi@handle_settings"]?.order_script_hash as
+      | string
+      | undefined;
+    const orderScriptHashOverride = orderRefDeployed ? undefined : liveOrderScriptHash;
+    if (orderScriptHashOverride) {
+      console.log(
+        `Deferring order_script_hash update: demiord ref script not deployed yet; keeping live ${orderScriptHashOverride.slice(0, 16)}... (minting_data + mint_governor still advance).`
+      );
+    }
     try {
       const settingsTxArtifact = await buildUnsignedSettingsUpdateTxArtifact({
         desired,
@@ -186,6 +213,7 @@ const main = async () => {
         blockfrostApiKey: blockfrostApiKey || undefined,
         userAgent,
         excludeUtxoRefs: consumedUtxoRefs,
+        orderScriptHashOverride,
       });
       for (const ref of settingsTxArtifact.consumedInputs) consumedUtxoRefs.add(ref);
       txIndex += 1;

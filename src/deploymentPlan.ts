@@ -601,6 +601,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
   blockfrostApiKey,
   userAgent,
   excludeUtxoRefs,
+  orderScriptHashOverride,
   buildTxFn = buildSettingsUpdateTx,
   maxTxSize: maxTxSizeOverride,
 }: {
@@ -611,6 +612,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
   blockfrostApiKey?: string;
   userAgent?: string;
   excludeUtxoRefs?: Set<string>;
+  orderScriptHashOverride?: string;
   buildTxFn?: typeof buildSettingsUpdateTx;
   maxTxSize?: number;
 }): Promise<UnsignedDeploymentTxArtifact> => {
@@ -623,6 +625,7 @@ export const buildUnsignedSettingsUpdateTxArtifact = async ({
     blockfrostApiKey,
     userAgent,
     excludeUtxoRefs,
+    orderScriptHashOverride,
   });
 
   const maxTxSize = maxTxSizeOverride ?? 16384;
