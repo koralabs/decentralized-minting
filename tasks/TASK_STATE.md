@@ -6,13 +6,13 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `DSH-300`
-- next_task_id: `DSH-301` (after DSH-300 fixes the pz baseline; user authorized fixing the failing test)
+- current_task_id: `DSH-301`
+- next_task_id: `DSH-302` (pz burn tests) / `DSH-303` (pz $handle_policies-awareness) — both unblock after DSH-301
 - total_tasks: `26`
-- completed_tasks: `14`
+- completed_tasks: `15`
 - blocked_tasks: `0`
 - overall_status: `ready`
-- last_updated_utc: `2026-06-06T03:00:00Z`
+- last_updated_utc: `2026-06-06T03:10:00Z`
 - user_decisions_2026-06-06: `(1) DSH-300 failing pz test → FIX it. (2) Txs needing user signature → provide the tx hex (relevant at DSH-602). (3) DSH-501 → use the engine's current branch self-host/local-jwt, commit changes separately. (4) NPM publish authorized — the GitHub publish Action already has push auth (use it for the package release, unblocks DSH-501's dependency).`
 - milestone: `decentralized-minting contract COMPLETE (Phases 0-2: DeMi subhandle mint + free-virtual + DeMi burn). Next phase = personalization $handle_policies awareness + burn (different repo, newer aiken toolchain).`
 - driver: `synchronous` (in-session; autonomous cron/wakeup did not fire in this environment)
@@ -60,8 +60,8 @@
 | DSH-201 | done | DSH-003 | decentralized-minting | 2026-06-06T00:25:00Z | 2026-06-06T00:30:00Z | c8fa9f9 | governor can_burn_handles enabled (mirror of mint); 169 checks |
 | DSH-202 | done | DSH-102, DSH-201 | decentralized-minting | 2026-06-06T00:30:00Z | 2026-06-06T00:38:00Z | 35a8563 | BurnNewHandles redeemer (idx 5) + can_burn_new_handles + all_burn_proofs_are_valid; 169 checks |
 | DSH-203 | done | DSH-202 | decentralized-minting | 2026-06-06T00:38:00Z | 2026-06-06T00:40:00Z | afbf136 | burn=inverse-of-mint roundtrip; e2e→DSH-402; 170 checks |
-| DSH-300 | in_progress | — | handles-personalization | 2026-06-06T03:00:00Z | — | — | USER authorized FIX. Root cause found: test `dispatch_from_tx_update_branch_accepts_private_root_address_change` crashes at `expect [...8...]: List<Data> = admin_settings_data` because fixtures `fixture_main_settings`/`fixture_owner_settings`/`fixture_subhandle_settings` build Aiken Constr records, but the validator (correctly) parses the Helios-era raw List<Data> on-chain form. Fix = rebuild fixtures as raw lists via builtin.list_data/i_data/b_data. PREREQ: verify pz baseline green with aiken v1.1.21 (its aiken.toml compiler; binary already on PATH at ~/.cargo/bin/aiken). BLOCKED: baseline is RED — 124 pass / **1 pre-existing fail** `dispatch_from_tx_update_branch_accepts_private_root_address_change` (Update/private-root-address-change, unrelated to burn/policy). Must be resolved (fixed or confirmed known) before building pz features. → USER_ACTIONS |
-| DSH-301 | pending | DSH-300 | handles-personalization | — | — | — | pz $handle_policies reader + membership check + nft/root burn redeemer (release 100 iff matching 222 burned, policy ∈ $handle_policies). Investigated 2026-06-06: pz hardcodes f0ff48bb; uses newer aiken (cardano/ stdlib); reader mirrors load_policy_index_root |
+| DSH-300 | done | — | handles-personalization | 2026-06-06T03:00:00Z | 2026-06-06T03:10:00Z | 41da152 | Fixed: `dispatch_from_tx_update_branch_accepts_private_root_address_change` crashed because fixtures built Aiken Constr records; validator parses the Helios-era raw List<Data> on-chain form. Rebuilt fixtures via builtin.list_data/i_data/b_data. **pz baseline now GREEN: 125 checks, 0 errors** (was 124+1 crash). Branch `parity/demi-pz-policy-burn`. 6 pre-existing unrelated warnings left as-is. aiken v1.0.29 N/A here — this repo is v1.1.21/PlutusV3 (PATH binary). | (its aiken.toml compiler; binary already on PATH at ~/.cargo/bin/aiken). BLOCKED: baseline is RED — 124 pass / **1 pre-existing fail** `dispatch_from_tx_update_branch_accepts_private_root_address_change` (Update/private-root-address-change, unrelated to burn/policy). Must be resolved (fixed or confirmed known) before building pz features. → USER_ACTIONS |
+| DSH-301 | in_progress | DSH-300 | handles-personalization | 2026-06-06T03:10:00Z | — | — | pz $handle_policies reader + membership check + nft/root burn redeemer (release 100 iff matching 222 burned, policy ∈ $handle_policies). Investigated 2026-06-06: pz hardcodes f0ff48bb; uses newer aiken (cardano/ stdlib); reader mirrors load_policy_index_root. Branch parity/demi-pz-policy-burn |
 | DSH-302 | pending | DSH-301 | handles-personalization | — | — | — | pz burn tests |
 | DSH-303 | pending | DSH-301 | handles-personalization | — | — | — | make pz personalize/migrate/revoke/ownership $handle_policies-aware (reuse DSH-301 reader; replace hardcoded f0ff48bb) so DeMi handles get FULL pz support (parity) |
 | DSH-401 | done | DSH-102, DSH-202 | decentralized-minting pkg | 2026-06-06T01:45:00Z | 2026-06-06T01:55:00Z | 119194f | proof/redeemer ABI mirrored from validators/demimntmpt.ak + minting_data/types.ak. FreeVirtualData root_pre_count→root_free_names; +OrderProof/BurnProof types+encoders; MintNewHandles→List<OrderProof>; +BurnNewHandles(constr5); LabelAssetProof old_free_virtual_count→old_free_names; dropped LegacyHandleProof.free_virtual + LegacyHandle.privateVirtual (legacy has no free-virtual per DSH-001); prepareLabelAssets→registryValue.encode; removed dead encodeRegistryValue/cborUint. Redeemer CBOR pinned (Option None=constr1/Some=constr0, field order). 66 vitest pass, tsc+eslint clean. Pre-existing import-sort lint in 2 unrelated test files fixed in ef84ad9 |
