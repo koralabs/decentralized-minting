@@ -8,9 +8,9 @@
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
 - current_task_id: `none`
 - next_task_id: `DSH-301`
-- total_tasks: `25`
+- total_tasks: `26`
 - completed_tasks: `10`
-- blocked_tasks: `0`
+- blocked_tasks: `1`
 - overall_status: `ready`
 - last_updated_utc: `2026-06-06T01:00:00Z`
 - milestone: `decentralized-minting contract COMPLETE (Phases 0-2: DeMi subhandle mint + free-virtual + DeMi burn). Next phase = personalization $handle_policies awareness + burn (different repo, newer aiken toolchain).`
@@ -36,7 +36,7 @@
 - `PHASE-0-DONE`: `DSH-001`, `DSH-002`, `DSH-003`, `DSH-004`
 - `PHASE-1-FREEVIRTUAL`: `DSH-101`, `DSH-102`, `DSH-103`
 - `PHASE-2-DEMI-BURN`: `DSH-201`, `DSH-202`, `DSH-203`
-- `PHASE-3-PZ-POLICY-BURN`: `DSH-301`, `DSH-302`, `DSH-303`
+- `PHASE-3-PZ-POLICY-BURN`: `DSH-300` (prereq), `DSH-301`, `DSH-302`, `DSH-303`
 - `PHASE-4-PACKAGE`: `DSH-401`..`DSH-406`
 - `PHASE-5-SERVICES`: `DSH-501`, `DSH-502`, `DSH-503`
 - `PHASE-6-DEPLOY`: `DSH-601`, `DSH-602`, `DSH-603`
@@ -59,7 +59,8 @@
 | DSH-201 | done | DSH-003 | decentralized-minting | 2026-06-06T00:25:00Z | 2026-06-06T00:30:00Z | c8fa9f9 | governor can_burn_handles enabled (mirror of mint); 169 checks |
 | DSH-202 | done | DSH-102, DSH-201 | decentralized-minting | 2026-06-06T00:30:00Z | 2026-06-06T00:38:00Z | 35a8563 | BurnNewHandles redeemer (idx 5) + can_burn_new_handles + all_burn_proofs_are_valid; 169 checks |
 | DSH-203 | done | DSH-202 | decentralized-minting | 2026-06-06T00:38:00Z | 2026-06-06T00:40:00Z | afbf136 | burn=inverse-of-mint roundtrip; e2e→DSH-402; 170 checks |
-| DSH-301 | pending | — | handles-personalization | — | — | — | pz $handle_policies reader + membership check + nft/root burn redeemer (release 100 iff matching 222 burned, policy ∈ $handle_policies). Investigated 2026-06-06: pz hardcodes f0ff48bb; uses newer aiken (cardano/ stdlib); reader mirrors load_policy_index_root |
+| DSH-300 | blocked | — | handles-personalization | 2026-06-06T01:30:00Z | — | — | PREREQ: verify pz baseline green with aiken v1.1.21 (its aiken.toml compiler; binary already on PATH at ~/.cargo/bin/aiken). BLOCKED: baseline is RED — 124 pass / **1 pre-existing fail** `dispatch_from_tx_update_branch_accepts_private_root_address_change` (Update/private-root-address-change, unrelated to burn/policy). Must be resolved (fixed or confirmed known) before building pz features. → USER_ACTIONS |
+| DSH-301 | pending | DSH-300 | handles-personalization | — | — | — | pz $handle_policies reader + membership check + nft/root burn redeemer (release 100 iff matching 222 burned, policy ∈ $handle_policies). Investigated 2026-06-06: pz hardcodes f0ff48bb; uses newer aiken (cardano/ stdlib); reader mirrors load_policy_index_root |
 | DSH-302 | pending | DSH-301 | handles-personalization | — | — | — | pz burn tests |
 | DSH-303 | pending | DSH-301 | handles-personalization | — | — | — | make pz personalize/migrate/revoke/ownership $handle_policies-aware (reuse DSH-301 reader; replace hardcoded f0ff48bb) so DeMi handles get FULL pz support (parity) |
 | DSH-401 | pending | DSH-102, DSH-202 | decentralized-minting pkg | — | — | — | proof/redeemer ABI: OrderProof/FreeVirtualData/BurnProof encoders, MintNewHandles(List<OrderProof>)+BurnNewHandles, LabelAssetProof old_free_names |

@@ -18,3 +18,11 @@ Concrete user-owned blockers the agent cannot perform. Organized by feature area
   `handles-personalization` contract version; its on-chain deploy follows the personalization
   deploy process (separate from the DeMi bundle).
   - Blocker reason: on-chain contract deploy + any required signing the agent cannot perform unattended.
+
+## Conditional features (personalization)
+
+- [ ] **Pre-existing pz test failure** (`DSH-300`). `handles-personalization` HEAD (`e1cec67`) fails
+  `dispatch_from_tx_update_branch_accepts_private_root_address_change` (124 pass / 1 fail) under its
+  own pinned `aiken v1.1.21`. Is this a known/expected failure, or should it be fixed first? Building
+  the new pz burn + `$handle_policies` work on a red baseline makes those changes unverifiable.
+  - Blocker reason: needs the team's knowledge of whether this committed failure is known/acceptable.
