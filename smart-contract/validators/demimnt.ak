@@ -22,7 +22,7 @@ validator(minting_data_script_hash: ScriptHash) {
 
     when redeemer is {
       MintHandles -> can_mint_handles(transaction, minting_data_script_hash)
-      BurnHandles -> can_burn_handles(transaction)
+      BurnHandles -> can_burn_handles(transaction, minting_data_script_hash)
     }
   }
 }
