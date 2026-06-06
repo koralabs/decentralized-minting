@@ -6,8 +6,8 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `none`
-- next_task_id: `DSH-403` (deps DSH-401+DSH-402 both done → ready; mint build relocation)
+- current_task_id: `DSH-406`
+- next_task_id: `DSH-403` (deps DSH-401+DSH-402 done → ready; mint build relocation)
 - total_tasks: `26`
 - completed_tasks: `12`
 - blocked_tasks: `1`
@@ -68,7 +68,7 @@
 | DSH-403 | pending | DSH-401, DSH-402 | decentralized-minting pkg | — | — | — | mint build relocation to orders/MintNewHandles + free-virtual proofs + trie maintenance |
 | DSH-404 | pending | DSH-401, DSH-402, DSH-301 | decentralized-minting pkg | — | — | — | burn build: BurnNewHandles + coordinated burn tx (governor+demimntmpt+pz) + trie delete/free-name removal |
 | DSH-405 | pending | DSH-403, DSH-404 | decentralized-minting pkg | — | — | — | e2e tests with a real Trie (free-virtual mint/burn, nft/virtual burn) — deferred from DSH-103/203 |
-| DSH-406 | pending | DSH-401, DSH-202 | decentralized-minting pkg | — | — | — | regenerate blueprints (new demimntmpt/demimnt hashes) + pinned-hash test + deploy config |
+| DSH-406 | in_progress | DSH-401, DSH-202 | decentralized-minting pkg | 2026-06-06T01:58:00Z | — | — | regenerate blueprints (committed *-blueprint.ts are STALE — carry old-ABI titles root_pre_count/old_free_virtual_count) + pinned-hash test + deploy config. Build: aiken v1.0.29-alpha+16fb02e (exact match to blueprint preamble); `aiken build` optimized, `aiken build -t verbose` unoptimized |
 | DSH-501 | pending | DSH-403 | minting.handle.me | — | — | — | engine mint: additive fee outputs on orders path (folded) + free-virtual tx metadata + settings reads |
 | DSH-502 | pending | DSH-404, DSH-501 | minting.handle.me | — | — | — | engine burn: coordinated DeMi burn tx end-to-end |
 | DSH-503 | pending | DSH-303, DSH-401 | handle.me/bff | — | — | — | bff: attach $handle_policies ref input to ALL pz txs; buy_down gone; fee display |
