@@ -108,3 +108,14 @@ test free_virtual_burn_value_transition() {
     has_free_slot(after, 3),
   }
 }
+
+// Burn is the EXACT inverse of mint: a free-virtual mint then burn returns the root value to its
+// start — the core correctness BurnNewHandles' remove_root_free_name relies on (DSH-203).
+test free_virtual_mint_then_burn_roundtrips() {
+  let start = [#"6162"]
+  let labels = #"00001070"
+  let sub = #"6364"
+  let after_mint = add_free_name(start, sub)
+  let after_burn = remove_free_name(after_mint, sub)
+  encode(after_burn, labels) == encode(start, labels)
+}
