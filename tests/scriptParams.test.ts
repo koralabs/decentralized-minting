@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import optimizedBlueprint from "../src/contracts/optimized-blueprint.js";
 import {
   applyParamsToScript,
-  plutusV2ScriptHash,
   type PlutusDataJson,
+  plutusV2ScriptHash,
 } from "../src/helpers/cardano-sdk/scriptParams.js";
 
 // Fixture hashes pinned from the last helios-backed run (commit 5860270).

@@ -1,8 +1,8 @@
 import type { Cardano as CardanoTypes } from "@cardano-sdk/core";
 import { describe, expect, it } from "vitest";
 
-import { Cardano } from "../src/helpers/cardano-sdk/index.js";
 import { computeScriptDataHash } from "../src/helpers/cardano-sdk/computeScriptDataHash.js";
+import { Cardano } from "../src/helpers/cardano-sdk/index.js";
 
 // Minimal V2 cost model (real models are 332 entries; the function does not
 // validate length — it just emits what's given). Used so the hash is stable
