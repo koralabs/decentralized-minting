@@ -7,7 +7,7 @@
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
 - current_task_id: `none`
-- next_task_id: `DSH-301`
+- next_task_id: `DSH-402` (package chain unblocked; pz chain blocked on DSH-300 baseline)
 - total_tasks: `26`
 - completed_tasks: `10`
 - blocked_tasks: `1`

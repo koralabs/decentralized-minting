@@ -20,11 +20,16 @@ Objective:
 ## Phase coverage
 
 - `PHASE-0-DONE` (already landed): `DSH-001`, `DSH-002`, `DSH-003`, `DSH-004`
-- `PHASE-1-FREEVIRTUAL` (contract mint side): `DSH-101`, `DSH-102`, `DSH-103`
-- `PHASE-2-DEMI-BURN` (contract burn side): `DSH-201`, `DSH-202`, `DSH-203`
-- `PHASE-3-PZ-BURN` (personalization): `DSH-301`, `DSH-302`
-- `PHASE-4-CASCADE` (package + engine + BFF): `DSH-401`, `DSH-402`, `DSH-403`, `DSH-501`, `DSH-502`, `DSH-503`
-- `PHASE-5-DEPLOY`: `DSH-601`, `DSH-602`
+- `PHASE-1-FREEVIRTUAL` (contract mint side, DONE): `DSH-101`, `DSH-102`, `DSH-103`
+- `PHASE-2-DEMI-BURN` (contract burn side, DONE): `DSH-201`, `DSH-202`, `DSH-203`
+- `PHASE-3-PZ-POLICY-BURN` (personalization): `DSH-300` (prereq), `DSH-301`, `DSH-302`, `DSH-303`
+- `PHASE-4-PACKAGE` (off-chain pkg): `DSH-401`..`DSH-406`
+- `PHASE-5-SERVICES` (engine + BFF): `DSH-501`, `DSH-502`, `DSH-503`
+- `PHASE-6-DEPLOY`: `DSH-601`, `DSH-602`, `DSH-603`
+
+> **Parallelism:** PHASE-4-PACKAGE (`DSH-401`/`DSH-402` onward) depends only on the done contract
+> tasks, so it proceeds **independently of the blocked pz baseline (`DSH-300`)**. The pz chain
+> (`DSH-300`→`301`→…) and the package chain run in parallel; they only rejoin at deploy (PHASE-6).
 
 ## Tasks
 
