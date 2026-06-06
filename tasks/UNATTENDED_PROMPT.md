@@ -16,6 +16,75 @@ The task system lives in ONE place regardless of your shell's current directory:
 > tests/build, update THAT repo's docs, and commit to THAT repo. There is no `docs/spec/gaps.md`;
 > `TASK_STATE.md` + `TODO.md` are the authoritative coverage map.
 
+## CRITICAL CONTEXT — read this and the spec doc BEFORE touching anything
+
+These points were established (and several were hard-won corrections) in the session that built the
+contract. The full detail is in the spec doc
+(`/home/jesse/src/koralabs/decentralized-minting/docs/product/demi-subhandle-minting.md`) — **read
+it first.** Do not re-derive or second-guess these; they are settled:
+
+**The point (frames every decision).** DeMi = *decentralized* parity with legacy minting, deployed
+preview→preprod→mainnet. Decentralization is the whole point: validate against on-chain registries
+(e.g. `$handle_policies`), never hardcode. "It's governed on-chain, not by a held key" is why DeMi
+exists.
+
+**Architecture (these were corrected the hard way — do not revert to the wrong version):**
+- DeMi handles (roots + subhandles) mint under the **DeMi policy `6c32db33`**, NOT the legacy
+  native policy `f0ff48bb`.
+- **Two independent mint paths, SEPARATE enforcement, SHARED pure helpers.** The legacy path
+  (`MintLegacyHandles`) mints as it does on mainnet today — uniqueness (MPT) + correct 222/100/000
+  tokens, and enforces **nothing new** (no fees, no free-virtual, no discounts). All of that is
+  **DeMi-path-only** (the orders path). Do NOT add fee/allowance/discount logic to the legacy path.
+  Rejected alternative: "shared path, legacy passes zeros" — it burns ex-units on the high-volume
+  legacy path and re-couples the very thing that caused the original mistake.
+- Orders (`demiord`) are **DeMi-only**. Legacy never uses orders.
+
+**Fee model (additive three-fee; "owner fee", NEVER "royalty" — royalty=CIP-27, different thing):**
+- A paid subhandle buyer pays **owner fee + minter fee + treasury fee**, all additive. Owner fee
+  may be 0; minter + treasury are FLAT amounts from settings (today minter = 2 ADA, treasury = 0).
+- Destinations: owner fee → the owner's `payment_address`; minter fee → an **allowed minter**
+  (Kora Labs), NEVER the treasury; treasury fee → `treasury_address`.
+- **Design A folding:** subs' flat minter/treasury fold into the batch minter/treasury outputs (one
+  each for the whole mixed batch); owner fees are separate per-owner outputs; roots keep their
+  percentage split. The 2-ADA treasury floor applies only when the batch has root handles.
+- **Double-satisfaction defenses (keep them):** token outputs consumed POSITIONALLY (each used
+  once, never `list.any`); owner fees MERGED per credential; owner-fee check scans only the
+  LEFTOVER outputs (after the fixed fee/token outputs).
+
+**Free-virtual:** track the ≤3 free **NAMES** (not a counter) in the root key's MPT value; a free
+mint adds the name, a free burn removes it → reopens the slot; public virtuals never consume the
+allowance. **CRITICAL:** the off-chain `registry_value` encoding (`encode(free_names, labels)`)
+must be **byte-identical** to the contract (`DSH-402`), or every free-virtual `mpt.update` fails
+on-chain. Also mirror it to tx metadata (chain-as-source-of-truth).
+
+**Burn = the exact mirror of mint:** `mpt.delete` proves the key was present (existence-before),
+yields absence-after; the tx burns −1 of the tokens. Authorization lives WHERE THE TOKENS ARE — the
+holder provides the 222/000 as burned inputs (you can only burn what you hold), the pz contract
+releases its held 100/000; the DeMi `BurnNewHandles` redeemer just keeps the MPT in sync. **NFT/root
+burn:** pz releases the `100` iff the matching `222` is also burned (= owner consent). **Virtual
+burn:** pz `Revoke` already exists (private → root-signed; public → lease-expired) — don't change it.
+
+**Personalization must become `$handle_policies`-aware.** pz today hardcodes `f0ff48bb`. Since DeMi
+is `6c32db33`, pz must validate a handle's policy against the on-chain **`$handle_policies`**
+registry (the decentralized fix) — for the new burn AND the rest of pz (personalize/migrate/revoke),
+or DeMi handles can't be personalized at all (not just unburnable). Old tokens at prior pz contracts
+are **NOT a blocker** — migration is already built (contract + frontend); the `$handle_policies` ref
+input must then be attached to EVERY pz tx (`DSH-503`) or existing flows break. **The pz baseline is
+RED right now** (`DSH-300`, a pre-existing failing test) — confirm/fix before building on it.
+
+**Hard rules (company-killers — never violate):** NEVER mint Kora handles outside the production
+minting service. NEVER touch mainnet without explicit per-deploy user authorization (this run is
+**preview only**). Fix EVERY ts/lint/test failure on every change — no "pre-existing" excuses. The
+BFF uses `@cardano-sdk` only — never Helios/MeshJS/CSL/CML. Reproduce + verify failures with the
+scalus evaluator before any deploy.
+
+**Failure mode to avoid (mine, this session):** I over-scoped — treating each discovery as a "should
+we do this big thing?" question — and I built a large piece on a WRONG assumption (DeMi subs under
+the legacy policy) before surfacing it. When a discovery seems to reframe scope, check it against
+*the point* and the committed spec doc, and verify on-chain reality against a real example, rather
+than guessing or ballooning. The contract is already DONE and green (Phases 0–2); trust the
+committed state and the spec doc.
+
 ## Objective
 
 - Complete all dependency-ready `pending` tasks in the TODO/TASK_STATE above, driving DeMi to
