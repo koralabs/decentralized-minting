@@ -6,8 +6,8 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `none`
-- next_task_id: `DSH-402` (package chain unblocked; pz chain blocked on DSH-300 baseline)
+- current_task_id: `DSH-402`
+- next_task_id: `DSH-401` (package chain; DSH-403 needs 401+402, so 401 is next ready)
 - total_tasks: `26`
 - completed_tasks: `10`
 - blocked_tasks: `1`
@@ -64,7 +64,7 @@
 | DSH-302 | pending | DSH-301 | handles-personalization | — | — | — | pz burn tests |
 | DSH-303 | pending | DSH-301 | handles-personalization | — | — | — | make pz personalize/migrate/revoke/ownership $handle_policies-aware (reuse DSH-301 reader; replace hardcoded f0ff48bb) so DeMi handles get FULL pz support (parity) |
 | DSH-401 | pending | DSH-102, DSH-202 | decentralized-minting pkg | — | — | — | proof/redeemer ABI: OrderProof/FreeVirtualData/BurnProof encoders, MintNewHandles(List<OrderProof>)+BurnNewHandles, LabelAssetProof old_free_names |
-| DSH-402 | pending | DSH-101 | decentralized-minting pkg | — | — | — | CRITICAL: registry_value.ts byte-identical to registry_value.ak encode(free_names,labels); pinned-bytes test |
+| DSH-402 | in_progress | DSH-101 | decentralized-minting pkg | 2026-06-06T01:36:47Z | — | — | CRITICAL: registry_value.ts byte-identical to registry_value.ak encode(free_names,labels); pinned-bytes test. serialise_data(List<ByteArray>) CBOR confirmed vs aiken v1.0.29: non-empty list 9f..ff, bytestr 0x40\|len (<24) or 58 len, empty 80 |
 | DSH-403 | pending | DSH-401, DSH-402 | decentralized-minting pkg | — | — | — | mint build relocation to orders/MintNewHandles + free-virtual proofs + trie maintenance |
 | DSH-404 | pending | DSH-401, DSH-402, DSH-301 | decentralized-minting pkg | — | — | — | burn build: BurnNewHandles + coordinated burn tx (governor+demimntmpt+pz) + trie delete/free-name removal |
 | DSH-405 | pending | DSH-403, DSH-404 | decentralized-minting pkg | — | — | — | e2e tests with a real Trie (free-virtual mint/burn, nft/virtual burn) — deferred from DSH-103/203 |
