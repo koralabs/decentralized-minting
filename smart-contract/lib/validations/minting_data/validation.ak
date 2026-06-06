@@ -12,7 +12,9 @@ use decentralized_minting/settings_v1.{
   SettingsV1, get_allowed_minter_and_valid_handle_price_asset,
 }
 use validations/discount_eligibility.{DiscountContext, read_partner_root}
-use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
+use validations/minting_data/types.{
+  LabelAssetProof, LegacyHandleProof, OrderProof,
+}
 use validations/minting_data/utils.{
   all_label_proofs_are_valid, all_orders_are_satisfied, all_proofs_are_valid,
   calculate_treasury_fee_and_minter_fee, owner_fees_all_paid,
@@ -31,7 +33,7 @@ use validations/policy_window.{assert_mint_within_policy_window}
 pub fn can_mint_new_handles(
   transaction: Transaction,
   spending_output_reference: OutputReference,
-  proofs: List<mpt.Proof>,
+  proofs: List<OrderProof>,
   minter_index: Int,
   legacy_policy_id: PolicyId,
   anchor_slot: Int,
@@ -151,6 +153,7 @@ pub fn can_mint_new_handles(
       handle_price_info,
       sub_handle_minter_fee,
       sub_handle_treasury_fee,
+      discount_config.free_virtual_count,
       proofs,
       root,
       value.zero(),

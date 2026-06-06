@@ -18,7 +18,9 @@ use decentralized_minting/sub_handle.{
   find_root_handle_settings, get_sub_handle_price, owner_payment_credential,
 }
 use validations/discount_eligibility.{DiscountContext, effective_handle_price}
-use validations/minting_data/types.{LabelAssetProof, LegacyHandleProof}
+use validations/minting_data/types.{
+  FreeVirtualData, LabelAssetProof, LegacyHandleProof, OrderProof,
+}
 
 // WS6: root-handle character cap. Bumped 15 -> 28 (the on-chain gatekeeper that actually
 // lets 28-char roots mint). `max_sub_handle_length` is the full `sub@root` cap and stays 28,
@@ -49,7 +51,8 @@ pub fn all_orders_are_satisfied(
   handle_price_info: HandlePriceInfo,
   sub_handle_minter_fee: Int,
   sub_handle_treasury_fee: Int,
-  proofs: List<mpt.Proof>,
+  free_virtual_count: Int,
+  proofs: List<OrderProof>,
   root: mpt.MerklePatriciaForestry,
   expected_mint_value: Value,
   total_handles_price: Int,
@@ -97,8 +100,9 @@ pub fn all_orders_are_satisfied(
             ..
           } = datum
 
-          // parse proofs
-          expect [mpt_proof, ..rest_proofs] = proofs
+          // parse proofs (one OrderProof per order; free_virtual = Some for a free private virtual)
+          expect [order_proof, ..rest_proofs] = proofs
+          let OrderProof { mpt_proof, free_virtual } = order_proof
 
           let order_input_lovelace =
             value.quantity_of(
@@ -107,12 +111,13 @@ pub fn all_orders_are_satisfied(
               ada_asset_name,
             )
 
-          // update root (mint only)
-          let new_root = update_root(root, requested_handle, 1, mpt_proof)
+          // insert the handle's own key (mint only)
+          let root_after_handle = update_root(root, requested_handle, 1, mpt_proof)
 
           let (root_name, is_sub, sub_name) = parse_handle_name(requested_handle)
 
           let (
+            updated_root,
             rest_outputs,
             new_mint_value,
             new_total_handles_price,
@@ -121,32 +126,10 @@ pub fn all_orders_are_satisfied(
             new_owner_fees,
           ) =
             if is_sub {
-              // SUBHANDLE: owner fee (tier price) + flat minter + flat treasury
               let is_virtual_bool = parse_bool_from_int(is_virtual)
               expect check_legacy_handle_validity(requested_handle, is_virtual_bool)
 
-              let owner_settings =
-                find_root_handle_settings(
-                  reference_inputs,
-                  root_name,
-                  policy_id,
-                  legacy_policy_id,
-                )
-              let owner_fee =
-                get_sub_handle_price(
-                  owner_settings,
-                  bytearray.length(sub_name),
-                  is_virtual_bool,
-                )
-              let (_n, _v, _r0, _r1, _r2, _t, _m, payment_address) =
-                owner_settings
-              let owner_cred = owner_payment_credential(payment_address)
-
-              // the order UTxO must fund all three additive fees
-              expect
-                order_input_lovelace >= owner_fee + sub_handle_minter_fee + sub_handle_treasury_fee
-
-              // mint the sub's tokens (positional output consumption)
+              // mint the sub's tokens (positional output consumption) — every sub mints, free or paid
               let (rest, mint_v) =
                 if is_virtual_bool {
                   check_virtual_sub_output(
@@ -166,14 +149,65 @@ pub fn all_orders_are_satisfied(
                     expected_mint_value,
                   )
                 }
-              (
-                rest,
-                mint_v,
-                total_handles_price,
-                total_sub_minter_fee + sub_handle_minter_fee,
-                total_sub_treasury_fee + sub_handle_treasury_fee,
-                add_owner_fee(owner_fees, owner_cred, owner_fee),
-              )
+
+              when free_virtual is {
+                // FREE private virtual: must have a slot; bump the root's free-name set; owes nothing.
+                // (Gated by the allowed-minter signature on the tx — only a legitimate free private
+                // virtual is marked Some.)
+                Some(fv) -> {
+                  expect is_virtual_bool
+                  expect
+                    registry_value.has_free_slot(
+                      fv.root_free_names,
+                      free_virtual_count,
+                    )
+                  let root_bumped =
+                    add_root_free_name(root_after_handle, root_name, fv, sub_name)
+                  (
+                    root_bumped,
+                    rest,
+                    mint_v,
+                    total_handles_price,
+                    total_sub_minter_fee,
+                    total_sub_treasury_fee,
+                    owner_fees,
+                  )
+                }
+                // PAID sub (nft, public virtual, or a private virtual past the allowance): owner fee
+                // (tier price) -> owner payment_address, plus flat minter + flat treasury.
+                None -> {
+                  let owner_settings =
+                    find_root_handle_settings(
+                      reference_inputs,
+                      root_name,
+                      policy_id,
+                      legacy_policy_id,
+                    )
+                  let owner_fee =
+                    get_sub_handle_price(
+                      owner_settings,
+                      bytearray.length(sub_name),
+                      is_virtual_bool,
+                    )
+                  let (_n, _v, _r0, _r1, _r2, _t, _m, payment_address) =
+                    owner_settings
+                  let owner_cred = owner_payment_credential(payment_address)
+
+                  // the order UTxO must fund all three additive fees
+                  expect
+                    order_input_lovelace >= owner_fee + sub_handle_minter_fee + sub_handle_treasury_fee
+
+                  (
+                    root_after_handle,
+                    rest,
+                    mint_v,
+                    total_handles_price,
+                    total_sub_minter_fee + sub_handle_minter_fee,
+                    total_sub_treasury_fee + sub_handle_treasury_fee,
+                    add_owner_fee(owner_fees, owner_cred, owner_fee),
+                  )
+                }
+              }
             } else {
               // ROOT handle: rarity price minus any discount; feeds the percentage split
               let handle_price =
@@ -200,6 +234,7 @@ pub fn all_orders_are_satisfied(
                   expected_mint_value,
                 )
               (
+                root_after_handle,
                 rest,
                 mint_v,
                 total_handles_price + effective_price,
@@ -220,8 +255,9 @@ pub fn all_orders_are_satisfied(
             handle_price_info,
             sub_handle_minter_fee,
             sub_handle_treasury_fee,
+            free_virtual_count,
             rest_proofs,
-            new_root,
+            updated_root,
             new_mint_value,
             new_total_handles_price,
             new_total_sub_minter_fee,
@@ -244,6 +280,7 @@ pub fn all_orders_are_satisfied(
             handle_price_info,
             sub_handle_minter_fee,
             sub_handle_treasury_fee,
+            free_virtual_count,
             proofs,
             root,
             expected_mint_value,
@@ -596,6 +633,25 @@ fn check_virtual_sub_output(
       |> value.add(policy_id, virtual_asset_name, 1)
 
   (rest_outputs, new_mint_value)
+}
+
+// Add this sub's name to the ROOT key's free-name set (a FREE private-virtual mint). A second
+// `mpt.update` on the root value, after the sub key was inserted. The proof + current free-name
+// set + labels come from the order's FreeVirtualData; the new value adds the sub name to the set.
+fn add_root_free_name(
+  root: mpt.MerklePatriciaForestry,
+  root_name: ByteArray,
+  fv: FreeVirtualData,
+  sub_name: ByteArray,
+) -> mpt.MerklePatriciaForestry {
+  let FreeVirtualData { root_proof, root_free_names, root_labels } = fv
+  let old_value = registry_value.encode(root_free_names, root_labels)
+  let new_value =
+    registry_value.encode(
+      registry_value.add_free_name(root_free_names, sub_name),
+      root_labels,
+    )
+  mpt.update(root, root_name, root_proof, old_value, new_value)
 }
 
 fn update_root(
