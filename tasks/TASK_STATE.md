@@ -6,13 +6,13 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `DSH-101`
-- next_task_id: `DSH-102`
+- current_task_id: `DSH-102`
+- next_task_id: `DSH-103`
 - total_tasks: `18`
-- completed_tasks: `4`
+- completed_tasks: `5`
 - blocked_tasks: `0`
 - overall_status: `in_progress`
-- last_updated_utc: `2026-06-06T00:05:00Z`
+- last_updated_utc: `2026-06-06T00:12:00Z`
 - driver: `synchronous` (in-session; autonomous cron/wakeup did not fire in this environment)
 
 ## Concurrency guard (no double-work)
@@ -51,7 +51,8 @@
 | DSH-002 | done | — | decentralized-minting | — | 2026-06-05 | (pre-existing) | orders already DeMi-only (Execute/Cancel/Refund) |
 | DSH-003 | done | — | decentralized-minting | — | 2026-06-05 | 2a379d2 | subhandle minting on orders path; fee folding A |
 | DSH-004 | done | DSH-003 | decentralized-minting | — | 2026-06-05 | 97a36ba | owner-fee double-satisfaction tests; 173 checks |
-| DSH-101 | in_progress | DSH-003 | decentralized-minting | 2026-06-06T00:05:00Z | — | — | registry_value count→free_names (+ label-path ripple to stay green) |
+| DSH-101 | done | DSH-003 | decentralized-minting | 2026-06-06T00:05:00Z | 2026-06-06T00:12:00Z | f31fdd5 | registry_value→name-set + label-path ripple; 167 checks. (LabelAssetProof ripple absorbed here to stay green) |
+| DSH-102 | in_progress | DSH-101 | decentralized-minting | 2026-06-06T00:12:00Z | — | — | per-order free_virtual proof + orders-path free-name logic + MintNewHandles ABI |
 | DSH-102 | pending | DSH-101 | decentralized-minting | — | — | — | per-order free_virtual proof + MintNewHandles ABI |
 | DSH-103 | pending | DSH-102 | decentralized-minting | — | — | — | free-virtual mint tests |
 | DSH-201 | pending | DSH-003 | decentralized-minting | — | — | — | governor can_burn_handles |

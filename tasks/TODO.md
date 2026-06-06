@@ -35,7 +35,7 @@ Objective:
 - [x] `DSH-004` (decentralized-minting) Owner-fee double-satisfaction tests
 
 ### PHASE-1-FREEVIRTUAL
-- [ ] `DSH-101` (decentralized-minting) `registry_value`: `(count,labels)` → `(free_names,labels)` encoding + helpers (add/remove/has-name, free-iff-`<N`); update `registry_value.test.ak`. deps: DSH-003
+- [x] `DSH-101` (decentralized-minting) `registry_value`: `(count,labels)` → `(free_names,labels)` encoding + helpers (add/remove/has-name, free-iff-`<N`); update `registry_value.test.ak`. deps: DSH-003 — **done f31fdd5**
 - [ ] `DSH-102` (decentralized-minting) Re-introduce per-order `free_virtual: Option<FreeVirtualData>` (root key MPT proof + current `free_names`) on the orders path; free while `|free_names| < free_virtual_count` (add name) else paid; change `MintNewHandles` proof element; ripple `LabelAssetProof` (`old_free_names`). deps: DSH-101
 - [ ] `DSH-103` (decentralized-minting) Free-virtual mint tests (free under allowance, paid over, public never free, encoding round-trip). deps: DSH-102
 
