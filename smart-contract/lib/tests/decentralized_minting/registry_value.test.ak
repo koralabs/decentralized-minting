@@ -1,108 +1,79 @@
+use aiken/bytearray
 use decentralized_minting/registry_value.{
-  apply_virtual_delta, encode, is_free_virtual, virtual_mint_is_free,
+  add_free_name, encode, has_free_name, has_free_slot, remove_free_name,
 }
 
 // --- encode: backward-compatible with WS1 label sets ---
 
-test encode_empty_is_backward_compatible() {
-  // no virtuals, no labels -> empty value (existing handles unchanged)
-  encode(0, #"") == #""
+test encode_empty_set_is_backward_compatible() {
+  // no free names, no labels -> empty value (existing handles unchanged)
+  encode([], #"") == #""
 }
 
-test encode_count_zero_is_pure_labels() {
-  // pure label set, count 0 -> byte-identical to the WS1 value
-  encode(0, #"00001070000020e0") == #"00001070000020e0"
+test encode_empty_set_is_pure_labels() {
+  // pure label set, no free names -> byte-identical to the WS1 value (no migration)
+  encode([], #"00001070000020e0") == #"00001070000020e0"
 }
 
-test encode_count_positive_differs_from_labels() {
-  // once a counter exists the value is the serialised pair, distinct from the bare labels
-  encode(1, #"00001070") != #"00001070"
+test encode_nonempty_set_differs_from_labels() {
+  encode([#"6162"], #"00001070") != #"00001070"
+}
+
+test encode_nonempty_set_has_marker_and_labels_suffix() {
+  let v = encode([#"6162"], #"00001070")
+  and {
+    // 0xff marker can never collide with a label set (label prefixes start 0x00)
+    bytearray.take(v, 1) == #"ff",
+    // the label set is the suffix
+    bytearray.drop(v, bytearray.length(v) - 4) == #"00001070",
+  }
 }
 
 test encode_is_deterministic() {
-  encode(2, #"00001070") == encode(2, #"00001070")
+  encode([#"6162", #"6364"], #"00001070") == encode(
+    [#"6162", #"6364"],
+    #"00001070",
+  )
 }
 
-test encode_distinct_counts_distinct_values() {
-  encode(1, #"00001070") != encode(2, #"00001070")
+test encode_distinct_sets_distinct_values() {
+  encode([#"6162"], #"00001070") != encode([#"6162", #"6364"], #"00001070")
 }
 
-// --- is_free_virtual: first 3 are free ---
+// --- has_free_slot: first 3 are free ---
 
-test free_for_first_three() {
+test free_slot_for_first_three() {
   and {
-    is_free_virtual(0, 3),
-    is_free_virtual(1, 3),
-    is_free_virtual(2, 3),
+    has_free_slot([], 3),
+    has_free_slot([#"61"], 3),
+    has_free_slot([#"61", #"62"], 3),
   }
 }
 
-test paid_from_fourth() {
+test no_free_slot_once_three_held() {
+  has_free_slot([#"61", #"62", #"63"], 3) == False
+}
+
+// --- add / remove / has name ---
+
+test add_free_name_records_it() {
+  has_free_name(add_free_name([], #"61"), #"61")
+}
+
+test add_free_name_is_idempotent() {
+  add_free_name([#"61"], #"61") == [#"61"]
+}
+
+test remove_free_name_reopens_a_slot() {
+  // 3 held (full) -> remove one free name -> back under the cap (free again)
+  let after = remove_free_name([#"61", #"62", #"63"], #"62")
   and {
-    is_free_virtual(3, 3) == False,
-    is_free_virtual(4, 3) == False,
+    !has_free_name(after, #"62"),
+    has_free_slot(after, 3),
   }
 }
 
-// --- apply_virtual_delta: +1 mint / -1 burn (slot refund) ---
-
-test delta_mint_increments() {
-  apply_virtual_delta(0, 1) == 1
-}
-
-test delta_burn_decrements() {
-  apply_virtual_delta(2, -1) == 1
-}
-
-test delta_burn_refunds_a_slot() {
-  // 3 used (paid territory) -> burn one -> back to 2 (free again)
-  let after_burn = apply_virtual_delta(3, -1)
-  and {
-    after_burn == 2,
-    is_free_virtual(after_burn, 3),
-  }
-}
-
-test delta_burn_below_zero_fails() fail {
-  apply_virtual_delta(0, -1) == 0
-}
-
-test delta_invalid_amount_fails() fail {
-  apply_virtual_delta(0, 2) == 0
-}
-
-// --- virtual_mint_is_free: private draws from the free allowance; public always pays ---
-
-test private_virtual_free_when_slots_remain() {
-  and {
-    virtual_mint_is_free(0, 3, False),
-    virtual_mint_is_free(2, 3, False),
-  }
-}
-
-test private_virtual_paid_when_slots_used() {
-  virtual_mint_is_free(3, 3, False) == False
-}
-
-test public_virtual_never_free() {
-  and {
-    virtual_mint_is_free(0, 3, True) == False,
-    virtual_mint_is_free(2, 3, True) == False,
-  }
-}
-
-// --- exact bytes (so the off-chain replicates encode precisely) ---
-
-test encode_one_exact_bytes() {
-  // 0xff marker ++ CBOR(1)=0x01 ++ labels
-  encode(1, #"00001070") == #"ff0100001070"
-}
-
-test encode_three_empty_labels() {
-  encode(3, #"") == #"ff03"
-}
-
-test encode_count_24_two_byte_cbor() {
-  // CBOR(24) = 0x18 0x18
-  encode(24, #"00001070") == #"ff181800001070"
+test remove_absent_name_is_noop() {
+  // burning a PAID sub (name not in the free set) leaves the allowance untouched
+  remove_free_name([#"61", #"62"], #"99") == [#"61", #"62"]
 }

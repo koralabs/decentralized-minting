@@ -46,7 +46,7 @@ fn label_proof(handle: ByteArray, amount: Int) -> LabelAssetProof {
     mpt_proof: [],
     handle_name: handle,
     label: lbl_001,
-    old_free_virtual_count: 0,
+    old_free_names: [],
     old_labels: #"",
     amount,
   }

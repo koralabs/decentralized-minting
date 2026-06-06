@@ -379,7 +379,7 @@ pub fn all_label_proofs_are_valid(
         mpt_proof,
         handle_name,
         label,
-        old_free_virtual_count,
+        old_free_names,
         old_labels,
         amount,
       } = proof
@@ -393,12 +393,12 @@ pub fn all_label_proofs_are_valid(
           new_policy_id,
         )
 
-      // update the registry value at this key, preserving the free-virtual counter (the value
-      // is encode(count, labels); apply guards amount = +/-1 and the add/remove legality)
-      let old_value = registry_value.encode(old_free_virtual_count, old_labels)
+      // update the registry value at this key, preserving the free-virtual name set (the value
+      // is encode(free_names, labels); label_set.apply guards amount = +/-1 and add/remove legality)
+      let old_value = registry_value.encode(old_free_names, old_labels)
       let new_value =
         registry_value.encode(
-          old_free_virtual_count,
+          old_free_names,
           label_set.apply(old_labels, label, amount),
         )
       let new_root =

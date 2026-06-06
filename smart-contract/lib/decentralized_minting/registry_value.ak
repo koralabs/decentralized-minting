@@ -1,65 +1,64 @@
 use aiken/builtin
 use aiken/bytearray
+use aiken/list
 
-// WS5 (free virtual mints) — the registry value carries, alongside the WS1 label set, a
-// counter of the root's current *private* virtual sub-handles. The first 3 private virtuals
-// per root are free; minting one increments the counter, burning one decrements it (public
-// virtuals never touch it). Coupling the counter to the mint/burn the same way WS1 couples the
-// label set makes the free-slot accounting drift-proof — it rides the same `minting_data` spend.
+// Free-virtual allowance (DeMi orders path) — the registry value at a ROOT handle key carries,
+// alongside the WS1 label set, the SET OF NAMES of the root's currently-held FREE private virtual
+// subs (at most `free_virtual_count`). The first N private virtuals per root are free; minting a
+// free one ADDS its sub-name to the set, burning a free one REMOVES it (reopening a slot). Public
+// virtuals never touch the set. Coupling the set to the mint/burn the same way WS1 couples the
+// label set keeps the accounting drift-proof — it rides the same `minting_data` spend, and makes
+// the latest 001-token tx an authoritative on-chain record of the root's current free virtuals.
 //
-// **Encoding (backward compatible with WS1).** The contract only ever *encodes* a value from
-// the structured state `(free_virtual_count, labels)` — it never parses raw value bytes (the
-// off-chain engine tracks the structured state and supplies it; `mpt.update`'s proof verifies
-// the reconstructed old bytes are actually in the trie). So:
-//   - count <= 0  ->  the value is exactly `labels` (so an empty handle stays `#""` and any
+// **Encoding (backward compatible with WS1).** The contract only ever *encodes* a value from the
+// structured state `(free_names, labels)` — it never parses raw value bytes (the off-chain engine
+// tracks the structured state and supplies it; `mpt.update`'s proof verifies the reconstructed old
+// bytes are actually in the trie). So:
+//   - `free_names == []`  ->  the value is exactly `labels` (so an empty handle stays `#""` and any
 //     pure-label-set handle is byte-identical to WS1 — no migration).
-//   - count  > 0  ->  `serialise_data((count, labels))`, whose CBOR tag byte can never collide
-//     with a label set (label prefixes start at 0x00), keeping the encoding injective.
+//   - `free_names != []`  ->  `0xff ++ serialise_data(free_names) ++ labels`. Label sets are
+//     concatenated 4-byte CIP-67 prefixes (always starting 0x00), so a leading `0xff` marker can
+//     never collide with a pure label set; the CBOR list is self-delimiting, keeping the encoding
+//     injective and trivial to reproduce off-chain.
+pub fn encode(free_names: List<ByteArray>, labels: ByteArray) -> ByteArray {
+  when free_names is {
+    [] -> labels
+    _ ->
+      bytearray.concat(
+        #"ff",
+        bytearray.concat(builtin.serialise_data(free_names), labels),
+      )
+  }
+}
 
-pub fn encode(free_virtual_count: Int, labels: ByteArray) -> ByteArray {
-  if free_virtual_count <= 0 {
-    labels
+// A free slot is available iff the root currently holds fewer than the configured free count.
+pub fn has_free_slot(free_names: List<ByteArray>, free_virtual_count: Int) -> Bool {
+  list.length(free_names) < free_virtual_count
+}
+
+// Is this sub-name one of the root's current free names? (a free burn checks this to know it
+// should reopen a slot; a paid burn finds the name absent and leaves the set untouched.)
+pub fn has_free_name(free_names: List<ByteArray>, name: ByteArray) -> Bool {
+  list.has(free_names, name)
+}
+
+// Add a sub-name to the free set (a free private-virtual MINT). Idempotent — never duplicates.
+pub fn add_free_name(
+  free_names: List<ByteArray>,
+  name: ByteArray,
+) -> List<ByteArray> {
+  if list.has(free_names, name) {
+    free_names
   } else {
-    // Label sets are concatenated 4-byte CIP-67 prefixes (always starting 0x00), so a leading
-    // 0xff marker can never collide with a pure label set. After it, the count is CBOR-encoded
-    // (`serialise_data` of the Int) — self-delimiting, so `marker ++ count ++ labels` is
-    // injective and trivial to reproduce off-chain.
-    bytearray.concat(
-      #"ff",
-      bytearray.concat(builtin.serialise_data(free_virtual_count), labels),
-    )
+    list.push(free_names, name)
   }
 }
 
-// Free iff the root's pre-mint private-virtual counter is below the configured free count
-// (legacy = 3; sourced from SettingsV1.discount_config.free_virtual_count).
-pub fn is_free_virtual(pre_mint_count: Int, free_virtual_count: Int) -> Bool {
-  pre_mint_count < free_virtual_count
-}
-
-// A virtual-sub mint is free iff it's PRIVATE and the root still has a free slot. Public
-// virtuals never count toward / draw from the free allowance — they always pay.
-pub fn virtual_mint_is_free(
-  pre_mint_private_count: Int,
-  free_virtual_count: Int,
-  is_public: Bool,
-) -> Bool {
-  if is_public {
-    False
-  } else {
-    is_free_virtual(pre_mint_private_count, free_virtual_count)
-  }
-}
-
-// Apply a private-virtual mint (+1) / burn (-1) to the counter. Burning below 0 is impossible
-// (a burn refunds a previously-counted slot), so it fails — keeping the counter honest.
-pub fn apply_virtual_delta(count: Int, amount: Int) -> Int {
-  when amount is {
-    1 -> count + 1
-    -1 -> {
-      expect count > 0
-      count - 1
-    }
-    _ -> fail @"INVALID_AMOUNT"
-  }
+// Remove a sub-name from the free set (a free private-virtual BURN → reopen its slot). No-op if
+// the name isn't in the set (i.e. a paid sub's burn doesn't touch the allowance).
+pub fn remove_free_name(
+  free_names: List<ByteArray>,
+  name: ByteArray,
+) -> List<ByteArray> {
+  list.filter(free_names, fn(n) { n != name })
 }
