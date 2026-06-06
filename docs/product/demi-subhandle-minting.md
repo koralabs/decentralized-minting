@@ -130,6 +130,22 @@ that shape this work:
 > Consequence for free-virtual: the *mint side* (track free names, add on free mint) is buildable
 > now; the *burn side* (remove name → reopen slot) lands with the DeMi burn path.
 
+> **RESOLVED + BUILT (2026-06-06).** DeMi burn path is done (`DSH-201`/`202`/`203`): governor
+> `can_burn_handles` enabled, `demimntmpt` `BurnNewHandles` redeemer (MPT delete = mirror of mint,
+> −1 token burn, free-name reopen). Authorization is where the tokens live (holder provides the
+> 222/000; the pz contract releases its 100/000), with the MPT kept in sync here.
+>
+> **Personalization must validate handle policy against `$handle_policies`, not a hardcoded
+> policy.** The pz contract today hardcodes `constants.handle_policy_id = f0ff48bb`. Since DeMi
+> handles mint under `6c32db33`, pz must instead accept **any policy registered in the
+> `$handle_policies` datum** — the decentralized policy registry (the same one WS7's sunset gate
+> reads). This is the decentralized fix (hardcoding is the centralized assumption DeMi removes) and
+> it is on the critical path: DeMi handles must be personalizable/migratable/revocable/burnable to
+> be at parity, not just mintable. The pz nft/root **burn** redeemer (release `100` iff the matching
+> `222` is also burned, for a policy in `$handle_policies`) is `DSH-301`; making the rest of pz
+> `$handle_policies`-aware is its sibling. **Old tokens at prior pz contracts are NOT a blocker** —
+> migration is already built (contract + frontend); burn UX will add migrate-then-burn when it ships.
+
 **Mechanism (move 3).** Re-introduce a per-order `free_virtual: Option<FreeVirtualData>`
 on the DeMi orders path (the same shape removed from the legacy path in move 2, now where
 it belongs). For a private-virtual order it carries the **root key's MPT proof + current

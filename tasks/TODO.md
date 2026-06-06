@@ -44,9 +44,10 @@ Objective:
 - [x] `DSH-202` (decentralized-minting) Add `demimntmpt` `BurnNewHandles` redeemer: MPT delete (existence-before/absence-after) + expect `-1` mint value + remove a free virtual's name (reopen slot). deps: DSH-102, DSH-201
 - [x] `DSH-203` (decentralized-minting) Burn-path contract tests (nft burn -1 of 100+222, virtual burn -1 of 000, MPT delete, free-name reopen). deps: DSH-202
 
-### PHASE-3-PZ-BURN
-- [ ] `DSH-301` (handles-personalization) New NFT/root burn redeemer: release the held `100` ref **iff** the matching `222` is also being burned in the tx (owner consent). Covers roots + nft subs, DeMi + legacy. (Virtual `Revoke` already exists — no change.) deps: none
+### PHASE-3-PZ-POLICY-BURN
+- [ ] `DSH-301` (handles-personalization) Add a `$handle_policies` reader + membership check (decentralized policy registry; mirrors `load_policy_index_root`), then a new NFT/root **burn** redeemer: release the held `100` ref **iff** the matching `222` is also burned in the tx, for a policy **in `$handle_policies`** (covers legacy `f0ff48bb` + DeMi `6c32db33`, roots + nft subs). Virtual `Revoke` already exists — no change. deps: none. NOTE: pz uses a newer aiken (cardano/ stdlib) — set up toolchain.
 - [ ] `DSH-302` (handles-personalization) Personalization burn tests. deps: DSH-301
+- [ ] `DSH-303` (handles-personalization) Make the rest of pz (`Personalize`/`Migrate`/`Revoke`/ownership) validate against `$handle_policies` instead of the hardcoded `f0ff48bb`, so DeMi handles get FULL pz support (parity), not just burn. deps: DSH-301
 
 ### PHASE-4-CASCADE
 - [ ] `DSH-401` (decentralized-minting pkg) Relocate subhandle build legacy→orders path; build the richer free-virtual proofs (root proof + free_names). deps: DSH-102
