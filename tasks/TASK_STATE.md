@@ -6,13 +6,13 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `DSH-401`
-- next_task_id: `DSH-403` (needs 401+402; 402 done, 401 in progress)
+- current_task_id: `none`
+- next_task_id: `DSH-403` (deps DSH-401+DSH-402 both done → ready; mint build relocation)
 - total_tasks: `26`
-- completed_tasks: `11`
+- completed_tasks: `12`
 - blocked_tasks: `1`
 - overall_status: `ready`
-- last_updated_utc: `2026-06-06T01:40:00Z`
+- last_updated_utc: `2026-06-06T01:55:00Z`
 - milestone: `decentralized-minting contract COMPLETE (Phases 0-2: DeMi subhandle mint + free-virtual + DeMi burn). Next phase = personalization $handle_policies awareness + burn (different repo, newer aiken toolchain).`
 - driver: `synchronous` (in-session; autonomous cron/wakeup did not fire in this environment)
 
@@ -63,7 +63,7 @@
 | DSH-301 | pending | DSH-300 | handles-personalization | — | — | — | pz $handle_policies reader + membership check + nft/root burn redeemer (release 100 iff matching 222 burned, policy ∈ $handle_policies). Investigated 2026-06-06: pz hardcodes f0ff48bb; uses newer aiken (cardano/ stdlib); reader mirrors load_policy_index_root |
 | DSH-302 | pending | DSH-301 | handles-personalization | — | — | — | pz burn tests |
 | DSH-303 | pending | DSH-301 | handles-personalization | — | — | — | make pz personalize/migrate/revoke/ownership $handle_policies-aware (reuse DSH-301 reader; replace hardcoded f0ff48bb) so DeMi handles get FULL pz support (parity) |
-| DSH-401 | in_progress | DSH-102, DSH-202 | decentralized-minting pkg | 2026-06-06T01:45:00Z | — | — | proof/redeemer ABI: OrderProof/FreeVirtualData/BurnProof encoders, MintNewHandles(List<OrderProof>)+BurnNewHandles, LabelAssetProof old_free_names. Contract ABI read from validators/demimntmpt.ak + minting_data/types.ak |
+| DSH-401 | done | DSH-102, DSH-202 | decentralized-minting pkg | 2026-06-06T01:45:00Z | 2026-06-06T01:55:00Z | 119194f | proof/redeemer ABI mirrored from validators/demimntmpt.ak + minting_data/types.ak. FreeVirtualData root_pre_count→root_free_names; +OrderProof/BurnProof types+encoders; MintNewHandles→List<OrderProof>; +BurnNewHandles(constr5); LabelAssetProof old_free_virtual_count→old_free_names; dropped LegacyHandleProof.free_virtual + LegacyHandle.privateVirtual (legacy has no free-virtual per DSH-001); prepareLabelAssets→registryValue.encode; removed dead encodeRegistryValue/cborUint. Redeemer CBOR pinned (Option None=constr1/Some=constr0, field order). 66 vitest pass, tsc+eslint clean. Pre-existing import-sort lint in 2 unrelated test files fixed in ef84ad9 |
 | DSH-402 | done | DSH-101 | decentralized-minting pkg | 2026-06-06T01:36:47Z | 2026-06-06T01:40:00Z | 82b972c | CRITICAL byte-parity. `src/store/registryValue.ts` ports registry_value.ak (encode + hasFreeSlot/hasFreeName/addFreeName/removeFreeName); `tests/registryValue.test.ts` 10 tests w/ pinned bytes. serialise_data(List<ByteArray>) CBOR confirmed vs aiken v1.0.29 (non-empty 9f..ff, bytestr 0x40\|len(<24) or 58 len(24-64), empty 80, throw>64). Old count-based encodeRegistryValue in labelSet.ts marked @deprecated; its legacy-builder callers migrate in DSH-401/403. vitest 64 pass, tsc+eslint clean |
 | DSH-403 | pending | DSH-401, DSH-402 | decentralized-minting pkg | — | — | — | mint build relocation to orders/MintNewHandles + free-virtual proofs + trie maintenance |
 | DSH-404 | pending | DSH-401, DSH-402, DSH-301 | decentralized-minting pkg | — | — | — | burn build: BurnNewHandles + coordinated burn tx (governor+demimntmpt+pz) + trie delete/free-name removal |
