@@ -6,13 +6,13 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `DSH-402`
-- next_task_id: `DSH-401` (package chain; DSH-403 needs 401+402, so 401 is next ready)
+- current_task_id: `none`
+- next_task_id: `DSH-401` (package chain; deps DSH-102+DSH-202 done → ready)
 - total_tasks: `26`
-- completed_tasks: `10`
+- completed_tasks: `11`
 - blocked_tasks: `1`
 - overall_status: `ready`
-- last_updated_utc: `2026-06-06T01:00:00Z`
+- last_updated_utc: `2026-06-06T01:40:00Z`
 - milestone: `decentralized-minting contract COMPLETE (Phases 0-2: DeMi subhandle mint + free-virtual + DeMi burn). Next phase = personalization $handle_policies awareness + burn (different repo, newer aiken toolchain).`
 - driver: `synchronous` (in-session; autonomous cron/wakeup did not fire in this environment)
 
@@ -64,7 +64,7 @@
 | DSH-302 | pending | DSH-301 | handles-personalization | — | — | — | pz burn tests |
 | DSH-303 | pending | DSH-301 | handles-personalization | — | — | — | make pz personalize/migrate/revoke/ownership $handle_policies-aware (reuse DSH-301 reader; replace hardcoded f0ff48bb) so DeMi handles get FULL pz support (parity) |
 | DSH-401 | pending | DSH-102, DSH-202 | decentralized-minting pkg | — | — | — | proof/redeemer ABI: OrderProof/FreeVirtualData/BurnProof encoders, MintNewHandles(List<OrderProof>)+BurnNewHandles, LabelAssetProof old_free_names |
-| DSH-402 | in_progress | DSH-101 | decentralized-minting pkg | 2026-06-06T01:36:47Z | — | — | CRITICAL: registry_value.ts byte-identical to registry_value.ak encode(free_names,labels); pinned-bytes test. serialise_data(List<ByteArray>) CBOR confirmed vs aiken v1.0.29: non-empty list 9f..ff, bytestr 0x40\|len (<24) or 58 len, empty 80 |
+| DSH-402 | done | DSH-101 | decentralized-minting pkg | 2026-06-06T01:36:47Z | 2026-06-06T01:40:00Z | 497e4b3 | CRITICAL byte-parity. `src/store/registryValue.ts` ports registry_value.ak (encode + hasFreeSlot/hasFreeName/addFreeName/removeFreeName); `tests/registryValue.test.ts` 10 tests w/ pinned bytes. serialise_data(List<ByteArray>) CBOR confirmed vs aiken v1.0.29 (non-empty 9f..ff, bytestr 0x40\|len(<24) or 58 len(24-64), empty 80, throw>64). Old count-based encodeRegistryValue in labelSet.ts marked @deprecated; its legacy-builder callers migrate in DSH-401/403. vitest 64 pass, tsc+eslint clean |
 | DSH-403 | pending | DSH-401, DSH-402 | decentralized-minting pkg | — | — | — | mint build relocation to orders/MintNewHandles + free-virtual proofs + trie maintenance |
 | DSH-404 | pending | DSH-401, DSH-402, DSH-301 | decentralized-minting pkg | — | — | — | burn build: BurnNewHandles + coordinated burn tx (governor+demimntmpt+pz) + trie delete/free-name removal |
 | DSH-405 | pending | DSH-403, DSH-404 | decentralized-minting pkg | — | — | — | e2e tests with a real Trie (free-virtual mint/burn, nft/virtual burn) — deferred from DSH-103/203 |
@@ -81,4 +81,5 @@
 - 2026-06-05T23:53:31Z — Task system created from `docs/product/demi-subhandle-minting.md` roadmap. DSH-001..004 recorded as done (committed earlier this session). Queue `ready`; next `DSH-101`.
 - 2026-06-06T00:05–00:40Z — Autonomous cron/wakeup did not fire in this environment; hand-drove synchronously. Completed Phase 1 (DSH-101/102/103 free-virtual name-set) + Phase 2 (DSH-201/202/203 DeMi burn path). **decentralized-minting contract is COMPLETE: 170 aiken checks, 0 warnings.**
 - 2026-06-06T01:00Z — Investigated DSH-301 (pz burn). Finding: pz hardcodes `f0ff48bb`; for DeMi (`6c32db33`) parity the pz contract must validate policy against `$handle_policies` (decentralized registry), per user. Restructured Phase 3 → reader+burn (DSH-301) + broader `$handle_policies`-awareness (DSH-303). User confirmed old-token migration is already built (not a blocker). pz uses a newer aiken toolchain (cardano/ stdlib) than this repo's pinned v1.0.29 — set up before building. **Milestone checkpoint: contract phase done; pz phase is the next, fresh, larger body of work.**
+- 2026-06-06T01:40Z — DSH-402 done (registry_value off-chain byte-parity). Verified `builtin.serialise_data(List<ByteArray>)` CBOR empirically with aiken **v1.0.29-alpha** (`~/.aiken/versions/v1.0.29-alpha/aiken-x86_64-unknown-linux-gnu/aiken`) — the repo's pinned compiler; the PATH binary (v1.1.21, `~/.cargo/bin/aiken`) **cannot load this project** (rejects `plutus = "v2"`, "only supports Plutus V3"). **TOOLCHAIN NOTE for DSH-401/403/406 (contract-touching):** use the v1.0.29 binary for `aiken check`/`fmt`. Also found the committed `.ak` files do NOT pass `aiken fmt --check` under v1.0.29 (5 files have signature/call line-wrap drift, likely formatted by a newer aiken) — pre-existing, left untouched (out of scope for this TS-only task); a contract task should run `aiken fmt` once with v1.0.29 to normalize before regenerating blueprints (DSH-406).
 - 2026-06-06T01:20Z — Audited the task list for completeness (user asked "is it spec'd enough to drive to completion?"). Found real gaps: the cascade was too coarse and missing (a) registry_value off-chain byte-replication [now DSH-402, CRITICAL], (b) explicit proof/redeemer ABI encoders [DSH-401], (c) package e2e with a real Trie [DSH-405], (d) the pz `$handle_policies` ref-input ripple onto ALL existing pz txs [DSH-503], (e) the pz contract deploy as its own step [DSH-601], (f) preprod/mainnet propagation note (mainnet = explicit user auth). Restructured: PHASE-4-PACKAGE (DSH-401..406), PHASE-5-SERVICES (501-503), PHASE-6-DEPLOY (601-603). 25 tasks total; multisig signing isolated to DSH-602 (reserved for the end).

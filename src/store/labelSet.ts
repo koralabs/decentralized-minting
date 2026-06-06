@@ -70,7 +70,13 @@ const cborUint = (n: bigint): string => {
 };
 
 /**
- * WS5 — the registry value (hex), byte-identical to on-chain `registry_value.encode(count, labels)`:
+ * @deprecated Pre-DSH-101 count-based registry value (`0xff ++ CBOR(count) ++ labels`). The
+ * contract now keys the free-virtual allowance off the SET OF NAMES, not a counter — see
+ * `registryValue.ts` `encode(free_names, labels)`. Still wired into the old-ABI legacy builders
+ * (`prepareLegacyMint`/`prepareLegacyBurn`/`prepareLabelAssets`); those migrate to the orders
+ * path in DSH-401/DSH-403, at which point this and `cborUint` are removed.
+ *
+ * WS5 — the registry value (hex), byte-identical to the OLD on-chain `encode(count, labels)`:
  *   count <= 0  -> labels (backward compatible with WS1)
  *   count  > 0  -> 0xff ++ CBOR(count) ++ labels
  */
