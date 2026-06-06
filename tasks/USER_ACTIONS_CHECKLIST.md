@@ -15,71 +15,52 @@ Concrete user-owned items + handoffs. Status as of 2026-06-06 (overnight unatten
   `parity/legacy-parity-foundation`). Verify the `3.0.1` run went green:
   `gh run list --workflow=publish.yml -L1` in `decentralized-minting`.
 
-## Engine (PHASE-5) — DSH-501 mint + DSH-502 burn — SPEC, needs implementation + on-chain verify
+## Engine (PHASE-5)
 
-> The agent did NOT blind-write these: `processDeMiSubHandleMintingTransaction` is a ~300-line
-> **money-critical** path with **no unit-test coverage** (the engine test file only covers
-> session/order pairing), so it is verifiable ONLY on-chain (DSH-603). The package side is done +
-> published; below is the precise relocation spec. Do it on the engine's current branch
-> `self-host/local-jwt` (per your call), separate commits, don't touch the untracked
-> `signDemiSettingsUpdate.ts`.
+- ✅ **DSH-501 — DeMi subhandle mint relocated to the orders path. DONE** (engine commit `36b6442`
+  on `self-host/local-jwt`; tsc-clean for the sub fn, eslint-clean; dep → `^3.0.1`). Rewrote ONLY
+  `processDeMiSubHandleMintingTransaction` to mint under DeMi `6c32db33` via the mint proxy +
+  `MintNewHandles` (mirroring the proven root path `processDeMiMintingTransaction`): allowed-minter
+  signature, output order `[minting-data, handle-price-info, treasury, minter, ...token (positional)...,
+  ...owner-fee...]`, flat fees folded + per-owner royalty outputs in the leftover, rich CIP-68 datums
+  + demiord spends + metadata kept, `prepareLegacyMint` untouched (legacy stays `f0ff48bb`).
+  - [ ] **REMAINING for you:** (a) the engine push to `origin/self-host/local-jwt` diverged (origin
+    advanced) — the commit is on the LOCAL branch on this machine; `git pull --rebase` then push.
+    (b) **VERIFY ON-CHAIN (DSH-603)** — there is NO unit-test coverage for this tx builder. Test on
+    preview: nft sub (100→pz + 222→dest under 6c32db33), virtual sub (000→pz), owner-fee payout,
+    folded minter/treasury, MPT root advance; reproduce any failure with scalus before re-deploy.
+    (c) **Free-virtual**: every sub currently takes the PAID path (matches prior behaviour + the BFF
+    pricing). To enable the free allowance, the engine needs a per-root current-free-name source
+    (its DB or the trie) to call `registryValue.hasFreeSlot/addFreeName` + set `freeVirtual` on the
+    `NewHandle` (the package + `prepareNewMintTransaction`/`buildOrderProofs` already do the MPT root
+    bump) + the BFF must price under-allowance privates as free. Coordinate both.
 
-- [ ] **DSH-501 — relocate `processDeMiSubHandleMintingTransaction` (ONLY this fn) to the orders
-  path.** Bump the engine dep to `@koralabs/handles-decentralized-minting@^3.0.1` first. Changes:
-  1. **Minting-data spend:** replace the `prepareLegacyMintTransaction` call with the new
-     `prepareNewMintDataSpend({ changeAddress, minterKeyHash, minterIndex, handles, collateralUtxo,
-     db, blockfrostApiKey })`. `handles` are `NewHandle[]` (set `isVirtual` from `subHandleType`;
-     set `freeVirtual: { rootFreeNames, rootLabels }` for FREE private virtuals — see step 5). It
-     returns `{ plan, deployedScripts, settingsV1, newMintingData }` with the `MintNewHandles`
-     redeemer + the MPT-root-updated minting-data output. Do NOT modify `prepareLegacyMint`; legacy
-     subhandles keep minting on `f0ff48bb` via the untouched legacy path.
-  2. **Mint under DeMi `6c32db33` via the mint PROXY (not `f0ff48bb` native):** `policyId =
-     deployedScripts.mintProxyScript.details.validatorHash`. Build the `mint` map + the token-output
-     asset names (000/100/222) under that policyId. Add the mint-proxy ref script to the reference
-     inputs and a VOID mint redeemer (`{constructor:0,fields:[]}`, purpose `mint`, index 0). REMOVE
-     the `nativeScript: [nativeScript]` and the `f0ff48bb` native-mint authorization.
-  3. **Authorization/signers:** the `MintNewHandles` validator checks `signed by allowed_minter`, so
-     the required signer is the **allowed minter** (`approvedMinterWallet` idx 13 ==
-     `settings.allowed_minters[minterIndex]`), gated by the existing `mint_v1` (governor) withdrawal
-     + the mint proxy. Sign with the wallets that actually need to sign (allowed-minter; the admin
-     policy key is no longer the mint authorizer).
-  4. **OUTPUT ORDER IS LOAD-BEARING (the orders path consumes token outputs POSITIONALLY):** final
-     `outputs` MUST be `[ minting-data, ...per-order token outputs (in order-input order)...,
-     ...owner-fee outputs... ]`. The current legacy code appends `feeOutputs` (from
-     `prepareLegacyMint`) BEFORE the token `extraOutputs` — that order is WRONG for MintNewHandles
-     and must be flipped: token outputs FIRST, owner-fee outputs in the LEFTOVER after them. The flat
-     minter/treasury fold into the batch minter/treasury outputs (Design A). **Re-derive the exact
-     fixed-output prefix + fee-output placement from the contract `can_mint_new_handles` +
-     `owner_fees_all_paid` (`smart-contract/lib/validations/minting_data/{validation,utils}.ak`)
-     before trusting any ordering** — this is the #1 place a subtle error fails on-chain.
-  5. **Free-virtual:** the engine decides free-vs-paid per private virtual via
-     `registryValue.hasFreeSlot(rootFreeNames, settingsV1.free_virtual_count)` against the root's
-     current free-name set (engine-tracked). FREE ones: pass `freeVirtual` on the `NewHandle` AND
-     bump the tracked set with `addFreeName`. Write the free-virtual sub NAMES into the tx metadata
-     (chain-as-source-of-truth). `prepareNewMintDataSpend` builds the root free_names bump in the MPT
-     automatically via `buildOrderProofs`.
-  6. **Keep:** the rich CIP-68 token-output datums (`buildPlutusData`), the demiord OrderExecute
-     spends, the `mint_v1` withdrawal, `finalizeTxPlanWithAuxiliaryData`, the metadata.
-  - **Verify (DSH-603, on-chain, preview):** nft sub mint (100→pz + 222→dest under 6c32db33), virtual
-    sub mint (000→pz), owner-fee payout to the owner `payment_address`, folded minter/treasury, 3
-    free virtuals then the 4th paid, and that the MPT root advanced. Reproduce any failure with the
-    scalus evaluator before re-deploying.
+- [ ] **DSH-502 — engine burn: NO ENGINE HOME (build with the holder-burn UX, deferred).** The
+  engine's burn is HOLDER-INITIATED + tracking-only (`burnHandles.ts` records a holder's burn by
+  txHash; `burnConfirm.ts` confirms) — it does not BUILD burn txs. The coordinated DeMi burn tx
+  (governor `BurnHandles` withdraw + demimntmpt `BurnNewHandles` + pz `Burn` redeemer, releasing the
+  pz-held 100, burning the holder's 222/000) needs cross-deployment (DeMi + pz) refs that belong to
+  the holder-burn FRONTEND flow — which is in the project's **Deferred (out of scope)** list. The
+  package primitives are READY: `buildBurnProofs` (DSH-404) + `buildMintingDataBurnNewHandlesRedeemer`
+  + `buildMintV1BurnHandlesRedeemer` + the pz `Burn` redeemer (DSH-301). Build the tx assembly when
+  the holder-burn UX is scoped.
 
-- [ ] **DSH-502 — engine burn.** Build the coordinated DeMi burn tx via `buildBurnProofs(db,
-  handles)` (BurnProof[] + trie delete + free-name reopen) + `buildMintingDataBurnNewHandlesRedeemer`
-  (demimntmpt constr 5) + the governor `buildMintV1BurnHandlesRedeemer` withdrawal + the pz `Burn`
-  redeemer (releases the pz-held 100 iff the 222 is burned + policy ∈ `$handle_policies`), all in one
-  tx, burning −1 of the tokens. Needs BOTH the DeMi and pz deployments' script refs. deps DSH-404
-  (done, pkg) + DSH-501.
+## BFF (PHASE-5) — DSH-503 — COORDINATE WITH THE DSH-601 DEPLOY (do not do standalone)
 
-## BFF (PHASE-5) — DSH-503 — ready, lower-risk
-
-- [ ] **DSH-503 — `handle.me/bff`.** Once the new pz contract requires the `$handle_policies`
-  reference input (DSH-303), attach that admin-handle reference input (the legacy handle
+- [ ] **DSH-503 — `handle.me/bff`.** Attach the `$handle_policies` reference input (the legacy handle
   `handle_policies`, its `(f0ff48bb, lbl_100 ++ "handle_policies")` CIP-68 ref token UTxO) to EVERY
-  personalization tx the BFF builds — existing personalize/migrate flows included, or they break.
-  Confirm `buy_down` pricing is fully removed + the fee display matches the additive
-  owner+minter+treasury model. deps DSH-303 (done) + DSH-401 (done, published 3.0.1).
+  pz tx the BFF builds. There are **6 separate per-flow `buildTransaction` handlers**, each with its
+  own `referenceInputs: Set<TxIn>`: `personalization`, `migrateHandle`, `migrateSubHandleSettings`,
+  `buildVirtualSubChangeTx`, `buildRevokeVirtualSubHandlesTx`, `updateSubSettings`. The contract
+  **scans** ref inputs for the asset (my `load_handle_policies`), so no index wiring — just `.add()`
+  the UTxO to each handler's `referenceInputs`. Fetch it via the bff handle helper
+  (`fetchApiJson('handles/handle_policies')` → its UTxO). Also confirm `buy_down` pricing is fully
+  removed + the fee display matches the additive owner+minter+treasury model.
+  - **⚠ MUST be part of the DSH-601 cutover, NOT standalone:** doing it before the new pz contract is
+    deployed (DSH-601) would BREAK production personalization — the `handle_policies` registry handle
+    may not exist on the network yet (the fetch fails) and the currently-deployed pz doesn't require
+    the ref input. Gate it on the new pz being live (or `try/skip-if-absent`). deps DSH-303 (done) +
+    DSH-401 (done, published 3.0.1) + DSH-601 (deploy).
 
 ## Deploy (PHASE-6) — needs your signing / on-chain actions
 
