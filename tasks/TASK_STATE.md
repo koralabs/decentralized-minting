@@ -6,13 +6,13 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `DSH-102`
-- next_task_id: `DSH-103`
+- current_task_id: `DSH-201`
+- next_task_id: `DSH-202`
 - total_tasks: `18`
-- completed_tasks: `5`
+- completed_tasks: `7`
 - blocked_tasks: `0`
 - overall_status: `in_progress`
-- last_updated_utc: `2026-06-06T00:12:00Z`
+- last_updated_utc: `2026-06-06T00:25:00Z`
 - driver: `synchronous` (in-session; autonomous cron/wakeup did not fire in this environment)
 
 ## Concurrency guard (no double-work)
@@ -52,10 +52,9 @@
 | DSH-003 | done | — | decentralized-minting | — | 2026-06-05 | 2a379d2 | subhandle minting on orders path; fee folding A |
 | DSH-004 | done | DSH-003 | decentralized-minting | — | 2026-06-05 | 97a36ba | owner-fee double-satisfaction tests; 173 checks |
 | DSH-101 | done | DSH-003 | decentralized-minting | 2026-06-06T00:05:00Z | 2026-06-06T00:12:00Z | f31fdd5 | registry_value→name-set + label-path ripple; 167 checks. (LabelAssetProof ripple absorbed here to stay green) |
-| DSH-102 | in_progress | DSH-101 | decentralized-minting | 2026-06-06T00:12:00Z | — | — | per-order free_virtual proof + orders-path free-name logic + MintNewHandles ABI |
-| DSH-102 | pending | DSH-101 | decentralized-minting | — | — | — | per-order free_virtual proof + MintNewHandles ABI |
-| DSH-103 | pending | DSH-102 | decentralized-minting | — | — | — | free-virtual mint tests |
-| DSH-201 | pending | DSH-003 | decentralized-minting | — | — | — | governor can_burn_handles |
+| DSH-102 | done | DSH-101 | decentralized-minting | 2026-06-06T00:12:00Z | 2026-06-06T00:20:00Z | b0c117e | OrderProof + free-virtual mint branch; MintNewHandles ABI changed; 167 checks |
+| DSH-103 | done | DSH-102 | decentralized-minting | 2026-06-06T00:20:00Z | 2026-06-06T00:25:00Z | 4ad4e1e | free-virtual value-transition tests; e2e deferred to DSH-401; 169 checks |
+| DSH-201 | in_progress | DSH-003 | decentralized-minting | 2026-06-06T00:25:00Z | — | — | governor can_burn_handles |
 | DSH-202 | pending | DSH-102, DSH-201 | decentralized-minting | — | — | — | demimntmpt BurnNewHandles + free-name reopen |
 | DSH-203 | pending | DSH-202 | decentralized-minting | — | — | — | burn-path contract tests |
 | DSH-301 | pending | — | handles-personalization | — | — | — | nft/root burn redeemer (release 100 iff 222 burned) |

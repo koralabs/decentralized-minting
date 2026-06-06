@@ -36,8 +36,8 @@ Objective:
 
 ### PHASE-1-FREEVIRTUAL
 - [x] `DSH-101` (decentralized-minting) `registry_value`: `(count,labels)` → `(free_names,labels)` encoding + helpers (add/remove/has-name, free-iff-`<N`); update `registry_value.test.ak`. deps: DSH-003 — **done f31fdd5**
-- [ ] `DSH-102` (decentralized-minting) Re-introduce per-order `free_virtual: Option<FreeVirtualData>` (root key MPT proof + current `free_names`) on the orders path; free while `|free_names| < free_virtual_count` (add name) else paid; change `MintNewHandles` proof element; ripple `LabelAssetProof` (`old_free_names`). deps: DSH-101
-- [ ] `DSH-103` (decentralized-minting) Free-virtual mint tests (free under allowance, paid over, public never free, encoding round-trip). deps: DSH-102
+- [x] `DSH-102` (decentralized-minting) Re-introduce per-order `free_virtual: Option<FreeVirtualData>` (root key MPT proof + current `free_names`) on the orders path; free while `|free_names| < free_virtual_count` (add name) else paid; change `MintNewHandles` proof element; ripple `LabelAssetProof` (`old_free_names`). deps: DSH-101 — **done b0c117e**
+- [x] `DSH-103` (decentralized-minting) Free-virtual mint tests (value transition + prepend ordering; full-tx e2e → DSH-401). deps: DSH-102 — **done 4ad4e1e**
 
 ### PHASE-2-DEMI-BURN
 - [ ] `DSH-201` (decentralized-minting) Implement governor `can_burn_handles` (`demimnt`, currently stub `False`): authorize the `-1` mint (allowed-minter + coordinated with the minting-data spend). deps: DSH-003
