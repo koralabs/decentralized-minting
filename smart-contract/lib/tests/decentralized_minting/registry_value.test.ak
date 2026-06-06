@@ -77,3 +77,34 @@ test remove_absent_name_is_noop() {
   // burning a PAID sub (name not in the free set) leaves the allowance untouched
   remove_free_name([#"61", #"62"], #"99") == [#"61", #"62"]
 }
+
+// --- free-virtual mint value transition (what add_root_free_name feeds mpt.update) ---
+// A free private-virtual MINT moves the root value from encode(names, labels) to
+// encode(names + sub, labels). This pins both the transition and the prepend ordering the
+// off-chain engine must replicate byte-for-byte (else mpt.update's old/new bytes won't match).
+test free_virtual_mint_value_transition() {
+  let names = [#"6162"]
+  let labels = #"00001070"
+  let sub = #"6364"
+  let old_value = encode(names, labels)
+  let new_value = encode(add_free_name(names, sub), labels)
+  and {
+    // there was a free slot to claim
+    has_free_slot(names, 3),
+    // the value actually changes
+    old_value != new_value,
+    // add prepends, so the new value is encode([sub, ..names], labels)
+    new_value == encode([#"6364", #"6162"], labels),
+  }
+}
+
+// The reverse (a free burn) moves it back — symmetric with the mint, reopening the slot.
+test free_virtual_burn_value_transition() {
+  let names = [#"6364", #"6162"]
+  let labels = #"00001070"
+  let after = remove_free_name(names, #"6364")
+  and {
+    encode(after, labels) == encode([#"6162"], labels),
+    has_free_slot(after, 3),
+  }
+}
