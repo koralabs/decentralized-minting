@@ -30,10 +30,8 @@ test encode_nonempty_set_has_marker_and_labels_suffix() {
 }
 
 test encode_is_deterministic() {
-  encode([#"6162", #"6364"], #"00001070") == encode(
-    [#"6162", #"6364"],
-    #"00001070",
-  )
+  encode([#"6162",
+      #"6364"], #"00001070") == encode([#"6162", #"6364"], #"00001070")
 }
 
 test encode_distinct_sets_distinct_values() {
@@ -83,7 +81,8 @@ test remove_absent_name_is_noop() {
 // encode(names + sub, labels). This pins both the transition and the prepend ordering the
 // off-chain engine must replicate byte-for-byte (else mpt.update's old/new bytes won't match).
 test free_virtual_mint_value_transition() {
-  let names = [#"6162"]
+  let names =
+    [#"6162"]
   let labels = #"00001070"
   let sub = #"6364"
   let old_value = encode(names, labels)
@@ -100,7 +99,8 @@ test free_virtual_mint_value_transition() {
 
 // The reverse (a free burn) moves it back — symmetric with the mint, reopening the slot.
 test free_virtual_burn_value_transition() {
-  let names = [#"6364", #"6162"]
+  let names =
+    [#"6364", #"6162"]
   let labels = #"00001070"
   let after = remove_free_name(names, #"6364")
   and {
@@ -112,7 +112,8 @@ test free_virtual_burn_value_transition() {
 // Burn is the EXACT inverse of mint: a free-virtual mint then burn returns the root value to its
 // start — the core correctness BurnNewHandles' remove_root_free_name relies on (DSH-203).
 test free_virtual_mint_then_burn_roundtrips() {
-  let start = [#"6162"]
+  let start =
+    [#"6162"]
   let labels = #"00001070"
   let sub = #"6364"
   let after_mint = add_free_name(start, sub)

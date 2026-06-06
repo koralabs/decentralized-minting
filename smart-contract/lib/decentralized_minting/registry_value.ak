@@ -32,7 +32,10 @@ pub fn encode(free_names: List<ByteArray>, labels: ByteArray) -> ByteArray {
 }
 
 // A free slot is available iff the root currently holds fewer than the configured free count.
-pub fn has_free_slot(free_names: List<ByteArray>, free_virtual_count: Int) -> Bool {
+pub fn has_free_slot(
+  free_names: List<ByteArray>,
+  free_virtual_count: Int,
+) -> Bool {
   list.length(free_names) < free_virtual_count
 }
 

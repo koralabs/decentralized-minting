@@ -1,4 +1,5 @@
-use aiken/transaction/credential.{Address, Credential, VerificationKeyCredential}
+use aiken/transaction/credential.{Address,
+  Credential, VerificationKeyCredential}
 use aiken/transaction/value
 use tests/mocks/fake_tx.{make_output}
 use validations/minting_data/utils.{add_owner_fee, owner_fees_all_paid}
@@ -39,8 +40,10 @@ test add_owner_fee_drops_zero_and_negative() {
 // core defense: you can't fulfil two owner obligations with one undersized payment.
 test owner_fees_merge_blocks_double_satisfaction() {
   let fees = add_owner_fee(add_owner_fee([], owner_a(), 10), owner_a(), 10)
-  let paid_once = [make_output(addr(owner_a()), value.from_lovelace(10))]
-  let paid_full = [make_output(addr(owner_a()), value.from_lovelace(20))]
+  let paid_once =
+    [make_output(addr(owner_a()), value.from_lovelace(10))]
+  let paid_full =
+    [make_output(addr(owner_a()), value.from_lovelace(20))]
   !owner_fees_all_paid(fees, paid_once) && owner_fees_all_paid(fees, paid_full)
 }
 
@@ -48,7 +51,8 @@ test owner_fees_merge_blocks_double_satisfaction() {
 // count as owner B's payment.
 test owner_fees_distinct_owners_need_separate_outputs() {
   let fees = add_owner_fee(add_owner_fee([], owner_a(), 10), owner_b(), 10)
-  let only_a = [make_output(addr(owner_a()), value.from_lovelace(10))]
+  let only_a =
+    [make_output(addr(owner_a()), value.from_lovelace(10))]
   let both =
     [
       make_output(addr(owner_a()), value.from_lovelace(10)),
@@ -60,6 +64,7 @@ test owner_fees_distinct_owners_need_separate_outputs() {
 // Over-payment is fine (the check is >=), and an empty owner-fee list is trivially satisfied.
 test owner_fees_overpay_ok_and_empty_trivial() {
   let fees = add_owner_fee([], owner_a(), 10)
-  let overpaid = [make_output(addr(owner_a()), value.from_lovelace(25))]
+  let overpaid =
+    [make_output(addr(owner_a()), value.from_lovelace(25))]
   owner_fees_all_paid(fees, overpaid) && owner_fees_all_paid([], [])
 }

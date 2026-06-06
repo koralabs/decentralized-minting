@@ -322,8 +322,10 @@ fn process_legacy_handles(
 
   // single pass: MPT updates (handle keys) + the expected ± mint value. Legacy enforces only
   // uniqueness + correct tokens — no fees/allowance/discounts (those are DeMi-path-only).
-  let new_root, expected_mint_value <-
-    all_proofs_are_valid(proofs, root, legacy_policy_id, amount, value.zero())
+  let
+    new_root,
+    expected_mint_value,
+  <- all_proofs_are_valid(proofs, root, legacy_policy_id, amount, value.zero())
 
   // calculate new root and expected mint value
   let new_mpt_root_hash = new_root |> mpt.root
@@ -379,8 +381,10 @@ pub fn can_burn_new_handles(
   let root = mpt.from_root(mpt_root_hash)
 
   // delete each burned handle + accumulate the expected (negative) mint value
-  let new_root, expected_mint_value <-
-    all_burn_proofs_are_valid(proofs, root, new_policy_id, value.zero())
+  let
+    new_root,
+    expected_mint_value,
+  <- all_burn_proofs_are_valid(proofs, root, new_policy_id, value.zero())
 
   let new_mpt_root_hash = new_root |> mpt.root
 

@@ -112,9 +112,11 @@ pub fn all_orders_are_satisfied(
             )
 
           // insert the handle's own key (mint only)
-          let root_after_handle = update_root(root, requested_handle, 1, mpt_proof)
+          let root_after_handle =
+            update_root(root, requested_handle, 1, mpt_proof)
 
-          let (root_name, is_sub, sub_name) = parse_handle_name(requested_handle)
+          let (root_name, is_sub, sub_name) =
+            parse_handle_name(requested_handle)
 
           let (
             updated_root,
@@ -127,7 +129,8 @@ pub fn all_orders_are_satisfied(
           ) =
             if is_sub {
               let is_virtual_bool = parse_bool_from_int(is_virtual)
-              expect check_legacy_handle_validity(requested_handle, is_virtual_bool)
+              expect
+                check_legacy_handle_validity(requested_handle, is_virtual_bool)
 
               // mint the sub's tokens (positional output consumption) — every sub mints, free or paid
               let (rest, mint_v) =
@@ -162,7 +165,12 @@ pub fn all_orders_are_satisfied(
                       free_virtual_count,
                     )
                   let root_bumped =
-                    add_root_free_name(root_after_handle, root_name, fv, sub_name)
+                    add_root_free_name(
+                      root_after_handle,
+                      root_name,
+                      fv,
+                      sub_name,
+                    )
                   (
                     root_bumped,
                     rest,
@@ -315,7 +323,8 @@ pub fn add_owner_fee(
     owner_fees
   } else {
     when owner_fees is {
-      [] -> [(cred, fee)]
+      [] ->
+        [(cred, fee)]
       [(c, f), ..rest] ->
         if c == cred {
           [(c, f + fee), ..rest]
