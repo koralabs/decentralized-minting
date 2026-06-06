@@ -49,18 +49,25 @@ Objective:
 - [ ] `DSH-302` (handles-personalization) Personalization burn tests. deps: DSH-301
 - [ ] `DSH-303` (handles-personalization) Make the rest of pz (`Personalize`/`Migrate`/`Revoke`/ownership) validate against `$handle_policies` instead of the hardcoded `f0ff48bb`, so DeMi handles get FULL pz support (parity), not just burn. deps: DSH-301
 
-### PHASE-4-CASCADE
-- [ ] `DSH-401` (decentralized-minting pkg) Relocate subhandle build legacy→orders path; build the richer free-virtual proofs (root proof + free_names). deps: DSH-102
-- [ ] `DSH-402` (decentralized-minting pkg) Burn tx builders (governor `BurnHandles` + `demimntmpt` `BurnNewHandles` + pz burn/`Revoke`). deps: DSH-202, DSH-301
-- [ ] `DSH-403` (decentralized-minting pkg) Regenerate blueprints (redeemer ABI changed → new hashes); update pinned-hash test + deploy config. deps: DSH-102, DSH-202
-- [ ] `DSH-501` (minting.handle.me) Move additive fee outputs legacy→orders path (owner→payment_address, flat minter→allowed_minter, flat treasury→treasury_address, folded; token outputs before owner-fee outputs); write free-virtual names to tx metadata. deps: DSH-401
-- [ ] `DSH-502` (minting.handle.me) Build burn txs end-to-end. deps: DSH-402, DSH-501
-- [ ] `DSH-503` (handle.me/bff) Confirm `buy_down` fully removed; align fee display with the additive model. deps: DSH-401
+### PHASE-4-PACKAGE (`@koralabs/handles-decentralized-minting` / decentralized-minting `src/`)
+- [ ] `DSH-401` (pkg) **Proof/redeemer ABI to match the contract.** Add `OrderProof { mpt_proof, free_virtual: Option<FreeVirtualData> }` + `FreeVirtualData { root_proof, root_free_names, root_labels }` + `BurnProof` TS types + CBOR encoders; change `MintNewHandles` redeemer to `(List<OrderProof>, Int)` and add `BurnNewHandles(List<BurnProof>)`; change `LabelAssetProof` `old_free_virtual_count`→`old_free_names: ByteArray[]`. `contracts/types/*` + `contracts/data/*`. deps: DSH-102, DSH-202
+- [ ] `DSH-402` (pkg) **registry_value off-chain replication (CRITICAL).** `registry_value.ts` `encode(free_names, labels)` byte-identical to `registry_value.ak` (`[]`→labels; else `0xff ++ serialise_data(free_names) ++ labels`). Unit-test pinned to the contract's exact bytes — if these diverge, every free-virtual `mpt.update` fails on-chain. deps: DSH-101
+- [ ] `DSH-403` (pkg) **Mint build relocation.** Build DeMi subhandle orders on the orders/`MintNewHandles` path (not legacy `prepareLegacyMint`); construct free-virtual proofs (root proof taken AFTER the sub key insert + current `free_names`); trie maintenance — insert the sub key AND bump the root key's `free_names`. deps: DSH-401, DSH-402
+- [ ] `DSH-404` (pkg) **Burn build.** `BurnNewHandles` redeemer + the coordinated burn tx: governor `BurnHandles` withdraw + `demimntmpt` `BurnNewHandles` + pz burn redeemer, in one tx; trie delete + `free_names` removal. deps: DSH-401, DSH-402, DSH-301
+- [ ] `DSH-405` (pkg) **e2e tests with a real Trie** (the contract e2e deferred from DSH-103/203): free-virtual mint (free under allowance, paid over, public never free), free-virtual burn reopen, nft/virtual burn. deps: DSH-403, DSH-404
+- [ ] `DSH-406` (pkg) **Blueprints + config.** Regenerate optimized/unoptimized blueprints (ABI changed → new `demimntmpt`/`demimnt` hashes); update the pinned-hash test + `deploy/preview` config (`minting_data_script_hash`, `mint_governor`). deps: DSH-401, DSH-202
 
-### PHASE-5-DEPLOY
-- [ ] `DSH-601` (decentralized-minting + adahandle-deployments) Regenerate Phase-1 bundle with final hashes; deploy new pz contract; publish package; deploy engine. **multisig sign + admin sign required.** deps: DSH-403, DSH-302, DSH-502, DSH-503
-- [ ] `DSH-602` (preview) Verify on-chain: nft sub mint, virtual sub mint, owner-fee payout, 3 free virtuals, admin refund, nft burn (222-check), virtual burn (Revoke), MPT delete. deps: DSH-601
+### PHASE-5-SERVICES (`minting.handle.me` + `handle.me/bff`)
+- [ ] `DSH-501` (engine) **Mint.** Move the additive fee outputs onto the orders path (owner→`payment_address`, flat minter→an allowed minter, flat treasury→`treasury_address`, folded into the batch minter/treasury outputs; token outputs BEFORE owner-fee outputs); write free-virtual names to tx metadata; trie via the package. Verify the engine reads the new `SettingsV1` fee fields + `free_virtual_count`. deps: DSH-403
+- [ ] `DSH-502` (engine) **Burn.** Build the coordinated DeMi burn tx end-to-end via the package builders. deps: DSH-404, DSH-501
+- [ ] `DSH-503` (bff) **pz `$handle_policies` ref input (easy-to-miss ripple).** Once pz requires `$handle_policies` (DSH-303), attach that admin-handle reference input to EVERY personalization tx the BFF builds — existing personalize/migrate flows included, or they break. Confirm `buy_down` fully removed + fee display matches the additive model. deps: DSH-303, DSH-401
 
-## Deferred (out of scope for this run)
-- Voluntary holder-burn UX
-- Migrating the 50k+ tokens at old pz contracts into the burn-capable new contract (admin `Migrate`)
+### PHASE-6-DEPLOY (preview only; preprod/mainnet are follow-on — see Deferred)
+- [ ] `DSH-601` (handles-personalization + api) **Deploy the new pz contract version** (pz deploy process); register the new `persprx` hash in the api script registry so DeMi handles resolve to it. deps: DSH-302, DSH-303
+- [ ] `DSH-602` (decentralized-minting + adahandle-deployments) **Deploy DeMi.** Regenerate the Phase-1 bundle (new `demimntmpt`/`demimnt` hashes); publish the package; deploy the engine. **USER ACTION (reserved for the end): multisig signature in Eternl for the ref-script deploys + settings update; agent admin-signs the MPT migration.** deps: DSH-406, DSH-502, DSH-503, DSH-601
+- [ ] `DSH-603` (preview) **Verify on-chain:** nft sub mint, virtual sub mint, owner-fee payout, 3 free virtuals, free-name reopen on burn, nft burn (222-check), virtual burn (`Revoke`), MPT delete. deps: DSH-602
+
+## Deferred (out of scope for THIS run)
+- **preprod propagation, then mainnet — mainnet requires EXPLICIT per-deploy user authorization** (never auto-propagate to mainnet).
+- Voluntary holder-burn UX + the migrate-then-burn frontend flow.
+- Migrating the 50k+ tokens at old pz contracts (migration is already built; runs as users interact — not a blocker).
