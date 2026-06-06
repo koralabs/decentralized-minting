@@ -12,17 +12,18 @@ import {
 // test ever goes red it means scalus's apply diverged from the on-chain
 // validator-hash expectations.
 const HELIOS_PINNED_HASHES = {
+  // demimntprx is unchanged by the subhandle/burn work, so this stays the helios-era pin.
   mintProxyIntV1: "c4d3329ac42cd35626f74d451a54b2d1ba1f9f380c9f88e3e7a9585b",
-  mintV1WithdrawBytesA56: "7a39effb031fb6dd2f680e7160debcd6fae93592ac9aab0d7c7d03d8",
-  // demimntmpt now takes 5 params (legacy_policy_id, admin_vkh + WS7 slot anchor:
-  // anchor_slot, anchor_time_ms, slot_length_ms). The old 2-param helios pin no longer
-  // applies; this locks the current aiken-compiled validator's applied hash as a regression.
-  // Updated across the subhandle work: OrderDatum is_virtual, dropping
-  // `expect sub_handle_price > 0`, and the additive three-fee enforcement
-  // (owner royalty + flat minter + flat treasury) — each changes demimntmpt's
-  // compiled code (it decodes OrderDatum + SettingsV1 + enforces the fee outputs).
+  // demimnt (governor) changed: DSH-201 enabled `can_burn_handles` (was a `False` stub), so its
+  // compiled code — and this applied hash — moved. Re-pinned from the DSH-406 blueprint regen.
+  mintV1WithdrawBytesA56: "009722011a8238e5ee6c217711fbfdd053e25ab549240d58a0dee0af",
+  // demimntmpt takes 5 params (legacy_policy_id, admin_vkh + WS7 slot anchor: anchor_slot,
+  // anchor_time_ms, slot_length_ms). This locks the current aiken-compiled validator's applied
+  // hash as a regression. Re-pinned in DSH-406 after the Phase-1/2 ABI changes reached the
+  // blueprint: free-virtual name-set (DSH-101/102 OrderProof/FreeVirtualData/registry_value) and
+  // the DeMi burn path (DSH-202 BurnNewHandles/BurnProof) — each changes demimntmpt's code.
   mintingDataSpend5Params:
-    "2c064b72099f3fd1b1d534b33104bdcecb10ebab6bad690648ca5bdd",
+    "6cffc08919f671b87ee565f8380403adc63d20fe16cc6868d98dd6a5",
 };
 
 const findValidator = (title: string) => {
