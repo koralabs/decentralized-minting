@@ -6,13 +6,13 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `DSH-406`
-- next_task_id: `DSH-403` (deps DSH-401+DSH-402 done → ready; mint build relocation)
+- current_task_id: `none`
+- next_task_id: `DSH-403` (deps DSH-401+DSH-402 done → ready; mint build relocation. Only remaining unblocked task: DSH-404/405/501/502/503/601/602/603 gated on pz chain DSH-300→301 (blocked); DSH-403 unblocks DSH-501.)
 - total_tasks: `26`
-- completed_tasks: `12`
+- completed_tasks: `13`
 - blocked_tasks: `1`
 - overall_status: `ready`
-- last_updated_utc: `2026-06-06T01:55:00Z`
+- last_updated_utc: `2026-06-06T02:05:00Z`
 - milestone: `decentralized-minting contract COMPLETE (Phases 0-2: DeMi subhandle mint + free-virtual + DeMi burn). Next phase = personalization $handle_policies awareness + burn (different repo, newer aiken toolchain).`
 - driver: `synchronous` (in-session; autonomous cron/wakeup did not fire in this environment)
 
@@ -68,12 +68,12 @@
 | DSH-403 | pending | DSH-401, DSH-402 | decentralized-minting pkg | — | — | — | mint build relocation to orders/MintNewHandles + free-virtual proofs + trie maintenance |
 | DSH-404 | pending | DSH-401, DSH-402, DSH-301 | decentralized-minting pkg | — | — | — | burn build: BurnNewHandles + coordinated burn tx (governor+demimntmpt+pz) + trie delete/free-name removal |
 | DSH-405 | pending | DSH-403, DSH-404 | decentralized-minting pkg | — | — | — | e2e tests with a real Trie (free-virtual mint/burn, nft/virtual burn) — deferred from DSH-103/203 |
-| DSH-406 | in_progress | DSH-401, DSH-202 | decentralized-minting pkg | 2026-06-06T01:58:00Z | — | — | regenerate blueprints (committed *-blueprint.ts are STALE — carry old-ABI titles root_pre_count/old_free_virtual_count) + pinned-hash test + deploy config. Build: aiken v1.0.29-alpha+16fb02e (exact match to blueprint preamble); `aiken build` optimized, `aiken build -t verbose` unoptimized |
+| DSH-406 | done | DSH-401, DSH-202 | decentralized-minting pkg | 2026-06-06T01:58:00Z | 2026-06-06T02:05:00Z | 0356588 | regenerated optimized+unoptimized blueprints + plutus.json w/ aiken v1.0.29-alpha+16fb02e. demimntmpt hash 45fb8962→5c51fee6 (ABI), demimnt 6e19ee0a→4478aa58 (DSH-201 governor burn); demimntprx/demiord stable. Preview applied hashes via buildContracts: minting_data_script_hash 7786f0f2→3341f6d3, mint_governor 5af1ebe4→09869528. scriptParams pins re-locked. aiken check 170/0/0. **Stale deploy/preview/*.unoptimized.cbor (double-CBOR, no in-repo reader) NOT regenerated — owned by DSH-602 deploy-bundle regen.** |
 | DSH-501 | pending | DSH-403 | minting.handle.me | — | — | — | engine mint: additive fee outputs on orders path (folded) + free-virtual tx metadata + settings reads |
 | DSH-502 | pending | DSH-404, DSH-501 | minting.handle.me | — | — | — | engine burn: coordinated DeMi burn tx end-to-end |
 | DSH-503 | pending | DSH-303, DSH-401 | handle.me/bff | — | — | — | bff: attach $handle_policies ref input to ALL pz txs; buy_down gone; fee display |
 | DSH-601 | pending | DSH-302, DSH-303 | handles-personalization + api | — | — | — | deploy new pz contract version; register persprx hash in api script registry |
-| DSH-602 | pending | DSH-406, DSH-502, DSH-503, DSH-601 | decentralized-minting + adahandle-deployments | — | — | — | deploy DeMi: bundle + publish pkg + engine. **USER multisig sign (reserved for end)** → USER_ACTIONS |
+| DSH-602 | pending | DSH-406, DSH-502, DSH-503, DSH-601 | decentralized-minting + adahandle-deployments | — | — | — | deploy DeMi: bundle + publish pkg + engine. **USER multisig sign (reserved for end)** → USER_ACTIONS. NOTE: regenerate stale `deploy/preview/*.unoptimized.cbor` (demimnt/demimntmpt changed in DSH-406) as part of the bundle. |
 | DSH-603 | pending | DSH-602 | preview | — | — | — | on-chain verification (mint nft/virtual, owner-fee, 3 free, reopen-on-burn, nft burn 222-check, virtual Revoke, MPT delete) |
 
 ## Run Log
