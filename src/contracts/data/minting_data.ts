@@ -1,10 +1,11 @@
 import { invariant } from "../../helpers/index.js";
 import {
+  BurnProof,
   FreeVirtualData,
   LabelAssetProof,
   LegacyHandleProof,
   MintingData,
-  MPTProof,
+  OrderProof,
 } from "../types/index.js";
 import { buildMPTProofData } from "./mpt.js";
 import {
@@ -34,30 +35,51 @@ const decodeMintingDataDatum = (
   return { mpt_root_hash };
 };
 
+// FreeVirtualData { root_proof, root_free_names: List<ByteArray>, root_labels } (constructor 0).
 const buildFreeVirtualData = (fv: FreeVirtualData): PlutusData =>
   mkConstr(0, [
     buildMPTProofData(fv.root_proof),
-    mkInt(fv.root_pre_count),
+    mkList(fv.root_free_names.map(mkBytes)),
     mkBytes(fv.root_labels),
   ]);
 
+// Option<FreeVirtualData>: Some(data) = constr 0 / None = constr 1.
+const buildOptionFreeVirtualData = (fv?: FreeVirtualData): PlutusData =>
+  fv ? mkConstr(0, [buildFreeVirtualData(fv)]) : mkConstr(1, []);
+
+// OrderProof { mpt_proof, free_virtual: Option<FreeVirtualData> } (constructor 0).
+const buildOrderProofData = (proof: OrderProof): PlutusData =>
+  mkConstr(0, [
+    buildMPTProofData(proof.mpt_proof),
+    buildOptionFreeVirtualData(proof.free_virtual),
+  ]);
+
+// BurnProof { mpt_proof, handle_name, is_virtual, free_virtual: Option<FreeVirtualData> } (constr 0).
+const buildBurnProofData = (proof: BurnProof): PlutusData =>
+  mkConstr(0, [
+    buildMPTProofData(proof.mpt_proof),
+    mkBytes(proof.handle_name),
+    mkInt(proof.is_virtual),
+    buildOptionFreeVirtualData(proof.free_virtual),
+  ]);
+
+// LegacyHandleProof { mpt_proof, handle_name, is_virtual } (constructor 0). No free-virtual.
 const buildLegacyHandleProofData = (proof: LegacyHandleProof): PlutusData => {
-  const { mpt_proof, handle_name, is_virtual, free_virtual } = proof;
+  const { mpt_proof, handle_name, is_virtual } = proof;
   return mkConstr(0, [
     buildMPTProofData(mpt_proof),
     mkBytes(handle_name),
     mkInt(is_virtual),
-    // Option<FreeVirtualData>: Some(data) / None
-    free_virtual ? mkConstr(0, [buildFreeVirtualData(free_virtual)]) : mkConstr(1, []),
   ]);
 };
 
+// MintNewHandles (constructor 0): list of DeMi OrderProofs + minter index.
 const buildMintingDataMintNewHandlesRedeemer = (
-  proofs: MPTProof[],
+  proofs: OrderProof[],
   minter_index: bigint,
 ): PlutusData =>
   mkConstr(0, [
-    mkList(proofs.map(buildMPTProofData)),
+    mkList(proofs.map(buildOrderProofData)),
     mkInt(minter_index),
   ]);
 
@@ -72,15 +94,15 @@ const buildMintingDataBurnLegacyHandlesRedeemer = (
   proofs: LegacyHandleProof[],
 ): PlutusData => mkConstr(3, [mkList(proofs.map(buildLegacyHandleProofData))]);
 
-// WS1 — LabelAssetProof: { mpt_proof, handle_name, label, old_value, amount } (constructor 0).
+// WS1 — LabelAssetProof { mpt_proof, handle_name, label, old_free_names, old_labels, amount } (constr 0).
 const buildLabelAssetProofData = (proof: LabelAssetProof): PlutusData => {
-  const { mpt_proof, handle_name, label, old_free_virtual_count, old_labels, amount } =
+  const { mpt_proof, handle_name, label, old_free_names, old_labels, amount } =
     proof;
   return mkConstr(0, [
     buildMPTProofData(mpt_proof),
     mkBytes(handle_name),
     mkBytes(label),
-    mkInt(old_free_virtual_count),
+    mkList(old_free_names.map(mkBytes)),
     mkBytes(old_labels),
     mkInt(amount),
   ]);
@@ -96,14 +118,22 @@ const buildMintingDataMintLabelAssetsRedeemer = (
     mkInt(minter_index),
   ]);
 
+// BurnNewHandles (constructor 5): list of DeMi BurnProofs (governor + pz gate the actual burn).
+const buildMintingDataBurnNewHandlesRedeemer = (
+  proofs: BurnProof[],
+): PlutusData => mkConstr(5, [mkList(proofs.map(buildBurnProofData))]);
+
 export {
+  buildBurnProofData,
   buildLabelAssetProofData,
   buildLegacyHandleProofData,
   buildMintingData,
   buildMintingDataBurnLegacyHandlesRedeemer,
+  buildMintingDataBurnNewHandlesRedeemer,
   buildMintingDataMintLabelAssetsRedeemer,
   buildMintingDataMintLegacyHandlesRedeemer,
   buildMintingDataMintNewHandlesRedeemer,
   buildMintingDataUpdateMPTRedeemer,
+  buildOrderProofData,
   decodeMintingDataDatum,
 };

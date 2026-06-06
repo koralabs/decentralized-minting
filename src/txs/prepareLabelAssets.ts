@@ -15,11 +15,8 @@ import {
 import { getBlockfrostBuildContext } from "../helpers/cardano-sdk/blockfrostContext.js";
 import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
 import { getNetwork } from "../helpers/index.js";
-import {
-  apply as applyLabelSet,
-  encodeRegistryValue,
-  valueBuffer,
-} from "../store/labelSet.js";
+import { apply as applyLabelSet, valueBuffer } from "../store/labelSet.js";
+import { encode as encodeRegistryValue } from "../store/registryValue.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 import { reconstructUtxo } from "./prepareLegacyMint.js";
 import type { TxPlan } from "./txPlan.js";
@@ -36,8 +33,8 @@ interface LabelAssetRequest {
   amount: bigint;
   /** The key's current label set (hex; "" if none yet). */
   oldLabels: string;
-  /** The key's current private-virtual counter (0 unless the root has private virtuals). */
-  oldFreeVirtualCount?: bigint;
+  /** The key's current free-virtual name set (hex names; [] unless the root holds free virtuals). */
+  oldFreeNames?: string[];
   /** The root's 222 owner-NFT UTxO to reference (proves ownership + fixes the policy). */
   ownerRefInput: { txHash: string; outputIndex: number };
 }
@@ -131,7 +128,7 @@ const prepareLabelAssetsTransaction = async (
   const proofs: LabelAssetProof[] = [];
   for (const request of requests) {
     const { utf8Name, hexName, label, amount, oldLabels } = request;
-    const oldFreeVirtualCount = request.oldFreeVirtualCount ?? 0n;
+    const oldFreeNames = request.oldFreeNames ?? [];
     let newLabels: string;
     try {
       newLabels = applyLabelSet(oldLabels, label, amount);
@@ -142,15 +139,15 @@ const prepareLabelAssetsTransaction = async (
         ),
       );
     }
-    // the stored value is encode(count, labels); a label change preserves the counter
-    const newValue = encodeRegistryValue(oldFreeVirtualCount, newLabels);
+    // the stored value is encode(free_names, labels); a label change preserves the free-name set
+    const newValue = encodeRegistryValue(oldFreeNames, newLabels);
     try {
       const mpfProof = await db.prove(utf8Name);
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
         handle_name: hexName,
         label,
-        old_free_virtual_count: oldFreeVirtualCount,
+        old_free_names: oldFreeNames,
         old_labels: oldLabels,
         amount,
       });

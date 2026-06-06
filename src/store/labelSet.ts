@@ -60,27 +60,5 @@ export const apply = (set: string, label: string, amount: bigint): string => {
 /** The raw value bytes to store in the Trie (UTF-8-safe). */
 export const valueBuffer = (set: string): Buffer => Buffer.from(set, "hex");
 
-// CBOR unsigned-int hex (major type 0) — matches Plutus `serialise_data` of a small Int.
-const cborUint = (n: bigint): string => {
-  if (n < 24n) return n.toString(16).padStart(2, "0");
-  if (n < 0x100n) return "18" + n.toString(16).padStart(2, "0");
-  if (n < 0x10000n) return "19" + n.toString(16).padStart(4, "0");
-  if (n < 0x100000000n) return "1a" + n.toString(16).padStart(8, "0");
-  return "1b" + n.toString(16).padStart(16, "0");
-};
-
-/**
- * @deprecated Pre-DSH-101 count-based registry value (`0xff ++ CBOR(count) ++ labels`). The
- * contract now keys the free-virtual allowance off the SET OF NAMES, not a counter — see
- * `registryValue.ts` `encode(free_names, labels)`. Still wired into the old-ABI legacy builders
- * (`prepareLegacyMint`/`prepareLegacyBurn`/`prepareLabelAssets`); those migrate to the orders
- * path in DSH-401/DSH-403, at which point this and `cborUint` are removed.
- *
- * WS5 — the registry value (hex), byte-identical to the OLD on-chain `encode(count, labels)`:
- *   count <= 0  -> labels (backward compatible with WS1)
- *   count  > 0  -> 0xff ++ CBOR(count) ++ labels
- */
-export const encodeRegistryValue = (
-  freeVirtualCount: bigint,
-  labels: string,
-): string => (freeVirtualCount <= 0n ? labels : "ff" + cborUint(freeVirtualCount) + labels);
+// NOTE: the registry value at a root key — encode(free_names, labels), which composes this label
+// set with the free-virtual name set — lives in `registryValue.ts` (the port of registry_value.ak).

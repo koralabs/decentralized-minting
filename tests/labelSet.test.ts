@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { apply, contains, encodeRegistryValue, insert, remove } from "../src/store/labelSet.js";
+import { apply, contains, insert, remove } from "../src/store/labelSet.js";
 
 // 001 = 00001070, 002 = 000020e0, 100 = 000643b0, 222 = 000de140
 const LBL_001 = "00001070";
@@ -43,17 +43,5 @@ describe("labelSet (matches on-chain label_set.ak)", () => {
     expect(apply("00001070", LBL_002, 1n)).toBe("00001070000020e0");
     expect(apply("00001070000020e0", LBL_002, -1n)).toBe("00001070");
     expect(() => apply("", LBL_001, 2n)).toThrow();
-  });
-});
-
-describe("encodeRegistryValue (matches on-chain registry_value.encode)", () => {
-  it("count 0 -> labels (backward compatible)", () => {
-    expect(encodeRegistryValue(0n, "")).toBe("");
-    expect(encodeRegistryValue(0n, "00001070")).toBe("00001070");
-  });
-  it("count > 0 -> 0xff + CBOR(count) + labels (byte-identical to aiken pins)", () => {
-    expect(encodeRegistryValue(1n, "00001070")).toBe("ff0100001070");
-    expect(encodeRegistryValue(3n, "")).toBe("ff03");
-    expect(encodeRegistryValue(24n, "00001070")).toBe("ff181800001070");
   });
 });

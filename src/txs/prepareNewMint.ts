@@ -18,8 +18,8 @@ import {
   HandlePriceInfo,
   HandlePrices,
   MintingData,
-  MPTProof,
   NewHandle,
+  OrderProof,
   parseMPTProofJSON,
   plutusDataToCbor,
   Settings,
@@ -138,13 +138,15 @@ const prepareNewMintTransaction = async (
   const treasuryFee = handles.reduce((acc, cur) => acc + cur.treasuryFee, 0n);
   const minterFee = handles.reduce((acc, cur) => acc + cur.minterFee, 0n);
 
-  const proofs: MPTProof[] = [];
+  // NOTE: paid OrderProofs only (no free_virtual) — relocating the build onto the orders path and
+  // constructing free-virtual proofs is DSH-403; this keeps the existing bare-key mint working.
+  const proofs: OrderProof[] = [];
   for (const handle of handles) {
     const { utf8Name } = handle;
     try {
       await db.insert(utf8Name, "");
       const mpfProof = await db.prove(utf8Name);
-      proofs.push(parseMPTProofJSON(mpfProof.toJSON()));
+      proofs.push({ mpt_proof: parseMPTProofJSON(mpfProof.toJSON()) });
     } catch (e) {
       console.warn("Handle already exists", utf8Name, e);
       return Err(new Error(`Handle "${utf8Name}" already exists`));

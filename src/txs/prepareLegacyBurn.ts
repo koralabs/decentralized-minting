@@ -7,7 +7,6 @@ import { fetchMintingData } from "../configs/index.js";
 import {
   buildMintingData,
   buildMintingDataBurnLegacyHandlesRedeemer,
-  FreeVirtualData,
   LegacyHandle,
   LegacyHandleProof,
   MintingData,
@@ -17,7 +16,6 @@ import {
 import { getBlockfrostBuildContext } from "../helpers/cardano-sdk/blockfrostContext.js";
 import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
 import { getNetwork } from "../helpers/index.js";
-import { encodeRegistryValue, valueBuffer } from "../store/labelSet.js";
 import { DeployedScripts, fetchAllDeployedScripts } from "./deploy.js";
 import { reconstructUtxo } from "./prepareLegacyMint.js";
 import type { TxPlan } from "./txPlan.js";
@@ -100,35 +98,18 @@ const prepareLegacyBurnTransaction = async (
   // Inclusion proof per handle (against the current root), then delete to advance the root.
   const proofs: LegacyHandleProof[] = [];
   for (const handle of handles) {
-    const { utf8Name, hexName, isVirtual, privateVirtual } = handle;
+    const { utf8Name, hexName, isVirtual } = handle;
     try {
       const mpfProof = await db.prove(utf8Name);
       await db.delete(utf8Name);
 
-      // WS5 free-virtual — a PRIVATE virtual burn refunds a counter slot (decrement the root
-      // counter). Root proof taken AFTER the sub delete (the contract bumps on the post-delete
-      // trie), for the root's current value encode(preCount, labels).
-      let free_virtual: FreeVirtualData | undefined;
-      if (privateVirtual) {
-        const { rootUtf8Name, preCount, rootLabels } = privateVirtual;
-        const rootProof = await db.prove(rootUtf8Name);
-        await db.delete(rootUtf8Name);
-        await db.insert(
-          rootUtf8Name,
-          valueBuffer(encodeRegistryValue(preCount - 1n, rootLabels)),
-        );
-        free_virtual = {
-          root_proof: parseMPTProofJSON(rootProof.toJSON()),
-          root_pre_count: preCount,
-          root_labels: rootLabels,
-        };
-      }
-
+      // Legacy burns mirror legacy mints: uniqueness + token burn only. The free-virtual
+      // allowance is DeMi-orders-path-only, so there is no root free-name reopen here (mirrors
+      // the contract's LegacyHandleProof, which carries no free-virtual data).
       proofs.push({
         mpt_proof: parseMPTProofJSON(mpfProof.toJSON()),
         handle_name: hexName,
         is_virtual: isVirtual ? 1n : 0n,
-        free_virtual,
       });
     } catch (e) {
       console.warn("Handle not found in trie", utf8Name, e);
