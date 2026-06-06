@@ -6,13 +6,13 @@
 - prompt_file: `tasks/UNATTENDED_PROMPT.md`  (this run's prompt — follow it each iteration)
 - backlog_file: `tasks/TODO.md`
 - working_repo_primary: `decentralized-minting` (tasks name their own repo; multi-repo run)
-- current_task_id: `DSH-201`
-- next_task_id: `DSH-202`
+- current_task_id: `DSH-301`
+- next_task_id: `DSH-302`
 - total_tasks: `18`
-- completed_tasks: `7`
+- completed_tasks: `10`
 - blocked_tasks: `0`
 - overall_status: `in_progress`
-- last_updated_utc: `2026-06-06T00:25:00Z`
+- last_updated_utc: `2026-06-06T00:40:00Z`
 - driver: `synchronous` (in-session; autonomous cron/wakeup did not fire in this environment)
 
 ## Concurrency guard (no double-work)
@@ -54,10 +54,10 @@
 | DSH-101 | done | DSH-003 | decentralized-minting | 2026-06-06T00:05:00Z | 2026-06-06T00:12:00Z | f31fdd5 | registry_value→name-set + label-path ripple; 167 checks. (LabelAssetProof ripple absorbed here to stay green) |
 | DSH-102 | done | DSH-101 | decentralized-minting | 2026-06-06T00:12:00Z | 2026-06-06T00:20:00Z | b0c117e | OrderProof + free-virtual mint branch; MintNewHandles ABI changed; 167 checks |
 | DSH-103 | done | DSH-102 | decentralized-minting | 2026-06-06T00:20:00Z | 2026-06-06T00:25:00Z | 4ad4e1e | free-virtual value-transition tests; e2e deferred to DSH-401; 169 checks |
-| DSH-201 | in_progress | DSH-003 | decentralized-minting | 2026-06-06T00:25:00Z | — | — | governor can_burn_handles |
-| DSH-202 | pending | DSH-102, DSH-201 | decentralized-minting | — | — | — | demimntmpt BurnNewHandles + free-name reopen |
-| DSH-203 | pending | DSH-202 | decentralized-minting | — | — | — | burn-path contract tests |
-| DSH-301 | pending | — | handles-personalization | — | — | — | nft/root burn redeemer (release 100 iff 222 burned) |
+| DSH-201 | done | DSH-003 | decentralized-minting | 2026-06-06T00:25:00Z | 2026-06-06T00:30:00Z | c8fa9f9 | governor can_burn_handles enabled (mirror of mint); 169 checks |
+| DSH-202 | done | DSH-102, DSH-201 | decentralized-minting | 2026-06-06T00:30:00Z | 2026-06-06T00:38:00Z | 35a8563 | BurnNewHandles redeemer (idx 5) + can_burn_new_handles + all_burn_proofs_are_valid; 169 checks |
+| DSH-203 | done | DSH-202 | decentralized-minting | 2026-06-06T00:38:00Z | 2026-06-06T00:40:00Z | afbf136 | burn=inverse-of-mint roundtrip; e2e→DSH-402; 170 checks |
+| DSH-301 | in_progress | — | handles-personalization | 2026-06-06T00:40:00Z | — | — | nft/root burn redeemer (release 100 iff 222 burned) |
 | DSH-302 | pending | DSH-301 | handles-personalization | — | — | — | pz burn tests |
 | DSH-401 | pending | DSH-102 | decentralized-minting | — | — | — | pkg: subhandle build legacy→orders + free-virtual proofs |
 | DSH-402 | pending | DSH-202, DSH-301 | decentralized-minting | — | — | — | pkg: burn tx builders |

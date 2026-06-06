@@ -40,9 +40,9 @@ Objective:
 - [x] `DSH-103` (decentralized-minting) Free-virtual mint tests (value transition + prepend ordering; full-tx e2e → DSH-401). deps: DSH-102 — **done 4ad4e1e**
 
 ### PHASE-2-DEMI-BURN
-- [ ] `DSH-201` (decentralized-minting) Implement governor `can_burn_handles` (`demimnt`, currently stub `False`): authorize the `-1` mint (allowed-minter + coordinated with the minting-data spend). deps: DSH-003
-- [ ] `DSH-202` (decentralized-minting) Add `demimntmpt` `BurnNewHandles` redeemer: MPT delete (existence-before/absence-after) + expect `-1` mint value + remove a free virtual's name (reopen slot). deps: DSH-102, DSH-201
-- [ ] `DSH-203` (decentralized-minting) Burn-path contract tests (nft burn -1 of 100+222, virtual burn -1 of 000, MPT delete, free-name reopen). deps: DSH-202
+- [x] `DSH-201` (decentralized-minting) Implement governor `can_burn_handles` (`demimnt`, currently stub `False`): authorize the `-1` mint (allowed-minter + coordinated with the minting-data spend). deps: DSH-003
+- [x] `DSH-202` (decentralized-minting) Add `demimntmpt` `BurnNewHandles` redeemer: MPT delete (existence-before/absence-after) + expect `-1` mint value + remove a free virtual's name (reopen slot). deps: DSH-102, DSH-201
+- [x] `DSH-203` (decentralized-minting) Burn-path contract tests (nft burn -1 of 100+222, virtual burn -1 of 000, MPT delete, free-name reopen). deps: DSH-202
 
 ### PHASE-3-PZ-BURN
 - [ ] `DSH-301` (handles-personalization) New NFT/root burn redeemer: release the held `100` ref **iff** the matching `222` is also being burned in the tx (owner consent). Covers roots + nft subs, DeMi + legacy. (Virtual `Revoke` already exists — no change.) deps: none
