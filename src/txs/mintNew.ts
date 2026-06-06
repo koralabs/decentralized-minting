@@ -6,15 +6,32 @@ import { PREFIX_000, PREFIX_100, PREFIX_222 } from "../constants/index.js";
 import {
   buildOrderExecuteRedeemer,
   decodeOrderDatum,
+  HandlePriceInfo,
   HandlePrices,
   NewHandle,
   plutusDataToCbor,
+  type SettingsV1,
 } from "../contracts/index.js";
 import { Cardano, type HexBlob, Serialization } from "../helpers/cardano-sdk/index.js";
 import { getNetwork, invariant } from "../helpers/index.js";
 import { calculateHandlePriceFromHandlePriceInfo } from "../utils/index.js";
+import { type DeployedScripts } from "./deploy.js";
 import { prepareNewMintTransaction } from "./prepareNewMint.js";
 import { type FinalizedTx, finalizeTxPlan, type TxPlan } from "./txPlan.js";
+
+/**
+ * The fully-augmented orders-path mint plan (minting-data MintNewHandles spend + per-order token
+ * mints + ref/user outputs + order spends), BEFORE coin selection / finalization. Engines that need
+ * to inject additional outputs (the additive owner/minter/treasury fee outputs — DSH-501) or
+ * finalize with auxiliary data (free-virtual tx metadata) consume this and run their own finalize;
+ * `mintNewHandles` is the thin wrapper that just `finalizeTxPlan`s it.
+ */
+export interface MintNewHandlesPlan {
+  plan: TxPlan;
+  deployedScripts: DeployedScripts;
+  settingsV1: SettingsV1;
+  handlePriceInfo: HandlePriceInfo;
+}
 
 interface MintNewHandlesParams {
   changeAddress: string;
@@ -44,9 +61,9 @@ interface MintNewHandlesParams {
  * (policy-tokens mint + ref/user handle outputs), and finalizing to unsigned
  * CBOR.
  */
-const mintNewHandles = async (
+const buildMintNewHandlesPlan = async (
   params: MintNewHandlesParams,
-): Promise<Result<FinalizedTx, Error>> => {
+): Promise<Result<MintNewHandlesPlan, Error>> => {
   const { ordersTxInputs, blockfrostApiKey, freeVirtualContexts } = params;
   const network = getNetwork(blockfrostApiKey);
 
@@ -177,7 +194,20 @@ const mintNewHandles = async (
     mint,
   };
 
-  return Ok(await finalizeTxPlan(extendedPlan));
+  return Ok({ plan: extendedPlan, deployedScripts, settingsV1, handlePriceInfo });
+};
+
+/**
+ * Mint new handles by consuming `ordersTxInputs` and finalizing to unsigned CBOR. Thin wrapper over
+ * `buildMintNewHandlesPlan` — callers that need to inject fee outputs / tx metadata should use
+ * `buildMintNewHandlesPlan` directly and run their own finalize.
+ */
+const mintNewHandles = async (
+  params: MintNewHandlesParams,
+): Promise<Result<FinalizedTx, Error>> => {
+  const planResult = await buildMintNewHandlesPlan(params);
+  if (!planResult.ok) return Err(planResult.error);
+  return Ok(await finalizeTxPlan(planResult.data.plan));
 };
 
 const coreInlineDatumToCbor = (
@@ -189,4 +219,4 @@ const coreInlineDatumToCbor = (
 };
 
 export type { MintNewHandlesParams };
-export { mintNewHandles };
+export { buildMintNewHandlesPlan, mintNewHandles };
