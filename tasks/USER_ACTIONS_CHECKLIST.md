@@ -13,7 +13,8 @@ Concrete user-owned blockers the agent cannot perform. Organized by feature area
   - Blocker reason: native-script member key is user-held; permissionless deploy cannot proceed
     without it.
 
-- [ ] **New personalization contract deploy** (`DSH-602`). The net-new nft/root burn redeemer
-  (`DSH-301`) requires deploying a new `handles-personalization` contract version; its on-chain
-  deploy follows the personalization deploy process (separate from the DeMi bundle).
+- [ ] **New personalization contract deploy** (`DSH-601`). The net-new nft/root burn redeemer +
+  `$handle_policies`-aware policy checks (`DSH-301`/`DSH-303`) require deploying a new
+  `handles-personalization` contract version; its on-chain deploy follows the personalization
+  deploy process (separate from the DeMi bundle).
   - Blocker reason: on-chain contract deploy + any required signing the agent cannot perform unattended.
