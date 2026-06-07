@@ -69,3 +69,4 @@ test-db/
 .kora/executor-logs/
 
 tmp
+deploy/preview/
