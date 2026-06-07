@@ -1,11 +1,36 @@
 import { Store, Trie } from "@aiken-lang/merkle-patricia-forestry";
 import fs from "fs/promises";
 
-const init = async (folder: string): Promise<Trie> => {
-  const db = new Trie(new Store(folder));
+const isMissingStoreRoot = (error: unknown): boolean => {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+
+  return (
+    code === "LEVEL_NOT_FOUND" ||
+    (error instanceof Error && error.message.includes("NotFound"))
+  );
+};
+
+const createEmptyTrie = async (store: Store): Promise<Trie> => {
+  const db = new Trie(store);
   // @ts-expect-error: Library issue
   await db.save();
   return db;
+};
+
+const init = async (folder: string): Promise<Trie> => {
+  const store = new Store(folder);
+  await store.ready();
+
+  try {
+    const db = (await Trie.load(store)) as Trie;
+    return db.isEmpty() ? createEmptyTrie(store) : db;
+  } catch (error) {
+    if (!isMissingStoreRoot(error)) throw error;
+    return createEmptyTrie(store);
+  }
 };
 
 const inspect = async (db: Trie) => {
@@ -20,7 +45,7 @@ const clear = async (folder: string) => {
 const fillHandles = async (
   db: Trie,
   handles: string[],
-  progress: () => void
+  progress: () => void,
 ) => {
   for (const handle of handles) {
     await db.insert(handle, "");
@@ -42,7 +67,7 @@ const removeHandle = async (db: Trie, key: string) => {
 const printProof = async (
   db: Trie,
   key: string,
-  format: "json" | "cborHex"
+  format: "json" | "cborHex",
 ) => {
   const proof = await db.prove(key);
   switch (format) {
