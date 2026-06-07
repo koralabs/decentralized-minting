@@ -127,6 +127,12 @@ const prepareNewMintTransaction = async (
   const { handlePriceInfo, handlePriceInfoUtxo } =
     handlePriceInfoDataResult.data;
 
+  // Consensus gate: the caller-supplied `db` trie MUST be built fresh from
+  // the API (in-memory) and match the on-chain root. The on-chain
+  // `mpt_root_hash` is the only source of truth — there is NO disk cache of
+  // the trie (see src/store/index.ts DESIGN LAW; the engine runs in a Lambda
+  // where a local cache would silently drift). If they don't match, the trie
+  // is stale/wrong and we abort rather than mint against it.
   if (
     mintingData.mpt_root_hash.toLowerCase() !==
     (db.hash?.toString("hex") || Buffer.alloc(32).toString("hex")).toLowerCase()
