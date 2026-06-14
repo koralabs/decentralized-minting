@@ -1,6 +1,15 @@
 # Decentralized Minting — Legacy Parity Plan
 
-Status: **IN PROGRESS** · Last updated: 2026-06-02
+Status: **IN PROGRESS** · Last updated: 2026-06-12
+
+> **Engine milestone (2026-06-12).** The off-chain engine (`minting.handle.me`) side of DeMi subhandle
+> minting is **merged to `preview` and deployed** (preview is self-hosted; the box runs the unified code).
+> Two divergent engine branches (`preview` minting DeMi subhandles under legacy `f0ff48bb` vs
+> `self-host/local-jwt` under DeMi `6c32db33`) were reconciled into one: legacy → `f0ff48bb`, all DeMi
+> root+sub → `6c32db33` (DSH-501 orders path), DSH-502 burn + additive fees + free-virtual wiring + the
+> sub-order price fix. All handle types can mint from both policies. Remaining: the **pz-side burn**
+> (DSH-601 DeMi-pz contract, `handles-personalization`) and the on-chain **free-virtual** verification
+> (needs a multisig `free_virtual_count` settings update).
 
 > **⚠️ Correction (2026-06-05).** Parts of this plan describe subhandle fees,
 > free-virtual, discounts, and orders as wired onto the **legacy** mint path. That is
