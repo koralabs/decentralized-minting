@@ -33,6 +33,13 @@ interface DeployData {
   optimizedCbor: string;
   /** Double-CBOR of the parameterized unoptimized script. */
   unOptimizedCbor?: string;
+  /**
+   * Plutus language version of this validator. The three non-proxy DeMi
+   * validators are V3 (aiken v1.1.22); the frozen mint proxy is V2. The
+   * deployment tx wraps the reference script with the matching
+   * `PlutusVxScript`, so this must be threaded through.
+   */
+  plutusVersion: "v2" | "v3";
   /** Inline datum CBOR (settings-proxy parameter echo) — when applicable. */
   datumCbor?: string;
   /** Script hash (28-byte hex). */
@@ -69,6 +76,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
     case "demimntprx.mint":
       return {
         optimizedCbor: built.mintProxy.validator.optimizedCbor,
+        plutusVersion: built.mintProxy.validator.plutusVersion,
         unOptimizedCbor: built.mintProxy.validator.unoptimizedCbor,
         datumCbor: plutusDataToCbor(
           makeMintProxyUplcProgramParameterDatum(mintVersion),
@@ -79,6 +87,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
     case "demimntmpt.spend":
       return {
         optimizedCbor: built.mintingData.validator.optimizedCbor,
+        plutusVersion: built.mintingData.validator.plutusVersion,
         unOptimizedCbor: built.mintingData.validator.unoptimizedCbor,
         datumCbor: plutusDataToCbor(
           (() => {
@@ -98,6 +107,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
     case "demimnt.withdraw":
       return {
         optimizedCbor: built.mintV1.validator.optimizedCbor,
+        plutusVersion: built.mintV1.validator.plutusVersion,
         unOptimizedCbor: built.mintV1.validator.unoptimizedCbor,
         datumCbor: plutusDataToCbor(
           makeMintV1UplcProgramParameterDatum(built.mintingData.validatorHash),
@@ -108,6 +118,7 @@ const deploy = async (params: DeployParams): Promise<DeployData> => {
     case "demiord.spend":
       return {
         optimizedCbor: built.orders.validator.optimizedCbor,
+        plutusVersion: built.orders.validator.plutusVersion,
         unOptimizedCbor: built.orders.validator.unoptimizedCbor,
         validatorHash: built.orders.validatorHash,
         scriptAddress: built.orders.scriptAddress,

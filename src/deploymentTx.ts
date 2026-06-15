@@ -31,6 +31,7 @@ import {
   computeScriptDataHash,
   ensureDoubleCbor,
   plutusV2ScriptHash,
+  plutusV3ScriptHash,
   Serialization,
   transactionHashFromCore,
   transactionToCbor,
@@ -302,10 +303,18 @@ export const buildReferenceScriptDeploymentTx = async ({
     assets: new Map([[handleAssetId, 1n]]),
   };
 
-  // Build the reference script (PlutusV2)
-  const scriptReference: CardanoTypes.Script = Serialization.PlutusV2Script.fromCbor(
-    deployData.optimizedCbor as HexBlob,
-  ).toCore();
+  // Build the reference script with the validator's own Plutus version: the
+  // three non-proxy DeMi validators are V3 (aiken v1.1.22); the frozen mint
+  // proxy is V2. The on-chain script_ref must carry the correct language tag,
+  // or the resolved script hash (and thus the address) won't match.
+  const scriptReference: CardanoTypes.Script =
+    deployData.plutusVersion === "v3"
+      ? Serialization.PlutusV3Script.fromCbor(
+          deployData.optimizedCbor as HexBlob,
+        ).toCore()
+      : Serialization.PlutusV2Script.fromCbor(
+          deployData.optimizedCbor as HexBlob,
+        ).toCore();
 
   // Build the inline datum if present
   const datum = deployData.datumCbor
@@ -742,9 +751,16 @@ export const buildMptRootMigrationTx = async ({
   const isMainnet = desired.network === "mainnet";
   const adminKeyHash = desired.buildParameters.adminVerificationKeyHash;
 
-  // Compute old script hash from its single-CBOR hex (used only for sanity).
-  const _oldScriptHash = plutusV2ScriptHash(oldValidatorCborHex);
-  void _oldScriptHash;
+  // The minting-data validator being spent here is whatever is CURRENTLY
+  // deployed on-chain. During the V2→V3 cutover that may still be the legacy
+  // V2 script (which hashes to the old address) or the new V3 script. Detect
+  // by computing both candidate hashes from the fetched CBOR; the address's
+  // payment credential (below) is derived from one of them, so we wrap with
+  // the version whose hash is internally consistent. We can't compare to the
+  // on-chain hash yet (resolved below), so compute both now and pick at wrap
+  // time once we know the script address's credential.
+  const oldHashV2 = plutusV2ScriptHash(oldValidatorCborHex);
+  const oldHashV3 = plutusV3ScriptHash(oldValidatorCborHex);
 
   const built = buildContracts({
     network: desired.network,
@@ -850,12 +866,38 @@ export const buildMptRootMigrationTx = async ({
 
   const buildContext = await getBlockfrostBuildContext(desired.network, blockfrostApiKey);
 
+  // Determine the deployed minting-data script's Plutus version by matching
+  // its candidate hashes against the on-chain script address we just spent
+  // from (`handleData.resolved_addresses.ada`). The matching version is the
+  // one whose script-hash equals the address's payment credential.
+  const oldScriptCredHash = Cardano.Address.fromBech32(
+    handleData.resolved_addresses.ada,
+  )
+    .asEnterprise()
+    ?.getPaymentCredential()?.hash as unknown as string | undefined;
+  const oldScriptIsV3 =
+    oldScriptCredHash === oldHashV3
+      ? true
+      : oldScriptCredHash === oldHashV2
+        ? false
+        : // Address didn't match either candidate — should never happen, but
+          // fail loud rather than silently mis-tagging the spend script.
+          (() => {
+            throw new Error(
+              `old minting-data script ${oldScriptCredHash} matches neither V2 (${oldHashV2}) nor V3 (${oldHashV3}) hash of the fetched CBOR`,
+            );
+          })();
+
   // Blockfrost's /scripts/{hash}/cbor returns single-CBOR (byte string of
-  // flat UPLC); PlutusV2Script.fromCbor needs double-CBOR. ensureDoubleCbor
+  // flat UPLC); PlutusVxScript.fromCbor needs double-CBOR. ensureDoubleCbor
   // normalizes either form.
-  const oldScriptCore = Serialization.PlutusV2Script.fromCbor(
-    ensureDoubleCbor(oldValidatorCborHex) as HexBlob,
-  ).toCore();
+  const oldScriptCore = oldScriptIsV3
+    ? Serialization.PlutusV3Script.fromCbor(
+        ensureDoubleCbor(oldValidatorCborHex) as HexBlob,
+      ).toCore()
+    : Serialization.PlutusV2Script.fromCbor(
+        ensureDoubleCbor(oldValidatorCborHex) as HexBlob,
+      ).toCore();
 
   const result = await buildPlutusSpendTxInline({
     buildContext,
@@ -865,6 +907,9 @@ export const buildMptRootMigrationTx = async ({
     output: migrationOutput,
     spendRedeemer,
     attachedPlutusScript: oldScriptCore,
+    plutusVersion: oldScriptIsV3
+      ? Cardano.PlutusLanguageVersion.V3
+      : Cardano.PlutusLanguageVersion.V2,
     requiredSigner: adminKeyHash,
     changeAddress: adminAddressBech32,
   });
@@ -879,8 +924,9 @@ export const buildMptRootMigrationTx = async ({
 
 /**
  * Minimal Plutus-spend tx builder inlined for `buildMptRootMigrationTx` — one
- * script input, one output, attached (non-reference) Plutus V2 script, admin
- * signer. Uses the shared Conway-correct `computeScriptDataHash`.
+ * script input, one output, attached (non-reference) Plutus script (version
+ * supplied by the caller — V2 legacy or V3 post-migration), admin signer.
+ * Uses the shared Conway-correct `computeScriptDataHash`.
  */
 const buildPlutusSpendTxInline = async ({
   buildContext,
@@ -890,6 +936,7 @@ const buildPlutusSpendTxInline = async ({
   output,
   spendRedeemer,
   attachedPlutusScript,
+  plutusVersion,
   requiredSigner,
   changeAddress,
 }: {
@@ -900,6 +947,7 @@ const buildPlutusSpendTxInline = async ({
   output: CardanoTypes.TxOut;
   spendRedeemer: CardanoTypes.Redeemer;
   attachedPlutusScript: CardanoTypes.Script;
+  plutusVersion: CardanoTypes.PlutusLanguageVersion;
   requiredSigner: string;
   changeAddress: string;
 }): Promise<{ cborHex: string; consumedInputs: Set<string> }> => {
@@ -966,7 +1014,7 @@ const buildPlutusSpendTxInline = async ({
 
   const scriptDataHash = computeScriptDataHash(
     buildContext.protocolParameters.costModels,
-    [Cardano.PlutusLanguageVersion.V2],
+    [plutusVersion],
     [evaluatedRedeemer],
   );
 

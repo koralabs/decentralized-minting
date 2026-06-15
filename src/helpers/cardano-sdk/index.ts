@@ -55,4 +55,5 @@ export {
   plutusDataJsonToCbor,
   plutusDataJsonToCore,
   plutusV2ScriptHash,
+  plutusV3ScriptHash,
 } from "./scriptParams.js";
