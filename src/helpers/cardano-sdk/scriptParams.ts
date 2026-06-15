@@ -151,3 +151,20 @@ export const plutusV2ScriptHash = (cborHex: string): string =>
   (Serialization as any)
     .PlutusV2Script.fromCbor(ensureDoubleCbor(cborHex) as HexBlob)
     .hash() as string;
+
+/**
+ * Compute the blake2b-224 script hash of a PlutusV3 script. Same CBOR handling
+ * as `plutusV2ScriptHash`, but with the V3 language tag (0x03). The script hash
+ * is `blake2b224(version_byte || cbor)`, so V2 vs V3 of the SAME cbor produce
+ * DIFFERENT hashes. The DeMi minting contracts (demimnt/order/minting_data) are
+ * genuinely PlutusV2, but cross-repo pz contracts (handles-personalization
+ * persprx/perspz/persdsg/perslfc) are PlutusV3 — hash THOSE with this, not the
+ * V2 helper. (Hashing the V3 persprx as V2 produced the phantom `fd517730`
+ * pz_script_address; its real V3 hash is `7cf10558`.) When in doubt, prefer the
+ * authoritative api script registry over recomputing a foreign contract's hash.
+ */
+export const plutusV3ScriptHash = (cborHex: string): string =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (Serialization as any)
+    .PlutusV3Script.fromCbor(ensureDoubleCbor(cborHex) as HexBlob)
+    .hash() as string;

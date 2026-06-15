@@ -29,13 +29,18 @@ settings:
         - f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406b6f72614068616e646c655f707269636573
       treasury_address: addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j
       treasury_fee_percentage: 10
-      # Current persprx (persprx1@handlecontract, validatorHash fd517730…). The old
-      # value (addr_test1wp70zp2… / 7cf10558) was a RETIRED persprx no longer in the
-      # api script registry — DeMi mints sent the 100 ref there, so the handle landed
-      # on a dead personalization contract and could not be personalized (app tried to
-      # migrate it and failed "No script found"). Legacy mints already use fd517730;
-      # keep this in sync whenever persprx is redeployed.
-      pz_script_address: addr_test1wr74zaescr2m2tw9uzl47pwyq4zucjn6q5hs2ylhe7yma7cqst650
+      # persprx1@handlecontract — the live personalization proxy that holds every
+      # handle's LBL_100 reference token. validatorHash 7cf10558 (PlutusV3; on-chain
+      # ref script, and in the api script registry as type=persprx). DeMi subs MUST
+      # deposit their 000/100 here so they can be personalized and burned.
+      #
+      # CORRECTED 2026-06-15: a prior session set this to addr_test1wr74za… / fd517730,
+      # which is the SAME persprx contract hashed as PlutusV2 — decentralized-minting's
+      # plutusV2ScriptHash run on a V3 script. fd517730 was never deployed (Blockfrost
+      # 404), so DeMi subs landed on a dead address (could not be personalized — "No
+      # script found"). persprx is V3: hash with plutusV3ScriptHash or read the api
+      # registry; never the V2 helper. See feedback_plutus_language_tag_hash.
+      pz_script_address: addr_test1wp70zp2cdamexjjjfj0837y8nge5vqgyl9tcaxkfyl6h0cc9ad65m
       order_script_hash: 1113f6b2fdbd5dad15d99c17d00052fc84391d723e03c30e950ee673
       minting_data_script_hash: 3341f6d3655beca674eb9b9149ebe2aef5c1ea095b4c041fd21f5891
       # WS5 discount config — all discounts off at launch; 3 free virtual subs; no HAL policy.
