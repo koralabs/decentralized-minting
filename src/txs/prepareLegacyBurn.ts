@@ -162,7 +162,9 @@ const prepareLegacyBurnTransaction = async (
     referenceInputs,
     redeemers: [spendRedeemer],
     requiredSigners: [minterKeyHash as Ed25519KeyHashHex],
-    usedPlutusVersions: [Cardano.PlutusLanguageVersion.V2],
+    // demimntmpt minting-data spend is Plutus V3 (aiken v1.1.22); the legacy
+    // burn itself is under the native legacy policy (no Plutus version).
+    usedPlutusVersions: [Cardano.PlutusLanguageVersion.V3],
     collateralUtxo,
     changeAddress,
     buildContext,

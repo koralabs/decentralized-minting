@@ -163,7 +163,8 @@ export const prepareNewMintDataSpend = async (
     referenceInputs,
     redeemers: [spendMintingDataRedeemer],
     requiredSigners: [minterKeyHash as Ed25519KeyHashHex],
-    usedPlutusVersions: [Cardano.PlutusLanguageVersion.V2],
+    // demimntmpt minting-data spend is Plutus V3 (aiken v1.1.22).
+    usedPlutusVersions: [Cardano.PlutusLanguageVersion.V3],
     collateralUtxo,
     changeAddress,
     buildContext,

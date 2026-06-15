@@ -287,7 +287,14 @@ const prepareNewMintTransaction = async (
     redeemers: [spendMintingDataRedeemer, withdrawMintV1Redeemer],
     withdrawals,
     requiredSigners: [minterKeyHash as Ed25519KeyHashHex],
-    usedPlutusVersions: [Cardano.PlutusLanguageVersion.V2],
+    // The full orders-path mint combines the frozen demimntprx mint (Plutus V2,
+    // added downstream in mintNew) with the demimntmpt spend + demimnt
+    // withdrawal + demiord order spends (Plutus V3). The script_data_hash must
+    // include BOTH cost-model views — mirrors the burn path in minting.handle.me.
+    usedPlutusVersions: [
+      Cardano.PlutusLanguageVersion.V2,
+      Cardano.PlutusLanguageVersion.V3,
+    ],
     collateralUtxo,
     changeAddress,
     buildContext,
