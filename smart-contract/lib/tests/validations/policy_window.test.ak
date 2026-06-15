@@ -5,7 +5,7 @@ use aiken/transaction.{
 }
 use aiken/transaction/credential.{from_verification_key}
 use aiken/transaction/value
-use common/cip68.{prefix_100}
+use common/cip68.{prefix_222}
 use validations/policy_window.{assert_mint_within_policy_window}
 
 const admin_policy = #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"
@@ -23,7 +23,7 @@ fn policies_ref_input(
   listed_policy: ByteArray,
   window: (Int, Int, Int),
 ) -> Input {
-  let asset_name = bytearray.concat(prefix_100, "handle_policies")
+  let asset_name = bytearray.concat(prefix_222, "handle_policies")
   let datum_value: List<Pairs<ByteArray, (Int, Int, Int)>> =
     [[Pair(listed_policy, window)]]
   Input {

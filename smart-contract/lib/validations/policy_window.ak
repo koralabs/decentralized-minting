@@ -2,7 +2,7 @@ use aiken/bytearray
 use aiken/interval.{Interval}
 use aiken/transaction.{InlineDatum, Input, Output}
 use aiken/transaction/value.{PolicyId, quantity_of}
-use common/cip68.{prefix_100}
+use common/cip68.{prefix_222}
 use decentralized_minting/handle_policies.{
   find_policy_window, mint_allowed_in_window, window_to_posix,
 }
@@ -12,8 +12,10 @@ const handle_policies_name: ByteArray = "handle_policies"
 
 // WS7 — gate a mint under `mint_policy_id` on its `$handle_policies` minting window.
 //
-// The admin datum is read from a reference input: the `$handle_policies` handle's reference
-// (100) token, held under `admin_policy_id` (the legacy policy that carries the admin handles).
+// The admin datum is read from a reference input: the `$handle_policies` handle's owner
+// (222) token, held under `admin_policy_id` (the legacy policy that carries the admin handles).
+// The registry `List<Pairs>` datum lives on the 222 token, not the CIP-68 100 reference token
+// (which carries standard handle metadata).
 // The window slots are converted to the POSIX-ms domain of the tx validity range via the
 // network slot anchor (the validator's compile-time params), then the tx validity upper bound
 // must fall inside the window.
@@ -32,7 +34,7 @@ pub fn assert_mint_within_policy_window(
   anchor_time_ms: Int,
   slot_length_ms: Int,
 ) -> Bool {
-  let policies_asset_name = bytearray.concat(prefix_100, handle_policies_name)
+  let policies_asset_name = bytearray.concat(prefix_222, handle_policies_name)
   when
     find_handle_policies_datum(
       reference_inputs,
