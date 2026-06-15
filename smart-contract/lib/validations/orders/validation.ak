@@ -1,7 +1,7 @@
-use aiken/list
-use aiken/transaction.{Output, OutputReference, Transaction, find_input}
-use aiken/transaction/credential.{VerificationKeyCredential}
-use aiken/transaction/value
+use aiken/collection/list
+use cardano/address.{VerificationKey}
+use cardano/assets as value
+use cardano/transaction.{Output, OutputReference, Transaction, find_input}
 use common/utils.{is_withdrawal_script_executed}
 use decentralized_minting/orders.{OrderDatum}
 use decentralized_minting/settings.{Settings, find_settings}
@@ -56,7 +56,7 @@ pub fn can_refund_order(
     fn(output) {
       let Output { address, value: output_value, .. } = output
       when address.payment_credential is {
-        VerificationKeyCredential(vkh) -> and {
+        VerificationKey(vkh) -> and {
             vkh == owner_key_hash,
             value.lovelace_of(output_value) >= order_lovelace,
           }

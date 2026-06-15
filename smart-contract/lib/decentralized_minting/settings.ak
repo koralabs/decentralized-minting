@@ -1,6 +1,6 @@
-use aiken/list
-use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/value
+use aiken/collection/list
+use cardano/assets as value
+use cardano/transaction.{InlineDatum, Input, Output}
 use common/hashes.{ScriptHash}
 
 const settings_asset_policy_id =

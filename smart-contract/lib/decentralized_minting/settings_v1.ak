@@ -1,6 +1,6 @@
-use aiken/list
-use aiken/transaction/credential.{Address}
-use aiken/transaction/value.{AssetName, PolicyId}
+use aiken/collection/list
+use cardano/address.{Address}
+use cardano/assets.{AssetName, PolicyId}
 use common/hashes.{ScriptHash, VerificationKeyHash}
 use decentralized_minting/discount.{DiscountConfig}
 

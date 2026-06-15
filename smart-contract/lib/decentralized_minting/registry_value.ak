@@ -1,6 +1,6 @@
 use aiken/builtin
-use aiken/bytearray
-use aiken/list
+use aiken/collection/list
+use aiken/primitive/bytearray
 
 // Free-virtual allowance (DeMi orders path) — the registry value at a ROOT handle key carries,
 // alongside the WS1 label set, the SET OF NAMES of the root's currently-held FREE private virtual

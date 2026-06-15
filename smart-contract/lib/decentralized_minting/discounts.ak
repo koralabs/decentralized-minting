@@ -1,8 +1,8 @@
-use aiken/bytearray
+use aiken/collection/pairs
 use aiken/merkle_patricia_forestry as mpt
-use aiken/pairs
-use aiken/transaction/credential.{Address}
-use aiken/transaction/value.{PolicyId}
+use aiken/primitive/bytearray
+use cardano/address.{Address}
+use cardano/assets.{PolicyId}
 
 // WS5 — minting-discount eligibility primitives.
 //

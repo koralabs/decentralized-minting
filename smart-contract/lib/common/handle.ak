@@ -1,5 +1,5 @@
 use aiken/builtin
-use aiken/bytearray
+use aiken/primitive/bytearray
 
 // parse handle name
 // get root handle name and is sub handle and sub handle name

@@ -1,7 +1,7 @@
-use aiken/bytearray
-use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/credential.{Address}
-use aiken/transaction/value.{PolicyId, quantity_of}
+use aiken/primitive/bytearray
+use cardano/address.{Address}
+use cardano/assets.{PolicyId, quantity_of}
+use cardano/transaction.{InlineDatum, Input, Output}
 use common/cip68.{prefix_100, prefix_222}
 use decentralized_minting/discount.{
   DiscountClaim, DiscountConfig, HalClaim, OgClaim, PartnerClaim, RarityClaim,

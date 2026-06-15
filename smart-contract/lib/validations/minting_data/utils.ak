@@ -1,10 +1,10 @@
-use aiken/bytearray
-use aiken/list
+use aiken/collection/list
 use aiken/math
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/credential.{Address, Credential, ScriptCredential}
-use aiken/transaction/value.{PolicyId, Value, ada_asset_name, ada_policy_id}
+use aiken/primitive/bytearray
+use cardano/address.{Address, Credential, Script}
+use cardano/assets.{PolicyId, Value, ada_asset_name, ada_policy_id} as value
+use cardano/transaction.{InlineDatum, Input, Output}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
 use common/handle.{parse_handle_name}
 use common/hashes.{ScriptHash}
@@ -499,7 +499,7 @@ fn is_order_script_address(
   order_script_hash: ScriptHash,
 ) -> Bool {
   when address.payment_credential is {
-    ScriptCredential(sc) -> sc == order_script_hash
+    Script(sc) -> sc == order_script_hash
     _ -> False
   }
 }
@@ -588,7 +588,7 @@ fn check_ref_and_user_outputs(
   // check ref output
   expect ref_output_address == pz_script_address
   let expected_ref_value =
-    value.zero()
+    value.zero
       |> value.add(policy_id, ref_asset_name, 1)
   expect value.without_lovelace(ref_output_value) == expected_ref_value
   // ref asset's datum is set by minter
@@ -632,7 +632,7 @@ fn check_virtual_sub_output(
 
   expect virtual_output_address == pz_script_address
   let expected_virtual_value =
-    value.zero()
+    value.zero
       |> value.add(policy_id, virtual_asset_name, 1)
   expect value.without_lovelace(virtual_output_value) == expected_virtual_value
   expect virtual_output_reference_script == None

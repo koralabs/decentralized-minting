@@ -1,11 +1,9 @@
 use aiken/builtin
-use aiken/bytearray
-use aiken/list
-use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/credential.{
-  Credential, ScriptCredential, VerificationKeyCredential,
-}
-use aiken/transaction/value.{PolicyId}
+use aiken/collection/list
+use aiken/primitive/bytearray
+use cardano/address.{Credential, Script, VerificationKey}
+use cardano/assets.{PolicyId} as value
+use cardano/transaction.{InlineDatum, Input, Output}
 use common/cip68.{prefix_001}
 
 // Extract the payment credential embedded in a raw Cardano address (the OwnerSettings
@@ -17,9 +15,9 @@ pub fn owner_payment_credential(payment_address: ByteArray) -> Credential {
   let header = builtin.index_bytearray(payment_address, 0)
   let cred_hash = bytearray.slice(payment_address, 1, 28)
   if header / 16 % 2 == 1 {
-    ScriptCredential(cred_hash)
+    Script(cred_hash)
   } else {
-    VerificationKeyCredential(cred_hash)
+    VerificationKey(cred_hash)
   }
 }
 

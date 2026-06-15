@@ -1,5 +1,5 @@
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction/value.{PolicyId}
+use cardano/assets.{PolicyId}
 
 // WS5 — discount configuration + amount math. Mirrors legacy (minting.handle.me nft.ts:238,
 // `feeAfterDiscount = handleCost - handleCost * discount`) with the fraction expressed as

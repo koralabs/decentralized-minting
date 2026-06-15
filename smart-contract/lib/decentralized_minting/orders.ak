@@ -1,4 +1,4 @@
-use aiken/transaction/credential.{Address}
+use cardano/address.{Address}
 use decentralized_minting/discount.{DiscountClaim}
 
 // OrderDatum now consists of owner (to close order), 

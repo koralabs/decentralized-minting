@@ -1,6 +1,6 @@
-use aiken/list
-use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/value
+use aiken/collection/list
+use cardano/assets as value
+use cardano/transaction.{InlineDatum, Input, Output}
 
 const minting_data_asset_policy_id =
   #"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a"

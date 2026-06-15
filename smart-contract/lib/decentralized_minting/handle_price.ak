@@ -1,5 +1,5 @@
-use aiken/transaction.{InlineDatum, Output}
-use aiken/transaction/value.{AssetName, PolicyId}
+use cardano/assets.{AssetName, PolicyId} as value
+use cardano/transaction.{InlineDatum, Output}
 
 // This is the list of handles price
 // There are 4 handle prices (ultraRare, rare, common, basic)

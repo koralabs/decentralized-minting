@@ -1,9 +1,9 @@
-use aiken/list
+use aiken/collection/list
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction.{
+use cardano/assets.{PolicyId} as value
+use cardano/transaction.{
   InlineDatum, Input, Output, OutputReference, Transaction, find_input,
 }
-use aiken/transaction/value.{PolicyId}
 use common/hashes.{VerificationKeyHash}
 use decentralized_minting/handle_price.{resolve_handle_price_info}
 use decentralized_minting/minting_data.{MintingData, resolve_minting_data}
@@ -157,7 +157,7 @@ pub fn can_mint_new_handles(
       discount_config.free_virtual_count,
       proofs,
       root,
-      value.zero(),
+      value.zero,
       0,
       0,
       0,
@@ -226,7 +226,7 @@ pub fn can_mint_new_handles(
   expect owner_fees_all_paid(owner_fees, leftover_outputs)
 
   // check minted handles
-  expect value.from_minted_value(mint) == expected_mint_value
+  expect mint == expected_mint_value
 
   True
 }
@@ -325,7 +325,7 @@ fn process_legacy_handles(
   let
     new_root,
     expected_mint_value,
-  <- all_proofs_are_valid(proofs, root, legacy_policy_id, amount, value.zero())
+  <- all_proofs_are_valid(proofs, root, legacy_policy_id, amount, value.zero)
 
   // calculate new root and expected mint value
   let new_mpt_root_hash = new_root |> mpt.root
@@ -343,7 +343,7 @@ fn process_legacy_handles(
   expect minting_data_output.reference_script == None
 
   // check minted/burned handles match the proofs exactly
-  expect value.from_minted_value(mint) == expected_mint_value
+  expect mint == expected_mint_value
 
   True
 }
@@ -384,7 +384,7 @@ pub fn can_burn_new_handles(
   let
     new_root,
     expected_mint_value,
-  <- all_burn_proofs_are_valid(proofs, root, new_policy_id, value.zero())
+  <- all_burn_proofs_are_valid(proofs, root, new_policy_id, value.zero)
 
   let new_mpt_root_hash = new_root |> mpt.root
 
@@ -401,7 +401,7 @@ pub fn can_burn_new_handles(
   expect minting_data_output.reference_script == None
 
   // the tx must burn exactly the tokens the proofs delete
-  expect value.from_minted_value(mint) == expected_mint_value
+  expect mint == expected_mint_value
 
   True
 }
@@ -477,7 +477,7 @@ pub fn can_mint_label_assets(
       reference_inputs,
       legacy_policy_id,
       new_policy_id,
-      value.zero(),
+      value.zero,
     )
 
   // calculate new root
@@ -496,7 +496,7 @@ pub fn can_mint_label_assets(
   expect minting_data_output.reference_script == None
 
   // minted/burned label assets must match the proofs exactly
-  expect value.from_minted_value(mint) == expected_mint_value
+  expect mint == expected_mint_value
 
   True
 }
@@ -508,7 +508,7 @@ pub fn can_update_mpt(
   let Transaction { extra_signatories, mint, .. } = transaction
 
   // must not mint anything
-  expect value.from_minted_value(mint) == value.zero()
+  expect mint == value.zero
 
   // must be signed by god
   expect list.has(extra_signatories, admin_verification_key_hash)

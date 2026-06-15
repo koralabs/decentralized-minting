@@ -1,7 +1,7 @@
-use aiken/bytearray
 use aiken/interval.{Interval}
-use aiken/transaction.{InlineDatum, Input, Output}
-use aiken/transaction/value.{PolicyId, quantity_of}
+use aiken/primitive/bytearray
+use cardano/assets.{PolicyId, quantity_of}
+use cardano/transaction.{InlineDatum, Input, Output}
 use common/cip68.{prefix_222}
 use decentralized_minting/handle_policies.{
   find_policy_window, mint_allowed_in_window, window_to_posix,

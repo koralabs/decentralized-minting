@@ -1,12 +1,12 @@
-use aiken/pairs
-use aiken/transaction/credential.{Inline, ScriptCredential, StakeCredential}
+use aiken/collection/pairs
+use cardano/address.{Credential, Script}
 use common/hashes.{ScriptHash}
 
 pub fn is_withdrawal_script_executed(
-  withdrawals: Pairs<StakeCredential, Int>,
+  withdrawals: Pairs<Credential, Int>,
   script_hash: ScriptHash,
 ) -> Bool {
-  pairs.has_key(withdrawals, Inline(ScriptCredential(script_hash)))
+  pairs.has_key(withdrawals, Script(script_hash))
 }
 
 pub fn parse_bool_from_int(value: Int) -> Bool {

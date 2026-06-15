@@ -1,6 +1,6 @@
+use aiken/collection/pairs
 use aiken/interval.{Finite, Interval, IntervalBound}
-use aiken/pairs
-use aiken/transaction/value.{PolicyId}
+use cardano/assets.{PolicyId}
 
 // WS7 — sunset / minting-window enforcement against the `$handle_policies` admin datum.
 //

@@ -1,4 +1,4 @@
-use aiken/bytearray
+use aiken/primitive/bytearray
 
 // WS1 — per-Handle asset-label registry value encoding.
 //
