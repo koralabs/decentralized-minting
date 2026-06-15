@@ -8,23 +8,25 @@ import {
   plutusV3ScriptHash,
 } from "../src/helpers/cardano-sdk/scriptParams.js";
 
-// Fixture hashes pinned from the last helios-backed run (commit 5860270).
-// They match byte-for-byte what UplcProgramV2.apply() produced, so if this
-// test ever goes red it means scalus's apply diverged from the on-chain
-// validator-hash expectations.
-const HELIOS_PINNED_HASHES = {
-  // demimntprx is unchanged by the subhandle/burn work, so this stays the helios-era pin.
+// Pinned applied (parameterized) validator hashes — a regression lock on
+// scalus's `applyParamsToScript` against the committed blueprint.
+//
+// Plutus-version split (aiken v1.1.22 migration):
+//   - demimntprx (mint proxy) is FROZEN at Plutus V2 (aiken v1.0.29-alpha).
+//     Its compiled code and applied hash are unchanged from the helios era.
+//   - demimnt (withdraw) and demimntmpt (spend) are now Plutus V3
+//     (aiken v1.1.22). Their compiled code AND the language tag changed, so
+//     the applied hashes moved and they must be hashed with plutusV3ScriptHash.
+const PINNED_HASHES = {
+  // demimntprx — Plutus V2, unchanged across the v3 migration.
   mintProxyIntV1: "c4d3329ac42cd35626f74d451a54b2d1ba1f9f380c9f88e3e7a9585b",
-  // demimnt (governor) changed: DSH-201 enabled `can_burn_handles` (was a `False` stub), so its
-  // compiled code — and this applied hash — moved. Re-pinned from the DSH-406 blueprint regen.
-  mintV1WithdrawBytesA56: "009722011a8238e5ee6c217711fbfdd053e25ab549240d58a0dee0af",
-  // demimntmpt takes 5 params (legacy_policy_id, admin_vkh + WS7 slot anchor: anchor_slot,
-  // anchor_time_ms, slot_length_ms). This locks the current aiken-compiled validator's applied
-  // hash as a regression. Re-pinned in DSH-406 after the Phase-1/2 ABI changes reached the
-  // blueprint: free-virtual name-set (DSH-101/102 OrderProof/FreeVirtualData/registry_value) and
-  // the DeMi burn path (DSH-202 BurnNewHandles/BurnProof) — each changes demimntmpt's code.
+  // demimnt.withdraw — Plutus V3 applied hash (aiken v1.1.22 build).
+  mintV1WithdrawBytesA56: "342bbb9cf450e63ad336ad6c65b1cb55aaa4cc7f097fb6738908c7fe",
+  // demimntmpt.spend — Plutus V3 applied hash with the 5 params
+  // (legacy_policy_id, admin_vkh + WS7 slot anchor: anchor_slot,
+  // anchor_time_ms, slot_length_ms), aiken v1.1.22 build.
   mintingDataSpend5Params:
-    "6cffc08919f671b87ee565f8380403adc63d20fe16cc6868d98dd6a5",
+    "8c455db351126684aa41841654a8d68144a65895c98f9ced7b063488",
 };
 
 const findValidator = (title: string) => {
@@ -36,27 +38,30 @@ const findValidator = (title: string) => {
 };
 
 describe("applyParamsToScript (scalus)", () => {
-  it("matches the helios-era hash for the mint proxy with an int param", () => {
+  it("matches the pinned V2 hash for the (frozen) mint proxy with an int param", () => {
     const compiledCode = findValidator("demimntprx.mint");
+    // demimntprx stays Plutus V2 — hash with the V2 helper.
     const hash = plutusV2ScriptHash(
       applyParamsToScript(compiledCode, [{ int: 1 } as PlutusDataJson]),
     );
-    expect(hash).toBe(HELIOS_PINNED_HASHES.mintProxyIntV1);
+    expect(hash).toBe(PINNED_HASHES.mintProxyIntV1);
   });
 
-  it("matches the helios-era hash for mint v1 withdraw with a bytes param", () => {
+  it("matches the pinned V3 hash for mint v1 withdraw with a bytes param", () => {
     const compiledCode = findValidator("demimnt.withdraw");
-    const hash = plutusV2ScriptHash(
+    // demimnt is Plutus V3 (aiken v1.1.22) — hash with the V3 helper.
+    const hash = plutusV3ScriptHash(
       applyParamsToScript(compiledCode, [
         { bytes: "a".repeat(56) } as PlutusDataJson,
       ]),
     );
-    expect(hash).toBe(HELIOS_PINNED_HASHES.mintV1WithdrawBytesA56);
+    expect(hash).toBe(PINNED_HASHES.mintV1WithdrawBytesA56);
   });
 
-  it("matches the pinned hash for minting data spend with its 5 params (2 bytes + 3 ints)", () => {
+  it("matches the pinned V3 hash for minting data spend with its 5 params (2 bytes + 3 ints)", () => {
     const compiledCode = findValidator("demimntmpt.spend");
-    const hash = plutusV2ScriptHash(
+    // demimntmpt is Plutus V3 (aiken v1.1.22) — hash with the V3 helper.
+    const hash = plutusV3ScriptHash(
       applyParamsToScript(compiledCode, [
         { bytes: "b".repeat(56) } as PlutusDataJson,
         { bytes: "c".repeat(56) } as PlutusDataJson,
@@ -65,7 +70,7 @@ describe("applyParamsToScript (scalus)", () => {
         { int: 3 } as PlutusDataJson,
       ]),
     );
-    expect(hash).toBe(HELIOS_PINNED_HASHES.mintingDataSpend5Params);
+    expect(hash).toBe(PINNED_HASHES.mintingDataSpend5Params);
   });
 });
 

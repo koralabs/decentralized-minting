@@ -20,7 +20,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: 7e6ec18a68a2a21fb6ad8d27d2317beb572e81d1ae7a3c71608eb034
+      mint_governor: 28db779af4a3ab8114798e907da3703f4e4afd0d01a9818dd68a77fa
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -30,8 +30,8 @@ settings:
       treasury_address: addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j
       treasury_fee_percentage: 10
       pz_script_address: addr_test1wzzctdyf9nkgrzqw6vxhaq8mpla7zhzjyjmk6txyu0wsgrgek9nj3
-      order_script_hash: 24fe9a2abd4fa926677a65bc8424c755b054790599d4474911a06553
-      minting_data_script_hash: dae8d5a285087589316f8047cd546edf27c4512ba656faf54e986fdb
+      order_script_hash: 72e4550dfd999d6a18bdbc0105bcb0b0e55691c19592ec02967f51f3
+      minting_data_script_hash: 4ae33c5fa06807dcaa9cf3d1ce0adda28745959fb2315d0ace57e334
     handle_root@handle_settings:
       mpt_root_hash: 17d278ca48d0d6f8888a628ed734032e984e8fea13da611178d954f259a91b09
     kora@handle_prices:

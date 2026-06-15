@@ -20,7 +20,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: 09869528d8a4ca299f7256a3f96818c142505779a7e6b07ecb6127c5
+      mint_governor: 369efe33209ef3ce9a4eec56e0a9befd8f43fc18057e39d174e95600
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -41,8 +41,8 @@ settings:
       # script found"). persprx is V3: hash with plutusV3ScriptHash or read the api
       # registry; never the V2 helper. See feedback_plutus_language_tag_hash.
       pz_script_address: addr_test1wp70zp2cdamexjjjfj0837y8nge5vqgyl9tcaxkfyl6h0cc9ad65m
-      order_script_hash: 1113f6b2fdbd5dad15d99c17d00052fc84391d723e03c30e950ee673
-      minting_data_script_hash: 3341f6d3655beca674eb9b9149ebe2aef5c1ea095b4c041fd21f5891
+      order_script_hash: 72e4550dfd999d6a18bdbc0105bcb0b0e55691c19592ec02967f51f3
+      minting_data_script_hash: 12837d6f5d16ddbe200e3306f9697c29133bfb0a65dedef10673fba8
       # WS5 discount config — all discounts off at launch; 3 free virtual subs; no HAL policy.
       discount_config:
         partner_nft_bps: 0
