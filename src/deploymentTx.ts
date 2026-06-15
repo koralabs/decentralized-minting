@@ -565,25 +565,42 @@ const buildAndSerializeTx = async ({
   // fee and sizes inputs/change to keep the body balanced. Bumping fee AFTER
   // selection breaks the `inputs = outputs + fee` invariant and is rejected by
   // the node as "value not conserved".
-  const NATIVE_SCRIPT_FEE_SAFETY_MARGIN_LOVELACE = 2000n;
+  // cardano-sdk's computeMinimumCost undershoots by (a) ~176 lovelace for the
+  // native-script witness, AND (b) ~the full serialized size of any reference-
+  // script OUTPUT — the scriptReference isn't sized into the fee estimation, so a
+  // ~2KB ref-script deploy came out ~100k lovelace short of the node minimum
+  // ("Insufficient fee" / code 3122). Cover both: a flat native-script buffer
+  // plus minFeeA × refScript bytes (×1.3 for safety; over-paying just shrinks change).
+  const refScriptBytes = requestedOutputs.reduce((sum, o) => {
+    if (!o.scriptReference) return sum;
+    try {
+      return sum + Serialization.Script.fromCore(o.scriptReference).toCbor().length / 2;
+    } catch {
+      return sum;
+    }
+  }, 0);
+  const minFeeCoefficient = BigInt(buildContext.protocolParameters.minFeeCoefficient ?? 44);
+  const FEE_SAFETY_MARGIN_LOVELACE =
+    2000n + (BigInt(Math.ceil(refScriptBytes)) * minFeeCoefficient * 13n) / 10n;
   const baseConstraints = defaultSelectionConstraints({
     protocolParameters: buildContext.protocolParameters,
     buildTx: buildForSelection,
     redeemersByType: {},
     txEvaluator,
   });
-  const constraints = nativeScript
-    ? {
-        ...baseConstraints,
-        computeMinimumCost: async (selection: SelectionSkeleton) => {
-          const result = await baseConstraints.computeMinimumCost(selection);
-          return {
-            ...result,
-            fee: result.fee + NATIVE_SCRIPT_FEE_SAFETY_MARGIN_LOVELACE,
-          };
-        },
-      }
-    : baseConstraints;
+  const constraints =
+    nativeScript || refScriptBytes > 0
+      ? {
+          ...baseConstraints,
+          computeMinimumCost: async (selection: SelectionSkeleton) => {
+            const result = await baseConstraints.computeMinimumCost(selection);
+            return {
+              ...result,
+              fee: result.fee + FEE_SAFETY_MARGIN_LOVELACE,
+            };
+          },
+        }
+      : baseConstraints;
 
   const selection = await inputSelector.select({
     preSelectedUtxo: new Set(selectedUtxos),
