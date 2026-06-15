@@ -1,4 +1,4 @@
-use aiken/bytearray
+use aiken/primitive/bytearray
 use common/handle.{parse_handle_name}
 
 test parse_handle_name_0() {

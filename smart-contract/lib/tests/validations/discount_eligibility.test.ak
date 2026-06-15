@@ -1,12 +1,8 @@
-use aiken/bytearray
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction.{
-  InlineDatum, Input, NoDatum, Output, OutputReference, TransactionId,
-}
-use aiken/transaction/credential.{
-  Address, Inline, VerificationKeyCredential, from_verification_key,
-}
-use aiken/transaction/value
+use aiken/primitive/bytearray
+use cardano/address.{Address, Inline, VerificationKey, from_verification_key}
+use cardano/assets as value
+use cardano/transaction.{InlineDatum, Input, NoDatum, Output, OutputReference}
 use common/cip68.{prefix_100, prefix_222}
 use decentralized_minting/discount.{
   DiscountConfig, HalClaim, OgClaim, PartnerClaim, RarityClaim,
@@ -40,7 +36,7 @@ fn unrelated_addr() -> Address {
 fn with_stake(addr: Address, stake: ByteArray) -> Address {
   Address {
     ..addr,
-    stake_credential: Some(Inline(VerificationKeyCredential(stake))),
+    stake_credential: Some(Inline(VerificationKey(stake))),
   }
 }
 
@@ -60,12 +56,12 @@ fn config() -> DiscountConfig {
 fn ref_input(addr: Address, policy: ByteArray, name: ByteArray, datum) -> Input {
   Input {
     output_reference: OutputReference {
-      transaction_id: TransactionId { hash: #"aa" },
+      transaction_id: #"aa",
       output_index: 0,
     },
     output: Output {
       address: addr,
-      value: value.zero() |> value.add(policy, name, 1),
+      value: value.zero |> value.add(policy, name, 1),
       datum,
       reference_script: None,
     },
@@ -185,7 +181,7 @@ test hal_wrong_policy_fails() fail {
 // --- partner (MPF membership in the allowlist root) ---
 
 test partner_claim_ok() {
-  let trie = mpt.insert(mpt.empty(), partner_policy, #"00", [])
+  let trie = mpt.insert(mpt.empty, partner_policy, #"00", [])
   let root = mpt.root(trie)
   let refs =
     [ref_input(holder_addr(), partner_policy, "pnft", NoDatum)]
@@ -205,7 +201,7 @@ test partner_claim_ok() {
 
 // policy not in the allowlist root -> rejected
 test partner_not_in_root_fails() fail {
-  let trie = mpt.insert(mpt.empty(), partner_policy, #"00", [])
+  let trie = mpt.insert(mpt.empty, partner_policy, #"00", [])
   let root = mpt.root(trie)
   let refs =
     [ref_input(holder_addr(), new_policy, "pnft", NoDatum)]

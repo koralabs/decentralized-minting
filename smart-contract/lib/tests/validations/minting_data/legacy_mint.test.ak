@@ -1,7 +1,7 @@
-use aiken/bytearray
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction.{OutputReference, TransactionId}
-use aiken/transaction/value.{Value}
+use aiken/primitive/bytearray
+use cardano/assets.{Value} as value
+use cardano/transaction.{OutputReference}
 use common/cip68.{prefix_100, prefix_222}
 use tests/mocks/fake_constants.{minting_data_script_hash}
 use tests/mocks/fake_tx.{
@@ -18,7 +18,7 @@ const legacy_policy =
 
 fn spending_ref() -> OutputReference {
   OutputReference {
-    transaction_id: TransactionId { hash: #"aaab" },
+    transaction_id: #"aaab",
     output_index: 0,
   }
 }
@@ -29,18 +29,18 @@ fn root_proof(handle: ByteArray) -> LegacyHandleProof {
 
 // a non-virtual root legacy handle mints its 100 + 222 tokens
 fn root_mint_value(handle: ByteArray, qty: Int) -> Value {
-  value.zero()
+  value.zero
     |> value.add(legacy_policy, bytearray.concat(prefix_100, handle), qty)
     |> value.add(legacy_policy, bytearray.concat(prefix_222, handle), qty)
 }
 
 // single-element trie roots (empty proof, mirroring the MPF lib's own tests)
 fn empty_root() -> ByteArray {
-  mpt.root(mpt.empty())
+  mpt.root(mpt.empty)
 }
 
 fn root_with(handle: ByteArray) -> ByteArray {
-  mpt.root(mpt.insert(mpt.empty(), handle, #"", []))
+  mpt.root(mpt.insert(mpt.empty, handle, #"", []))
 }
 
 // --- mint: insert the handle, mint 100+222, root advances empty -> {handle} ---

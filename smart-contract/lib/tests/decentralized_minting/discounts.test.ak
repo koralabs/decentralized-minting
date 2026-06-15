@@ -1,7 +1,5 @@
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction/credential.{
-  Address, Inline, ScriptCredential, VerificationKeyCredential,
-}
+use cardano/address.{Address, Inline, Script, VerificationKey}
 use decentralized_minting/discounts.{
   Cip68Datum, is_legendary, is_og, is_rare, is_ultra_rare,
   partner_policy_in_root, qualifies_for_rarity_discount, shares_credential,
@@ -9,9 +7,9 @@ use decentralized_minting/discounts.{
 
 fn addr(payment: ByteArray, stake: Option<ByteArray>) -> Address {
   Address {
-    payment_credential: VerificationKeyCredential(payment),
+    payment_credential: VerificationKey(payment),
     stake_credential: when stake is {
-      Some(s) -> Some(Inline(VerificationKeyCredential(s)))
+      Some(s) -> Some(Inline(VerificationKey(s)))
       None -> None
     },
   }
@@ -38,12 +36,12 @@ test both_no_stake_not_a_match() {
 test payment_credential_kind_differs() {
   let holder =
     Address {
-      payment_credential: VerificationKeyCredential(#"aa"),
+      payment_credential: VerificationKey(#"aa"),
       stake_credential: None,
     }
   let destination =
     Address {
-      payment_credential: ScriptCredential(#"aa"),
+      payment_credential: Script(#"aa"),
       stake_credential: None,
     }
   shares_credential(holder, destination) == False
@@ -131,13 +129,13 @@ const other_policy = #"cafecafecafecafecafecafecafecafecafecafecafecafe0002"
 
 test partner_policy_in_allowlist_root() {
   // single-element trie -> empty proof, mirroring handles-personalization
-  let trie = mpt.insert(mpt.empty(), partner_policy, #"00", [])
+  let trie = mpt.insert(mpt.empty, partner_policy, #"00", [])
   let root = mpt.root(trie)
   partner_policy_in_root(root, partner_policy, #"00", [])
 }
 
 test partner_policy_not_in_allowlist_root() {
-  let trie = mpt.insert(mpt.empty(), partner_policy, #"00", [])
+  let trie = mpt.insert(mpt.empty, partner_policy, #"00", [])
   let root = mpt.root(trie)
   // a different policy can't be proven present against the same root
   partner_policy_in_root(root, other_policy, #"00", []) == False

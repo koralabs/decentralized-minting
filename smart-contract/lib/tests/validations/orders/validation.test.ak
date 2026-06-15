@@ -1,8 +1,6 @@
-use aiken/transaction.{NoDatum, Output}
-use aiken/transaction/credential.{
-  Inline, ScriptCredential, StakeCredential, from_script, from_verification_key,
-}
-use aiken/transaction/value
+use cardano/address.{Credential, Script, from_script, from_verification_key}
+use cardano/assets as value
+use cardano/transaction.{NoDatum, Output}
 use decentralized_minting/orders.{OrderDatum}
 use sundae/multisig.{Signature}
 use tests/mocks/fake_constants.{min_order_lovelace, mint_governor}
@@ -24,8 +22,8 @@ fn order_datum() -> OrderDatum {
 }
 
 // withdrawal map with the mint_governor executed (admin authorization present)
-fn governor_executed() -> Pairs<StakeCredential, Int> {
-  [Pair(Inline(ScriptCredential(mint_governor)), 0)]
+fn governor_executed() -> Pairs<Credential, Int> {
+  [Pair(Script(mint_governor), 0)]
 }
 
 fn owner_refund_output(lovelace: Int) -> Output {
@@ -37,14 +35,14 @@ fn owner_refund_output(lovelace: Int) -> Output {
   }
 }
 
-fn refund_tx(withdrawals: Pairs<StakeCredential, Int>, outputs: List<Output>) {
+fn refund_tx(withdrawals: Pairs<Credential, Int>, outputs: List<Output>) {
   let order_input = make_order_input(owner_vkh, "test")
   let tx =
     make_transaction(
       [order_input],
       [make_settings_reference_input()],
       outputs,
-      value.zero(),
+      value.zero,
       withdrawals,
       [],
     )

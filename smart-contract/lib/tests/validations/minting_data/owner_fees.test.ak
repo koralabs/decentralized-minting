@@ -1,16 +1,15 @@
-use aiken/transaction/credential.{Address,
-  Credential, VerificationKeyCredential}
-use aiken/transaction/value
+use cardano/address.{Address, Credential, VerificationKey}
+use cardano/assets as value
 use tests/mocks/fake_tx.{make_output}
 use validations/minting_data/utils.{add_owner_fee, owner_fees_all_paid}
 
 // Two distinct subhandle owners.
 fn owner_a() -> Credential {
-  VerificationKeyCredential(#"aa")
+  VerificationKey(#"aa")
 }
 
 fn owner_b() -> Credential {
-  VerificationKeyCredential(#"bb")
+  VerificationKey(#"bb")
 }
 
 fn addr(cred: Credential) -> Address {

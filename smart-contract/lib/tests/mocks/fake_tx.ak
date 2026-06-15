@@ -1,11 +1,10 @@
-use aiken/dict
 use aiken/interval
-use aiken/transaction.{
+use cardano/address.{Address, Credential} as credential
+use cardano/assets.{AssetName, PolicyId, Value} as value
+use cardano/transaction.{
   Datum, InlineDatum, Input, NoDatum, Output, OutputReference, Transaction,
-  TransactionId,
+  placeholder,
 }
-use aiken/transaction/credential.{Address, StakeCredential}
-use aiken/transaction/value.{AssetName, PolicyId, Value}
 use common/hashes.{ScriptHash, VerificationKeyHash}
 use decentralized_minting/discount.{DiscountConfig}
 use decentralized_minting/handle_price.{HandlePriceInfo}
@@ -52,7 +51,7 @@ pub fn make_order_input(
     }
   Input {
     output_reference: OutputReference {
-      transaction_id: TransactionId { hash: #"aaaa" },
+      transaction_id: #"aaaa",
       output_index: 0,
     },
     output: Output {
@@ -101,12 +100,12 @@ pub fn make_settings_reference_input() -> Input {
 
   Input {
     output_reference: OutputReference {
-      transaction_id: TransactionId { hash: #"aaaa" },
+      transaction_id: #"aaaa",
       output_index: 0,
     },
     output: Output {
       address: credential.from_verification_key(#"aaaa"),
-      value: value.zero()
+      value: value.zero
         |> value.add(settings_asset_policy_id, settings_asset_name, 1),
       datum: InlineDatum(settings),
       reference_script: None,
@@ -121,7 +120,7 @@ pub fn make_minting_data_output(
   let minting_data: MintingData = MintingData { mpt_root_hash }
   Output {
     address: credential.from_script(output_script_hash),
-    value: value.zero()
+    value: value.zero
       |> value.add(minting_data_asset_policy_id, minting_data_asset_name, 1),
     datum: InlineDatum(minting_data),
     reference_script: None,
@@ -135,12 +134,12 @@ pub fn make_minting_data_input(
   let minting_data: MintingData = MintingData { mpt_root_hash }
   Input {
     output_reference: OutputReference {
-      transaction_id: TransactionId { hash: #"aaab" },
+      transaction_id: #"aaab",
       output_index: 0,
     },
     output: Output {
       address: credential.from_script(output_script_hash),
-      value: value.zero()
+      value: value.zero
         |> value.add(minting_data_asset_policy_id, minting_data_asset_name, 1),
       datum: InlineDatum(minting_data),
       reference_script: None,
@@ -163,7 +162,7 @@ pub fn make_handle_price_info_output(
 
   Output {
     address: credential.from_verification_key(#"abab"),
-    value: value.zero()
+    value: value.zero
       |> value.add(policy_id, asset_name, 1),
     datum: InlineDatum(make_handle_price_info()),
     reference_script: None,
@@ -184,21 +183,21 @@ pub fn make_transaction(
   reference_inputs: List<Input>,
   outputs: List<Output>,
   mint_value: Value,
-  withdrawals: Pairs<StakeCredential, Int>,
+  withdrawals: Pairs<Credential, Int>,
   extra_signatories: List<VerificationKeyHash>,
 ) -> Transaction {
   Transaction {
+    ..placeholder,
     inputs,
     reference_inputs,
     outputs,
-    fee: value.zero(),
-    mint: mint_value |> value.to_minted_value,
+    fee: 0,
+    mint: mint_value,
     certificates: [],
     withdrawals,
-    validity_range: interval.everything(),
+    validity_range: interval.everything,
     extra_signatories,
     redeemers: [],
-    datums: dict.new(),
-    id: TransactionId { hash: #"" },
+    id: #"",
   }
 }

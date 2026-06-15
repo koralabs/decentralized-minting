@@ -1,5 +1,5 @@
-use aiken/transaction/credential.{Address}
-use aiken/transaction/value.{AssetName, PolicyId}
+use cardano/address.{Address} as credential
+use cardano/assets.{AssetName, PolicyId}
 use common/hashes.{ScriptHash, VerificationKeyHash}
 
 // settings & minting_data asset

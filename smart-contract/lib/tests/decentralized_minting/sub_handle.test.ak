@@ -1,5 +1,5 @@
-use aiken/bytearray
-use aiken/transaction/credential.{ScriptCredential, VerificationKeyCredential}
+use aiken/primitive/bytearray
+use cardano/address.{Script, VerificationKey}
 use decentralized_minting/sub_handle.{
   get_sub_handle_price_from_tier_pricing, owner_payment_credential,
 }
@@ -15,14 +15,14 @@ fn stake28() -> ByteArray {
 
 // Enterprise key address (header type 6, payment = key): header bit 4 unset -> VerificationKey.
 test owner_credential_enterprise_key() {
-  owner_payment_credential(bytearray.concat(#"60", vkh28())) == VerificationKeyCredential(
+  owner_payment_credential(bytearray.concat(#"60", vkh28())) == VerificationKey(
     vkh28(),
   )
 }
 
 // Enterprise script address (header type 7, payment = script): header bit 4 set -> Script.
 test owner_credential_enterprise_script() {
-  owner_payment_credential(bytearray.concat(#"70", vkh28())) == ScriptCredential(
+  owner_payment_credential(bytearray.concat(#"70", vkh28())) == Script(
     vkh28(),
   )
 }
@@ -30,7 +30,7 @@ test owner_credential_enterprise_script() {
 // Base address (header type 0): payment credential is bytes 1..28, stake part ignored.
 test owner_credential_base_addr_payment_only() {
   let addr = bytearray.concat(#"00", bytearray.concat(vkh28(), stake28()))
-  owner_payment_credential(addr) == VerificationKeyCredential(vkh28())
+  owner_payment_credential(addr) == VerificationKey(vkh28())
 }
 
 fn tier_pricing_0() -> List<(Int, Int)> {

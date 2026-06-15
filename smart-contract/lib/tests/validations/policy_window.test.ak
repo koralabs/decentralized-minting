@@ -1,10 +1,8 @@
-use aiken/bytearray
 use aiken/interval
-use aiken/transaction.{
-  InlineDatum, Input, Output, OutputReference, TransactionId,
-}
-use aiken/transaction/credential.{from_verification_key}
-use aiken/transaction/value
+use aiken/primitive/bytearray
+use cardano/address.{from_verification_key}
+use cardano/assets as value
+use cardano/transaction.{InlineDatum, Input, Output, OutputReference}
 use common/cip68.{prefix_222}
 use validations/policy_window.{assert_mint_within_policy_window}
 
@@ -28,12 +26,12 @@ fn policies_ref_input(
     [[Pair(listed_policy, window)]]
   Input {
     output_reference: OutputReference {
-      transaction_id: TransactionId { hash: #"bbbb" },
+      transaction_id: #"bbbb",
       output_index: 0,
     },
     output: Output {
       address: from_verification_key(#"00"),
-      value: value.zero() |> value.add(admin_policy, asset_name, 1),
+      value: value.zero |> value.add(admin_policy, asset_name, 1),
       datum: InlineDatum(datum_value),
       reference_script: None,
     },

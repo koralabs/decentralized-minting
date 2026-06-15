@@ -1,4 +1,4 @@
-use aiken/bytearray
+use aiken/primitive/bytearray
 use tests/mocks/fake_tx.{make_handle_price_info}
 use validations/minting_data/utils.{
   check_legacy_handle_validity, check_new_handle_validity_and_get_price,

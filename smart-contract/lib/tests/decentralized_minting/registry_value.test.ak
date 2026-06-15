@@ -1,4 +1,4 @@
-use aiken/bytearray
+use aiken/primitive/bytearray
 use decentralized_minting/registry_value.{
   add_free_name, encode, has_free_name, has_free_slot, remove_free_name,
 }

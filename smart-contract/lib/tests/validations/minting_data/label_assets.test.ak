@@ -1,8 +1,8 @@
-use aiken/bytearray
 use aiken/merkle_patricia_forestry as mpt
-use aiken/transaction.{Input, NoDatum, Output, OutputReference, TransactionId}
-use aiken/transaction/credential.{from_verification_key}
-use aiken/transaction/value.{Value}
+use aiken/primitive/bytearray
+use cardano/address.{from_verification_key}
+use cardano/assets.{Value} as value
+use cardano/transaction.{Input, NoDatum, Output, OutputReference}
 use common/cip68.{prefix_222}
 use tests/mocks/fake_constants.{allowed_minter_0, minting_data_script_hash}
 use tests/mocks/fake_tx.{
@@ -19,7 +19,7 @@ const lbl_001 = #"00001070"
 
 fn spending_ref() -> OutputReference {
   OutputReference {
-    transaction_id: TransactionId { hash: #"aaab" },
+    transaction_id: #"aaab",
     output_index: 0,
   }
 }
@@ -28,12 +28,12 @@ fn spending_ref() -> OutputReference {
 fn owner_222_ref(handle: ByteArray) -> Input {
   Input {
     output_reference: OutputReference {
-      transaction_id: TransactionId { hash: #"dddd" },
+      transaction_id: #"dddd",
       output_index: 0,
     },
     output: Output {
       address: from_verification_key(#"99"),
-      value: value.zero()
+      value: value.zero
         |> value.add(legacy_policy, bytearray.concat(prefix_222, handle), 1),
       datum: NoDatum,
       reference_script: None,
@@ -54,11 +54,11 @@ fn label_proof(handle: ByteArray, amount: Int) -> LabelAssetProof {
 
 // trie with the root key present at value "" (no labels yet)
 fn base(handle: ByteArray) -> mpt.MerklePatriciaForestry {
-  mpt.insert(mpt.empty(), handle, #"", [])
+  mpt.insert(mpt.empty, handle, #"", [])
 }
 
 fn label_mint_value(handle: ByteArray, qty: Int) -> Value {
-  value.zero()
+  value.zero
     |> value.add(legacy_policy, bytearray.concat(lbl_001, handle), qty)
 }
 
