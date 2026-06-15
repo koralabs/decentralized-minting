@@ -1,5 +1,5 @@
-use aiken/transaction.{ScriptContext, Spend}
-use aiken/transaction/value.{PolicyId}
+use cardano/assets.{PolicyId}
+use cardano/transaction.{OutputReference, Transaction}
 use common/hashes.{VerificationKeyHash}
 use validations/minting_data/types.{
   BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
@@ -13,7 +13,7 @@ use validations/minting_data/validation.{
 // these indices. New variants are APPENDED after `UpdateMPT` so existing indices (0–2) are
 // preserved: MintNewHandles=0, MintLegacyHandles=1, UpdateMPT=2, BurnLegacyHandles=3,
 // MintLabelAssets=4, BurnNewHandles=5.
-type MintingDataRedeemer {
+pub type MintingDataRedeemer {
   MintNewHandles(List<OrderProof>, Int)
   MintLegacyHandles(List<LegacyHandleProof>)
   // Update MPT
@@ -49,21 +49,19 @@ type MintingDataRedeemer {
 // used by WS7's `$handle_policies` sunset gate to convert the slot-based window to the POSIX-ms
 // domain of the tx validity range. Network-specific (mainnet/preprod/preview differ) — supplied
 // at deploy. Only consequential once a sunset slot is set; the gate is open until then.
-validator(
+validator demimntmpt(
   legacy_policy_id: PolicyId,
   admin_verification_key_hash: VerificationKeyHash,
   anchor_slot: Int,
   anchor_time_ms: Int,
   slot_length_ms: Int,
 ) {
-  fn spend(
-    _minting_data: Data,
+  spend(
+    _minting_data: Option<Data>,
     redeemer: MintingDataRedeemer,
-    ctx: ScriptContext,
+    spending_output_reference: OutputReference,
+    transaction: Transaction,
   ) {
-    let ScriptContext(transaction, purpose) = ctx
-    expect Spend(spending_output_reference) = purpose
-
     when redeemer is {
       MintNewHandles(proofs, minter_index) ->
         can_mint_new_handles(
@@ -105,5 +103,9 @@ validator(
       BurnNewHandles(proofs) ->
         can_burn_new_handles(transaction, spending_output_reference, proofs)
     }
+  }
+
+  else(_) {
+    fail
   }
 }

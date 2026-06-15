@@ -1,8 +1,9 @@
-use aiken/transaction.{ScriptContext, WithdrawFrom}
+use cardano/address.{Credential}
+use cardano/transaction.{Transaction}
 use common/hashes.{ScriptHash}
 use validations/mint_v1/validation.{can_burn_handles, can_mint_handles}
 
-type MintV1Redeemer {
+pub type MintV1Redeemer {
   MintHandles
   BurnHandles
 }
@@ -15,14 +16,15 @@ type MintV1Redeemer {
 // `minting_data_script_hash`: Script hash of current minting data script
 // which is referred from SettingsV1
 //
-validator(minting_data_script_hash: ScriptHash) {
-  fn withdraw(redeemer: MintV1Redeemer, ctx: ScriptContext) -> Bool {
-    let ScriptContext { purpose, transaction } = ctx
-    expect WithdrawFrom(_) = purpose
-
+validator demimnt(minting_data_script_hash: ScriptHash) {
+  withdraw(redeemer: MintV1Redeemer, _account: Credential, tx: Transaction) {
     when redeemer is {
-      MintHandles -> can_mint_handles(transaction, minting_data_script_hash)
-      BurnHandles -> can_burn_handles(transaction, minting_data_script_hash)
+      MintHandles -> can_mint_handles(tx, minting_data_script_hash)
+      BurnHandles -> can_burn_handles(tx, minting_data_script_hash)
     }
+  }
+
+  else(_) {
+    fail
   }
 }
