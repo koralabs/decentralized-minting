@@ -1,7 +1,7 @@
 name = "kora/handle-mint"
 version = "0.0.0"
-compiler = "v1.0.29-alpha"
-plutus = "v2"
+compiler = "v1.1.22"
+plutus = "v3"
 license = "Apache-2.0"
 description = "Aiken contracts for project 'kora/handle-mint'"
 
@@ -12,20 +12,25 @@ platform = "github"
 
 [[dependencies]]
 name = "aiken-lang/stdlib"
-version = "1.9.0"
+version = "v2"
 source = "github"
 
 [[dependencies]]
 name = "aiken-lang/fuzz"
-version = "1.0.0"
+version = "v2"
 source = "github"
 
 [[dependencies]]
 name = "aiken-lang/merkle-patricia-forestry"
-version = "1.2.0"
+version = "2.1.0"
 source = "github"
 
+# aicone pinned to main@769a3304 (2026), which declares aiken-lang/stdlib v2 and
+# carries no compiler pin (compatible with v1.1.x). The previous pin
+# 497e4dd5 predates stdlib v2. aicone is used ONLY by
+# lib/validations/orders/validation.ak (`use sundae/multisig`); lib/sundae/multisig.ak
+# still exists at this commit.
 [[dependencies]]
 name = "SundaeSwap-finance/aicone"
-version = "497e4dd59c1f1e02efacdee0c577ffcd030326bf"
+version = "769a33046ccd08a4950e8d647f3b0c1fbc01a941"
 source = "github"
