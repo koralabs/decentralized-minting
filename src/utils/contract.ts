@@ -69,8 +69,67 @@ const fetchDeployedScript = async (
   } as unknown as ScriptDetails;
 };
 
+// Resolve a deployed script by an EXACT validator hash rather than api
+// ordinal-"latest". This is the correct resolution for settings-canonical
+// singleton contracts (the minting-data validator and its governor): the live
+// instance is the one the on-chain settings pin, which is NOT necessarily the
+// highest-ordinal deployment slot. api `latest` is a routing signal ("where do
+// new deployments land?"), not a resolution signal ("which impl governs this
+// object?"); after a version migration that lands the new script on a lower
+// ordinal, those diverge. Resolving by hash binds to the settings, the
+// authority. Fails loud if the pinned hash isn't deployed (no silent
+// fallback — a missing pinned script is a real deploy gap, not a latest miss).
+const fetchDeployedScriptByHash = async (
+  contractType: ScriptType,
+  expectedHash: string,
+): Promise<ScriptDetails> => {
+  const slug = LEGACY_TYPE_TO_SLUG[contractType] ?? contractType;
+  const want = expectedHash.toLowerCase();
+  const response: unknown = await fetchApi(`scripts?type=${slug}`).then((res) =>
+    res.json(),
+  );
+  if (!response || typeof response !== "object") {
+    throw new Error(`${contractType} script details not deployed`);
+  }
+
+  // Flat shape: { scriptAddress, validatorHash, ... } — a single entry.
+  const flat = response as { scriptAddress?: unknown; validatorHash?: string };
+  if (typeof flat.scriptAddress === "string") {
+    if ((flat.validatorHash ?? "").toLowerCase() === want) {
+      return response as ScriptDetails;
+    }
+    throw new Error(
+      `${contractType} deployed script ${flat.validatorHash} does not match settings-pinned hash ${expectedHash}`,
+    );
+  }
+
+  // Address-keyed shape: pick the entry whose type AND validatorHash match the
+  // settings-pinned hash. Note the api type filter is a prefix match
+  // (?type=demimnt also returns demimntmpt/demimntprx), so the exact `type`
+  // check below is load-bearing, not redundant.
+  const entries = Object.entries(
+    response as Record<string, { type?: string; validatorHash?: string }>,
+  );
+  const match = entries.find(
+    ([, value]) =>
+      value &&
+      value.type === slug &&
+      (value.validatorHash ?? "").toLowerCase() === want,
+  );
+  if (!match) {
+    throw new Error(
+      `${contractType} script with settings-pinned validatorHash ${expectedHash} not found among deployed ${slug} scripts`,
+    );
+  }
+  const [scriptAddress, details] = match;
+  return {
+    ...(details as Record<string, unknown>),
+    scriptAddress,
+  } as unknown as ScriptDetails;
+};
+
 // TODO:
 // Add fetchRootHandleSettings function
 // This function will fetch the root handle settings
 
-export { fetchDeployedScript };
+export { fetchDeployedScript, fetchDeployedScriptByHash };

@@ -11,7 +11,7 @@ import {
 } from "../contracts/index.js";
 import type { NetworkName } from "../helpers/cardano-sdk/networkName.js";
 import { convertError, invariant } from "../helpers/index.js";
-import { fetchDeployedScript } from "../utils/contract.js";
+import { fetchDeployedScript, fetchDeployedScriptByHash } from "../utils/contract.js";
 
 /**
  * Inputs to `deploy`. `NetworkName` is now a local literal union — no Helios.
@@ -157,9 +157,17 @@ const parseRefUtxo = (
   return { txHash, outputIndex: parseInt(idxStr, 10) };
 };
 
-const fetchAllDeployedScripts = async (): Promise<
-  Result<DeployedScripts, string>
-> => {
+// `expected` carries the settings-pinned hashes for the settings-canonical
+// singleton contracts (minting-data validator + its governor). When provided,
+// those two resolve by EXACT hash instead of api ordinal-"latest" — see
+// fetchDeployedScriptByHash for why. The mint proxy (fixed policy identity) and
+// the orders contract (resolved by where orders actually sit) keep their
+// existing resolution. Omitting `expected` preserves the legacy latest-based
+// behavior for any caller that hasn't threaded settings through.
+const fetchAllDeployedScripts = async (expected?: {
+  mintingDataScriptHash?: string;
+  mintGovernorHash?: string;
+}): Promise<Result<DeployedScripts, string>> => {
   try {
     const mintProxyDetails = await fetchDeployedScript(
       ScriptType.DEMI_MINT_PROXY,
@@ -177,9 +185,12 @@ const fetchAllDeployedScripts = async (): Promise<
         : {}),
     };
 
-    const mintingDataDetails = await fetchDeployedScript(
-      ScriptType.DEMI_MINTING_DATA,
-    );
+    const mintingDataDetails = expected?.mintingDataScriptHash
+      ? await fetchDeployedScriptByHash(
+          ScriptType.DEMI_MINTING_DATA,
+          expected.mintingDataScriptHash,
+        )
+      : await fetchDeployedScript(ScriptType.DEMI_MINTING_DATA);
     invariant(
       mintingDataDetails.refScriptUtxo,
       "Minting Data has no Ref script UTxO",
@@ -193,7 +204,12 @@ const fetchAllDeployedScripts = async (): Promise<
         : {}),
     };
 
-    const mintV1Details = await fetchDeployedScript(ScriptType.DEMI_MINT);
+    const mintV1Details = expected?.mintGovernorHash
+      ? await fetchDeployedScriptByHash(
+          ScriptType.DEMI_MINT,
+          expected.mintGovernorHash,
+        )
+      : await fetchDeployedScript(ScriptType.DEMI_MINT);
     invariant(
       mintV1Details.refScriptUtxo,
       "Mint V1 has no Ref script UTxO",

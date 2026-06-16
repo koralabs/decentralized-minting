@@ -15,6 +15,7 @@ import {
   buildMintingDataMintNewHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
   convertHandlePricesToHandlePriceData,
+  getMintV1WithdrawValidator,
   HandlePriceInfo,
   HandlePrices,
   MintingData,
@@ -88,7 +89,24 @@ const prepareNewMintTransaction = async (
   } = params;
   const network = getNetwork(blockfrostApiKey);
 
-  const fetchedResult = await fetchAllDeployedScriptsFn();
+  // Settings are the authority for which minting-data validator (demimntmpt)
+  // and governor (demimnt) are live — fetch them BEFORE resolving deployed
+  // scripts so those two singletons bind to the settings-pinned hashes instead
+  // of api ordinal-"latest". The governor is derived from the minting-data hash
+  // (demimnt.withdraw is parameterized by it).
+  const settingsResult = await fetchSettingsFn(network);
+  if (!settingsResult.ok) {
+    return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
+  }
+  const { settings, settingsV1, settingsUtxo } = settingsResult.data;
+  const { treasury_address } = settingsV1;
+
+  const fetchedResult = await fetchAllDeployedScriptsFn({
+    mintingDataScriptHash: settingsV1.minting_data_script_hash,
+    mintGovernorHash: getMintV1WithdrawValidator(
+      settingsV1.minting_data_script_hash,
+    ).scriptHash,
+  });
   if (!fetchedResult.ok) {
     return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   }
@@ -98,13 +116,6 @@ const prepareNewMintTransaction = async (
     mintV1Script,
     ordersScript,
   } = fetchedResult.data;
-
-  const settingsResult = await fetchSettingsFn(network);
-  if (!settingsResult.ok) {
-    return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
-  }
-  const { settings, settingsV1, settingsUtxo } = settingsResult.data;
-  const { treasury_address } = settingsV1;
 
   const mintingDataResult = await fetchMintingDataFn();
   if (!mintingDataResult.ok) {

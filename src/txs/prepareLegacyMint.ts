@@ -7,6 +7,7 @@ import { fetchMintingData, fetchSettings } from "../configs/index.js";
 import {
   buildMintingData,
   buildMintingDataMintLegacyHandlesRedeemer,
+  getMintV1WithdrawValidator,
   LegacyHandle,
   LegacyHandleProof,
   MintingData,
@@ -82,7 +83,23 @@ const prepareLegacyMintTransaction = async (
   } = params;
   const network = getNetwork(blockfrostApiKey);
 
-  const fetchedResult = await fetchAllDeployedScriptsFn();
+  // WS4 — settings reference input (the mint path now reads find_settings for the treasury
+  // address + percentage when enforcing subhandle fees). Fetched first so the
+  // minting-data validator (demimntmpt) and its governor (demimnt) resolve by
+  // the settings-pinned hash rather than api ordinal-"latest" — see
+  // fetchDeployedScriptByHash.
+  const settingsResult = await fetchSettings(network);
+  if (!settingsResult.ok) {
+    return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
+  }
+  const { settingsV1, settingsUtxo } = settingsResult.data;
+
+  const fetchedResult = await fetchAllDeployedScriptsFn({
+    mintingDataScriptHash: settingsV1.minting_data_script_hash,
+    mintGovernorHash: getMintV1WithdrawValidator(
+      settingsV1.minting_data_script_hash,
+    ).scriptHash,
+  });
   if (!fetchedResult.ok) {
     return Err(new Error(`Failed to fetch scripts: ${fetchedResult.error}`));
   }
@@ -95,14 +112,6 @@ const prepareLegacyMintTransaction = async (
     );
   }
   const { mintingData, mintingDataUtxo } = mintingDataResult.data;
-
-  // WS4 — settings reference input (the mint path now reads find_settings for the treasury
-  // address + percentage when enforcing subhandle fees).
-  const settingsResult = await fetchSettings(network);
-  if (!settingsResult.ok) {
-    return Err(new Error(`Failed to fetch settings: ${settingsResult.error}`));
-  }
-  const { settingsUtxo } = settingsResult.data;
 
   // Ensure local MPT matches on-chain root.
   if (
