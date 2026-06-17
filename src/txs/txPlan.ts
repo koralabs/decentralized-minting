@@ -194,9 +194,52 @@ export const finalizeTxPlan = async (plan: TxPlan): Promise<FinalizedTx> => {
   );
 
   // Strip placeholder signatures — we return unsigned.
+  let finalBody = { ...finalTx.body, fee: selection.selection.fee };
+
+  // Minimize collateral to the protocol-required amount (fee *
+  // collateralPercentage / 100), returning the excess to the collateral owner.
+  // Without an explicit collateral return the ENTIRE collateral UTxO is the
+  // total collateral — which UNDER-collateralizes when the only available
+  // ADA-only UTxO is smaller than the requirement (a heavy DeMi sub-mint needs
+  // ~10.5 ADA) and dangerously OVER-collateralizes a large one (e.g. an 869 ADA
+  // change UTxO put fully at risk). With the return, any UTxO >= required works
+  // safely and forfeits only the required amount on script failure.
+  if (planWithFilled.collateralUtxo) {
+    const collateralCoins = planWithFilled.collateralUtxo[1].value.coins;
+    const collateralPct = BigInt(
+      planWithFilled.buildContext.protocolParameters.collateralPercentage ?? 150,
+    );
+    // The ~50-byte collateralReturn output is not in the coin-selection fee
+    // estimate (buildTxForSelection omits it), so nudge the declared fee up a
+    // touch to stay above min-fee for the slightly larger body.
+    const feeWithReturn = finalBody.fee + 5_000n;
+    const requiredCollateral = (feeWithReturn * collateralPct + 99n) / 100n;
+    const returnCoins = collateralCoins - requiredCollateral;
+    if (returnCoins > 0n) {
+      const returnOut: CardanoTypes.TxOut = {
+        address: planWithFilled.collateralUtxo[1].address,
+        value: { coins: returnCoins },
+      };
+      // Only attach a return if the excess clears the min-UTxO floor; otherwise
+      // leave the whole UTxO as collateral (already covers the requirement).
+      if (returnCoins >= minimumCoinQuantity(returnOut)) {
+        finalBody = {
+          ...finalBody,
+          fee: feeWithReturn,
+          totalCollateral: requiredCollateral,
+          collateralReturn: returnOut,
+        };
+      }
+    }
+  }
+
   const unsignedTx: CardanoTypes.Tx = {
     ...finalTx,
-    body: { ...finalTx.body, fee: selection.selection.fee },
+    id: transactionHashFromCore({
+      body: finalBody,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any) as unknown as CardanoTypes.TransactionId,
+    body: finalBody,
     witness: {
       ...finalTx.witness,
       signatures: new Map(),
