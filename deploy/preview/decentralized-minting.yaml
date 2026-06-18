@@ -20,7 +20,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: 369efe33209ef3ce9a4eec56e0a9befd8f43fc18057e39d174e95600
+      mint_governor: 2259537a4178232934d402b3ac114a68b2e40157014fe4fc784545b9
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -42,7 +42,7 @@ settings:
       # registry; never the V2 helper. See feedback_plutus_language_tag_hash.
       pz_script_address: addr_test1wp70zp2cdamexjjjfj0837y8nge5vqgyl9tcaxkfyl6h0cc9ad65m
       order_script_hash: 72e4550dfd999d6a18bdbc0105bcb0b0e55691c19592ec02967f51f3
-      minting_data_script_hash: 12837d6f5d16ddbe200e3306f9697c29133bfb0a65dedef10673fba8
+      minting_data_script_hash: ba5cb74fcc37c632cc46ae27ee8bc2025ac3e542526ee4400e25dcb4
       # WS5 discount config — all discounts off at launch; 3 free virtual subs; no HAL policy.
       discount_config:
         partner_nft_bps: 0

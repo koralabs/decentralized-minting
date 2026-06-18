@@ -6,7 +6,7 @@ use cardano/address.{Address, Credential, Script}
 use cardano/assets.{PolicyId, Value, ada_asset_name, ada_policy_id} as value
 use cardano/transaction.{InlineDatum, Input, Output}
 use common/cip68.{prefix_000, prefix_100, prefix_222}
-use common/handle.{parse_handle_name}
+use common/handle.{is_valid_handle_charset, parse_handle_name}
 use common/hashes.{ScriptHash}
 use common/utils.{parse_bool_from_int}
 use decentralized_minting/handle_price.{HandlePriceInfo, get_handle_price}
@@ -523,6 +523,8 @@ pub fn check_new_handle_validity_and_get_price(
   let handle_length = bytearray.length(handle_name)
   expect handle_length <= max_handle_length
   expect handle_length > 0
+  // check handle's charset (root handle has no `@`)
+  expect is_valid_handle_charset(handle_name)
 
   let (current_price, prev_price) =
     get_handle_price(handle_price_info, handle_length)
@@ -549,6 +551,9 @@ pub fn check_legacy_handle_validity(
     expect root_handle_length <= max_handle_length
     expect root_handle_length > 0
     expect sub_handle_length > 0
+    // check both parts' charset (each part has no `@`)
+    expect is_valid_handle_charset(root_handle_name)
+    expect is_valid_handle_charset(sub_handle_name)
 
     True
   } else {
@@ -557,6 +562,8 @@ pub fn check_legacy_handle_validity(
 
     expect handle_length <= max_handle_length
     expect handle_length > 0
+    // check handle's charset
+    expect is_valid_handle_charset(handle_name)
 
     True
   }

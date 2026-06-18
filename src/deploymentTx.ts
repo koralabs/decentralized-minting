@@ -837,9 +837,14 @@ export const buildMptRootMigrationTx = async ({
     desired.network,
   );
   const cleanUtxos = adminUtxos.filter((u) => !u[1].value.assets || u[1].value.assets.size === 0);
-  const collateralUtxo = cleanUtxos.length > 0
-    ? cleanUtxos.sort((a, b) => Number((b[1].value.coins ?? 0n) - (a[1].value.coins ?? 0n)))[0]
-    : undefined;
+  // Prefer a clean ADA-only UTxO for collateral. If the admin has none (all its
+  // UTxOs carry tokens), fall back to its largest UTxO — buildPlutusSpendTxInline
+  // attaches a collateral RETURN for the tokens + excess ADA (Conway allows
+  // token-bearing collateral with a return). Without a fallback the migration tx
+  // submits with NoCollateralInputs.
+  const collateralUtxo = (cleanUtxos.length > 0 ? cleanUtxos : adminUtxos)
+    .slice()
+    .sort((a, b) => Number((b[1].value.coins ?? 0n) - (a[1].value.coins ?? 0n)))[0];
 
   const spendInput: CardanoTypes.Utxo = [
     {
@@ -1046,9 +1051,28 @@ const buildPlutusSpendTxInline = async ({
     buildContext,
   );
 
+  let finalBody = { ...finalTx.body, fee: selection.selection.fee };
+  // Token-bearing collateral requires a collateral return (Conway): keep only the
+  // protocol-required collateral (ceil(fee * collateralPercentage/100)) as the
+  // forfeitable amount and return the rest (tokens + excess ADA) to the admin.
+  if (collateralUtxo && (collateralUtxo[1].value.assets?.size ?? 0) > 0) {
+    const collPct = BigInt(
+      buildContext.protocolParameters.collateralPercentage ?? 150,
+    );
+    const required = (finalBody.fee * collPct + 99n) / 100n;
+    const collCoins = collateralUtxo[1].value.coins ?? 0n;
+    finalBody = {
+      ...finalBody,
+      totalCollateral: required,
+      collateralReturn: {
+        address: collateralUtxo[1].address,
+        value: { coins: collCoins - required, assets: collateralUtxo[1].value.assets },
+      },
+    } as typeof finalBody;
+  }
   const unsignedTx: CardanoTypes.Tx = {
     ...finalTx,
-    body: { ...finalTx.body, fee: selection.selection.fee },
+    body: finalBody,
     witness: {
       ...finalTx.witness,
       signatures: new Map(),
