@@ -33,6 +33,7 @@ fn burn_proof(handle: ByteArray) -> BurnProof {
     handle_name: handle,
     is_virtual: 1,
     free_virtual: None,
+    root_absence: None,
   }
 }
 
@@ -40,6 +41,32 @@ fn burn_proof(handle: ByteArray) -> BurnProof {
 fn burn_value(handle: ByteArray) -> Value {
   value.zero
     |> value.add(new_policy_id, bytearray.concat(prefix_000, handle), -1)
+}
+
+// WS1 #4 — orphan reap requires a VALID root non-inclusion proof. With root_absence = Some but a
+// bogus/empty proof (here the root "abc" is absent from the trie, but [] doesn't prove it), mpt.miss
+// fails and the reap is rejected — you can't fabricate the absence. (A valid orphan reap with a real
+// proof is exercised off-chain / in the combined-tx tests; aiken has no in-test proof builder.)
+test burn_demi_handle_orphan_invalid_proof_fails() fail {
+  let handle = "sub@abc"
+  let proof =
+    BurnProof {
+      mpt_proof: [],
+      handle_name: handle,
+      is_virtual: 1,
+      free_virtual: None,
+      root_absence: Some([]),
+    }
+  let tx =
+    make_transaction(
+      [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
+      [make_settings_reference_input()],
+      [make_minting_data_output(new_root(handle), minting_data_script_hash)],
+      burn_value(handle),
+      [],
+      [allowed_minter_0],
+    )
+  can_burn_demi_handles(tx, spending_ref(), [proof])
 }
 
 // WS1 #1 — a DeMi-handle burn must be signed by an allowed_minter (the minter is the single

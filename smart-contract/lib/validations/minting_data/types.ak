@@ -31,6 +31,10 @@ pub type BurnProof {
   handle_name: ByteArray,
   is_virtual: Int,
   free_virtual: Option<FreeVirtualData>,
+  // WS1 orphan reap: a non-inclusion proof of the sub's ROOT key. `Some` => DeMi verifies the root
+  // is provably gone from the MPT (mpt.miss), authorizing the reap of a private orphan. `None` for a
+  // normal burn (root still present), gated by the minter sig + pers.
+  root_absence: Option<mpt.Proof>,
 }
 
 // legacy handle proof

@@ -739,11 +739,22 @@ pub fn all_burn_proofs_are_valid(
   when proofs is {
     [] -> continuation(root, expected_mint_value)
     [proof, ..rest_proofs] -> {
-      let BurnProof { mpt_proof, handle_name, is_virtual, free_virtual } = proof
+      let BurnProof { mpt_proof, handle_name, is_virtual, free_virtual, root_absence } =
+        proof
       let is_virtual_bool = parse_bool_from_int(is_virtual)
 
       // check handle is valid
       expect check_legacy_handle_validity(handle_name, is_virtual_bool)
+
+      let (root_name, _is_sub, sub_name) = parse_handle_name(handle_name)
+
+      // WS1 orphan reap — a supplied root-absence proof requires the sub's ROOT key to be provably
+      // absent from the MPT. This is the on-chain gate that lets a private orphan be reaped without
+      // the root's signature; `None` is a normal burn (root present, minter + pers gated).
+      expect when root_absence is {
+        Some(root_proof) -> mpt.miss(root, root_name, root_proof)
+        None -> True
+      }
 
       // delete the handle's own key (proves existence-before, absence-after)
       let root_after_handle = update_root(root, handle_name, -1, mpt_proof)
@@ -759,7 +770,6 @@ pub fn all_burn_proofs_are_valid(
         )
 
       // free-virtual reopen: a name in the root's free set is removed (else the set is untouched)
-      let (root_name, _is_sub, sub_name) = parse_handle_name(handle_name)
       let updated_root =
         when free_virtual is {
           Some(fv) -> {

@@ -37,6 +37,9 @@ type BurnProof = {
   // whether it's a virtual handle (1 or 0)
   is_virtual: bigint;
   free_virtual?: FreeVirtualData;
+  // WS1 orphan reap: a non-inclusion proof of the sub's ROOT key. Set => the contract verifies the
+  // root is gone (mpt.miss), authorizing a private orphan's reap; undefined => None (normal burn).
+  root_absence?: MPTProof;
 };
 
 // Legacy handle proof (mirrors validations/minting_data/types.LegacyHandleProof). Legacy mints

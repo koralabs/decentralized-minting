@@ -5,6 +5,7 @@ import {
   LabelAssetProof,
   LegacyHandleProof,
   MintingData,
+  MPTProof,
   OrderProof,
 } from "../types/index.js";
 import { buildMPTProofData } from "./mpt.js";
@@ -47,6 +48,10 @@ const buildFreeVirtualData = (fv: FreeVirtualData): PlutusData =>
 const buildOptionFreeVirtualData = (fv?: FreeVirtualData): PlutusData =>
   fv ? mkConstr(0, [buildFreeVirtualData(fv)]) : mkConstr(1, []);
 
+// Option<mpt.Proof>: Some(proof) = constr 0 / None = constr 1. WS1 orphan-reap root-absence proof.
+const buildOptionMPTProofData = (proof?: MPTProof): PlutusData =>
+  proof ? mkConstr(0, [buildMPTProofData(proof)]) : mkConstr(1, []);
+
 // OrderProof { mpt_proof, free_virtual: Option<FreeVirtualData> } (constructor 0).
 const buildOrderProofData = (proof: OrderProof): PlutusData =>
   mkConstr(0, [
@@ -61,6 +66,7 @@ const buildBurnProofData = (proof: BurnProof): PlutusData =>
     mkBytes(proof.handle_name),
     mkInt(proof.is_virtual),
     buildOptionFreeVirtualData(proof.free_virtual),
+    buildOptionMPTProofData(proof.root_absence),
   ]);
 
 // LegacyHandleProof { mpt_proof, handle_name, is_virtual } (constructor 0). No free-virtual.
