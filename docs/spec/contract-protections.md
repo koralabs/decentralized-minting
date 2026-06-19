@@ -90,7 +90,7 @@ single MPT root correctly. Six redeemers.
 - The new root is the result of applying every supplied MPF proof to the old root (old/new value proven).
 - The proof list is non-empty.
 
-**`MintNewHandles`** (DeMi mint):
+**`MintNewHandles`** → **`MintDeMiHandles`** (#6) — DeMi mint:
 - **allowed_minter** must sign.
 - Mints fall inside the new policy's `$handle_policies` window (when set).
 - Each order is satisfied: right 100→pz, 222→destination, correct price (rarity − discount; subs at
@@ -113,7 +113,7 @@ single MPT root correctly. Six redeemers.
   instead of pinning to the 222's, so cross-pollinated f0ff-001 / DeMi-222 handles can clear. The **+1
   mint keeps the pin** (no fake-label registration).
 
-**`BurnNewHandles`** (000 / 222 key removal):
+**`BurnNewHandles`** → **`BurnDeMiHandles`** (#6) — 000 / 222 key removal:
 - Each proof deletes the handle key; a free-virtual burn re-opens the root's free-name slot; `tx.mint`
   exactly equals the (negative) proofs.
 - 🔲 **PLANNED #1**: require **allowed_minter** to sign (today it does **not**, unlike the mint path).
@@ -155,6 +155,10 @@ failing-invariant tests above turned green.
 4. **`demimntmpt` orphan path: root non-inclusion proof** — verify the root is gone for a non-root-signed
    private-sub burn.
 5. **`pers` `revoke`: private root-absent branch** — add the orphan revoke; public stays lease-only.
+   *(Predicate + tests landed `d738b04`, dormant; activation waits on the #4 handoff.)*
+6. **Rename `MintNewHandles`/`BurnNewHandles` → `MintDeMiHandles`/`BurnDeMiHandles`** — "new" is wrong
+   (legacy handles are new at mint too); the real axis is policy. Index-preserving source rename across
+   `demimntmpt.ak` + the off-chain engine that builds these redeemers.
 
 ## Test-matrix shape (per the "crossing-streams" concern)
 - **Per-protection unit tests** — every bullet above, positive **and** negated, with exact-byte registry
