@@ -69,6 +69,23 @@ test burn_demi_handle_orphan_invalid_proof_fails() fail {
   can_burn_demi_handles(tx, spending_ref(), [proof])
 }
 
+// You can't delete a key without actually burning its token: the proof deletes the sub key, but the
+// tx mints nothing, so `mint == expected_mint_value` fails. (Guards against ghost-deleting registry
+// keys without the matching -1.)
+test burn_demi_handle_mint_must_match_proofs_fails() fail {
+  let handle = "sub@abc"
+  let tx =
+    make_transaction(
+      [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
+      [make_settings_reference_input()],
+      [make_minting_data_output(new_root(handle), minting_data_script_hash)],
+      value.zero,
+      [],
+      [allowed_minter_0],
+    )
+  can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
+}
+
 // WS1 #1 — a DeMi-handle burn must be signed by an allowed_minter (the minter is the single
 // serialized writer of the registry root). The three tests share one otherwise-valid virtual-sub
 // burn; only the signer set differs.

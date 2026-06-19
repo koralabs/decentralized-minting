@@ -7,7 +7,9 @@ use tests/mocks/fake_constants.{min_order_lovelace, mint_governor}
 use tests/mocks/fake_tx.{
   make_order_input, make_settings_reference_input, make_transaction,
 }
-use validations/orders/validation.{can_refund_order}
+use validations/orders/validation.{
+  can_cancel_order, can_execute_order, can_refund_order,
+}
 
 const owner_vkh = #"01"
 
@@ -93,6 +95,38 @@ test refund_to_other_rejected() {
     }
   let (tx, order_ref) = refund_tx(governor_executed(), [other])
   can_refund_order(tx, order_ref, order_datum()) == False
+}
+
+// Execute: fulfillment (via the batched mint) is gated on the mint_governor withdrawal firing.
+test order_execute_requires_governor_withdrawal() {
+  let tx =
+    make_transaction(
+      [],
+      [make_settings_reference_input()],
+      [],
+      value.zero,
+      governor_executed(),
+      [],
+    )
+  can_execute_order(tx)
+}
+
+test order_execute_rejects_without_governor_fails() fail {
+  let tx =
+    make_transaction([], [make_settings_reference_input()], [], value.zero, [], [])
+  can_execute_order(tx)
+}
+
+// Cancel: only the order's owner (sundae multisig) can reclaim their lovelace — no governor needed,
+// and no one else can sign it away.
+test order_cancel_requires_owner_signature() {
+  let tx = make_transaction([], [], [], value.zero, [], [owner_vkh])
+  can_cancel_order(tx, order_datum())
+}
+
+test order_cancel_rejects_without_owner_signature_fails() fail {
+  let tx = make_transaction([], [], [], value.zero, [], [])
+  can_cancel_order(tx, order_datum())
 }
 
 // funds sent to a SCRIPT address with the owner's hash bytes -> rejected (wrong cred kind)
