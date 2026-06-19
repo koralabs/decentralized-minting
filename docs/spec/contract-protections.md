@@ -116,9 +116,13 @@ single MPT root correctly. Six redeemers.
 **`BurnNewHandles`** (000 / 222 key removal):
 - Each proof deletes the handle key; a free-virtual burn re-opens the root's free-name slot; `tx.mint`
   exactly equals the (negative) proofs.
-- 🔲 **PLANNED #1**: require **allowed_minter** to sign (today it does **not** — unlike the mint path —
-  so the registry root is currently mutable by a non-minter with valid proofs). *This is the backstop
-  that makes #2–#4 safe.*
+- 🔲 **PLANNED #1**: require **allowed_minter** to sign (today it does **not**, unlike the mint path).
+  This is *not* about unauthorized burns — you still can't delete a key without burning its token
+  (`mint == expected_mint_value`), and that token burn is gated by pers (000) / the owner (222). It's
+  about making the **minter the single serialized writer of the registry root**: without it, a handle
+  owner advances the shared MPT root directly, contending on the one minting-data UTxO. It also makes
+  the orphan path (#4) minter-*executed*, not truly permissionless. Backstops #3/#4 (same function);
+  the label burn (#2) already has its own minter sig.
 - 🔲 **PLANNED #3**: refuse to delete a key whose **old registry value is non-empty** (clear the 001s
   before a 222 can burn — no orphaned label tokens).
 - 🔲 **PLANNED #4**: support the **orphan path** — a private-sub burn may carry an MPT non-inclusion
@@ -155,9 +159,10 @@ failing-invariant tests above turned green.
 ## Test-matrix shape (per the "crossing-streams" concern)
 - **Per-protection unit tests** — every bullet above, positive **and** negated, with exact-byte registry
   vectors where a value is encoded.
-- **"Must never be possible" suite** — non-minter mutates the registry via any burn; burn a 222 with a
-  live value; orphan-burn a live root's sub (forged proof); burn any public sub before expiry; relaxed
-  label-burn used to forge a mint.
+- **"Must never be possible" suite** — a demimntmpt burn accepted without the minter sig; delete a key
+  without burning its token (`mint != proofs`); burn a 222 while its registry value is non-empty;
+  orphan-burn a live root's sub (forged non-inclusion proof); burn any public sub before expiry; a
+  relaxed label-burn used to forge a label mint.
 - **Cross-contract (pers ↔ demi) combined-tx tests** — the 000 burn validated by both halves at once
   (root-signed, orphan, public-expired) — the #4/#5 handoff is where streams cross.
 - **Regression** — every existing redeemer test stays green.
