@@ -133,3 +133,62 @@ test mint_label_asset_unsigned_fails() fail {
     0,
   )
 }
+
+// --- WS1 #2: burn a 001 label (-1) ---
+// On a burn the policy is the label's REAL policy (read from `mint`), not pinned to the 222 — so a
+// cross-pollinated handle (f0ff label under a DeMi 222) can clear, with no owner ref required.
+
+// trie with the key already carrying the 001 label
+fn labeled(handle: ByteArray) -> mpt.MerklePatriciaForestry {
+  mpt.insert(mpt.empty, handle, lbl_001, [])
+}
+
+fn burn_label_proof(handle: ByteArray) -> LabelAssetProof {
+  LabelAssetProof {
+    mpt_proof: [],
+    handle_name: handle,
+    label: lbl_001,
+    old_free_names: [],
+    old_labels: lbl_001,
+    amount: -1,
+  }
+}
+
+fn label_burn_value(handle: ByteArray, policy: ByteArray) -> Value {
+  value.zero
+    |> value.add(policy, bytearray.concat(lbl_001, handle), -1)
+}
+
+// a 001 burn under the LEGACY policy succeeds with NO 222 referenced (the cross-pollinated case)
+test burn_label_asset_under_legacy_no_owner_ref_ok() {
+  let handle = "abc"
+  let old_root = mpt.root(labeled(handle))
+  let new_root = mpt.root(mpt.update(labeled(handle), handle, [], lbl_001, #""))
+  let tx =
+    make_transaction(
+      [make_minting_data_input(old_root, minting_data_script_hash)],
+      [make_settings_reference_input()],
+      [make_minting_data_output(new_root, minting_data_script_hash)],
+      label_burn_value(handle, legacy_policy),
+      [],
+      [allowed_minter_0],
+    )
+  can_mint_label_assets(tx, spending_ref(), [burn_label_proof(handle)], legacy_policy, 0)
+}
+
+// the token must really be burned — a burn proof with no matching -1 in mint is rejected
+test burn_label_asset_without_real_burn_fails() fail {
+  let handle = "abc"
+  let old_root = mpt.root(labeled(handle))
+  let new_root = mpt.root(mpt.update(labeled(handle), handle, [], lbl_001, #""))
+  let tx =
+    make_transaction(
+      [make_minting_data_input(old_root, minting_data_script_hash)],
+      [make_settings_reference_input()],
+      [make_minting_data_output(new_root, minting_data_script_hash)],
+      value.zero,
+      [],
+      [allowed_minter_0],
+    )
+  can_mint_label_assets(tx, spending_ref(), [burn_label_proof(handle)], legacy_policy, 0)
+}

@@ -481,6 +481,7 @@ pub fn can_mint_label_assets(
       proofs,
       root,
       reference_inputs,
+      mint,
       legacy_policy_id,
       new_policy_id,
       value.zero,

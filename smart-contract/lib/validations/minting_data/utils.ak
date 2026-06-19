@@ -413,6 +413,7 @@ pub fn all_label_proofs_are_valid(
   proofs: List<LabelAssetProof>,
   root: mpt.MerklePatriciaForestry,
   reference_inputs: List<Input>,
+  mint: Value,
   legacy_policy_id: PolicyId,
   new_policy_id: PolicyId,
   expected_mint_value: Value,
@@ -430,14 +431,31 @@ pub fn all_label_proofs_are_valid(
         amount,
       } = proof
 
-      // owner proof -> the policy this handle's label asset is minted under
+      let label_asset_name = bytearray.concat(label, handle_name)
+
+      // WS1 #2 — the policy the label asset lives under:
+      //   +1 (mint): PINNED to the root's 222 owner NFT (anti-fraud — you can't register a label for
+      //              a handle you don't own; also fixes legacy vs new).
+      //   -1 (burn): the label's REAL policy, read from `mint` (legacy OR new). A burn only removes a
+      //              label, so nothing is forgeable; pinning to the 222 would strand cross-pollinated
+      //              handles (an f0ff label under a DeMi 222). The minter sig still gates the burn.
       let policy =
-        find_owner_policy(
-          reference_inputs,
-          handle_name,
-          legacy_policy_id,
-          new_policy_id,
-        )
+        when amount is {
+          1 ->
+            find_owner_policy(
+              reference_inputs,
+              handle_name,
+              legacy_policy_id,
+              new_policy_id,
+            )
+          _ ->
+            find_label_burn_policy(
+              mint,
+              label_asset_name,
+              legacy_policy_id,
+              new_policy_id,
+            )
+        }
 
       // update the registry value at this key, preserving the free-virtual name set (the value
       // is encode(free_names, labels); label_set.apply guards amount = +/-1 and add/remove legality)
@@ -451,7 +469,6 @@ pub fn all_label_proofs_are_valid(
         mpt.update(root, handle_name, mpt_proof, old_value, new_value)
 
       // expected mint: +/-1 of (policy, label ++ handle_name)
-      let label_asset_name = bytearray.concat(label, handle_name)
       let new_mint_value =
         expected_mint_value |> value.add(policy, label_asset_name, amount)
 
@@ -459,12 +476,32 @@ pub fn all_label_proofs_are_valid(
         rest_proofs,
         new_root,
         reference_inputs,
+        mint,
         legacy_policy_id,
         new_policy_id,
         new_mint_value,
         continuation,
       )
     }
+  }
+}
+
+// WS1 #2 — the policy a label asset is BURNED under: whichever of legacy/new actually carries the
+// matching -1 in `mint`. A burn removes a label (no forgery risk), so it is not pinned to the 222 —
+// this lets cross-pollinated handles (an f0ff label under a DeMi 222) clear. The token must really be
+// burned (you can't burn a token that isn't there), so this can't fabricate a removal.
+fn find_label_burn_policy(
+  mint: Value,
+  label_asset_name: ByteArray,
+  legacy_policy_id: PolicyId,
+  new_policy_id: PolicyId,
+) -> PolicyId {
+  if value.quantity_of(mint, legacy_policy_id, label_asset_name) < 0 {
+    legacy_policy_id
+  } else if value.quantity_of(mint, new_policy_id, label_asset_name) < 0 {
+    new_policy_id
+  } else {
+    fail @"LABEL_BURN_NOT_FOUND"
   }
 }
 
