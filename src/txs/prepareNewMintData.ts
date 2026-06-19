@@ -6,7 +6,7 @@ import { Err, Ok, Result } from "ts-res";
 import { fetchMintingData, fetchSettings } from "../configs/index.js";
 import {
   buildMintingData,
-  buildMintingDataMintNewHandlesRedeemer,
+  buildMintingDataMintDeMiHandlesRedeemer,
   MintingData,
   NewHandle,
   plutusDataToCbor,
@@ -24,7 +24,7 @@ interface PrepareNewMintDataParams {
   changeAddress: string;
   /** Payment-key-hash of the minter (required signer). */
   minterKeyHash: string;
-  /** Index into `settings.allowed_minters` for the MintNewHandles redeemer. */
+  /** Index into `settings.allowed_minters` for the MintDeMiHandles redeemer. */
   minterIndex?: bigint;
   handles: NewHandle[];
   collateralUtxo?: CardanoTypes.Utxo;
@@ -39,13 +39,13 @@ interface PrepareNewMintDataDeps {
 }
 
 /**
- * The minimal orders-path `MintNewHandles` minting-data spend, for callers (the engine) that build
+ * The minimal orders-path `MintDeMiHandles` minting-data spend, for callers (the engine) that build
  * their OWN token outputs (with rich CIP-68 datums), additive fee outputs, mint map (under the DeMi
  * mint-proxy policy), order spends, and finalize with auxiliary data. This is the orders-path analog
- * of `prepareLegacyMintTransaction`'s minimal plan, but with the `MintNewHandles(OrderProof[])`
+ * of `prepareLegacyMintTransaction`'s minimal plan, but with the `MintDeMiHandles(OrderProof[])`
  * redeemer + the MPT-root update from `buildOrderProofs` (sub-key inserts + free-virtual root bumps).
  *
- * Returns ONLY: the minting-data input preselected + its updated datum output, the MintNewHandles
+ * Returns ONLY: the minting-data input preselected + its updated datum output, the MintDeMiHandles
  * spend redeemer, the settings + minting-data reference inputs, the minter required-signer, and the
  * deployed scripts (so the caller can wire the mint-proxy / orders / mint_v1 refs + redeemers). It
  * intentionally does NOT add handle-price-info / treasury / minter / token outputs — those are
@@ -129,11 +129,11 @@ export const prepareNewMintDataSpend = async (
     datum: updatedMintingDatum,
   };
 
-  // Spend redeemer (constructor 0 = MintNewHandles) over the OrderProofs.
+  // Spend redeemer (constructor 0 = MintDeMiHandles) over the OrderProofs.
   const spendMintingDataRedeemer: CardanoTypes.Redeemer = {
     data: Serialization.PlutusData.fromCbor(
       plutusDataToCbor(
-        buildMintingDataMintNewHandlesRedeemer(proofs, minterIndex),
+        buildMintingDataMintDeMiHandlesRedeemer(proofs, minterIndex),
       ) as HexBlob,
     ).toCore(),
     executionUnits: { memory: 0, steps: 0 },

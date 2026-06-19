@@ -6,7 +6,7 @@ import { addFreeName, encode as encodeRegistryValue } from "../store/registryVal
 import { parseHandle } from "../utils/index.js";
 
 /**
- * DSH-403 — build the per-order `OrderProof`s for a DeMi `MintNewHandles` tx, advancing the local
+ * DSH-403 — build the per-order `OrderProof`s for a DeMi `MintDeMiHandles` tx, advancing the local
  * trie exactly as the contract's `all_orders_are_satisfied` does so the on-chain `mpt` ops verify:
  *
  *  1. Insert the handle's OWN key with an empty value (`mpt.insert(root, handle, #"", proof)`), in

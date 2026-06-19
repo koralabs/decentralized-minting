@@ -73,8 +73,8 @@ const buildLegacyHandleProofData = (proof: LegacyHandleProof): PlutusData => {
   ]);
 };
 
-// MintNewHandles (constructor 0): list of DeMi OrderProofs + minter index.
-const buildMintingDataMintNewHandlesRedeemer = (
+// MintDeMiHandles (constructor 0): list of DeMi OrderProofs + minter index.
+const buildMintingDataMintDeMiHandlesRedeemer = (
   proofs: OrderProof[],
   minter_index: bigint,
 ): PlutusData =>
@@ -118,8 +118,8 @@ const buildMintingDataMintLabelAssetsRedeemer = (
     mkInt(minter_index),
   ]);
 
-// BurnNewHandles (constructor 5): list of DeMi BurnProofs (governor + pz gate the actual burn).
-const buildMintingDataBurnNewHandlesRedeemer = (
+// BurnDeMiHandles (constructor 5): list of DeMi BurnProofs (governor + pz gate the actual burn).
+const buildMintingDataBurnDeMiHandlesRedeemer = (
   proofs: BurnProof[],
 ): PlutusData => mkConstr(5, [mkList(proofs.map(buildBurnProofData))]);
 
@@ -129,10 +129,10 @@ export {
   buildLegacyHandleProofData,
   buildMintingData,
   buildMintingDataBurnLegacyHandlesRedeemer,
-  buildMintingDataBurnNewHandlesRedeemer,
+  buildMintingDataBurnDeMiHandlesRedeemer,
   buildMintingDataMintLabelAssetsRedeemer,
   buildMintingDataMintLegacyHandlesRedeemer,
-  buildMintingDataMintNewHandlesRedeemer,
+  buildMintingDataMintDeMiHandlesRedeemer,
   buildMintingDataUpdateMPTRedeemer,
   buildOrderProofData,
   decodeMintingDataDatum,

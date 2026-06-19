@@ -5,16 +5,16 @@ use validations/minting_data/types.{
   BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
 }
 use validations/minting_data/validation.{
-  can_burn_legacy_handles, can_burn_new_handles, can_mint_label_assets,
-  can_mint_legacy_handles, can_mint_new_handles, can_update_mpt,
+  can_burn_legacy_handles, can_burn_demi_handles, can_mint_label_assets,
+  can_mint_legacy_handles, can_mint_demi_handles, can_update_mpt,
 }
 
 // NOTE: constructor order is part of the on-chain ABI — the off-chain redeemer builders encode
 // these indices. New variants are APPENDED after `UpdateMPT` so existing indices (0–2) are
-// preserved: MintNewHandles=0, MintLegacyHandles=1, UpdateMPT=2, BurnLegacyHandles=3,
-// MintLabelAssets=4, BurnNewHandles=5.
+// preserved: MintDeMiHandles=0, MintLegacyHandles=1, UpdateMPT=2, BurnLegacyHandles=3,
+// MintLabelAssets=4, BurnDeMiHandles=5.
 pub type MintingDataRedeemer {
-  MintNewHandles(List<OrderProof>, Int)
+  MintDeMiHandles(List<OrderProof>, Int)
   MintLegacyHandles(List<LegacyHandleProof>)
   // Update MPT
   UpdateMPT
@@ -25,7 +25,7 @@ pub type MintingDataRedeemer {
   MintLabelAssets(List<LabelAssetProof>, Int)
   // Burn DeMi-policy handles (root, nft sub, virtual sub): delete from the MPT, burn the tokens,
   // reopen a free virtual's slot. Gated by the governor (can_burn_handles) + the pz contract.
-  BurnNewHandles(List<BurnProof>)
+  BurnDeMiHandles(List<BurnProof>)
 }
 
 // NOTE:
@@ -63,8 +63,8 @@ validator demimntmpt(
     transaction: Transaction,
   ) {
     when redeemer is {
-      MintNewHandles(proofs, minter_index) ->
-        can_mint_new_handles(
+      MintDeMiHandles(proofs, minter_index) ->
+        can_mint_demi_handles(
           transaction,
           spending_output_reference,
           proofs,
@@ -100,8 +100,8 @@ validator demimntmpt(
           minter_index,
         )
       UpdateMPT -> can_update_mpt(transaction, admin_verification_key_hash)
-      BurnNewHandles(proofs) ->
-        can_burn_new_handles(transaction, spending_output_reference, proofs)
+      BurnDeMiHandles(proofs) ->
+        can_burn_demi_handles(transaction, spending_output_reference, proofs)
     }
   }
 

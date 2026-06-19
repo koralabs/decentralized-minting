@@ -110,7 +110,7 @@ test free_virtual_burn_value_transition() {
 }
 
 // Burn is the EXACT inverse of mint: a free-virtual mint then burn returns the root value to its
-// start — the core correctness BurnNewHandles' remove_root_free_name relies on (DSH-203).
+// start — the core correctness BurnDeMiHandles' remove_root_free_name relies on (DSH-203).
 test free_virtual_mint_then_burn_roundtrips() {
   let start =
     [#"6162"]

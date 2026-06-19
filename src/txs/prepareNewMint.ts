@@ -12,7 +12,7 @@ import { HANDLE_PRICE_INFO_HANDLE_NAME } from "../constants/index.js";
 import {
   buildHandlePriceInfoData,
   buildMintingData,
-  buildMintingDataMintNewHandlesRedeemer,
+  buildMintingDataMintDeMiHandlesRedeemer,
   buildMintV1MintHandlesRedeemer,
   convertHandlePricesToHandlePriceData,
   getMintV1WithdrawValidator,
@@ -216,7 +216,7 @@ const prepareNewMintTransaction = async (
   const spendMintingDataRedeemer: CardanoTypes.Redeemer = {
     data: Serialization.PlutusData.fromCbor(
       plutusDataToCbor(
-        buildMintingDataMintNewHandlesRedeemer(proofs, 0n),
+        buildMintingDataMintDeMiHandlesRedeemer(proofs, 0n),
       ) as HexBlob,
     ).toCore(),
     executionUnits: { memory: 0, steps: 0 },

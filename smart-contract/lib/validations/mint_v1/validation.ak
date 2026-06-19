@@ -27,7 +27,7 @@ pub fn can_mint_handles(
 }
 
 // Mirror of can_mint_handles for burning: the governor only ensures the burn is accompanied by a
-// minting_data spend (so the MPT root is kept in sync — the BurnNewHandles redeemer there does the
+// minting_data spend (so the MPT root is kept in sync — the BurnDeMiHandles redeemer there does the
 // MPT delete + the -1 mint check + the free-name reopen). Owner consent is enforced where the
 // tokens live (the holder must provide the 222/000 as burned inputs, and the pz contract releases
 // its held 100/000), not here.

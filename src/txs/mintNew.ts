@@ -20,20 +20,20 @@ import { prepareNewMintTransaction } from "./prepareNewMint.js";
 import { type FinalizedTx, finalizeTxPlan, type TxPlan } from "./txPlan.js";
 
 /**
- * The fully-augmented orders-path mint plan (minting-data MintNewHandles spend + per-order token
+ * The fully-augmented orders-path mint plan (minting-data MintDeMiHandles spend + per-order token
  * mints + ref/user outputs + order spends), BEFORE coin selection / finalization. Engines that need
  * to inject additional outputs (the additive owner/minter/treasury fee outputs — DSH-501) or
  * finalize with auxiliary data (free-virtual tx metadata) consume this and run their own finalize;
  * `mintNewHandles` is the thin wrapper that just `finalizeTxPlan`s it.
  */
-export interface MintNewHandlesPlan {
+export interface MintDeMiHandlesPlan {
   plan: TxPlan;
   deployedScripts: DeployedScripts;
   settingsV1: SettingsV1;
   handlePriceInfo: HandlePriceInfo;
 }
 
-interface MintNewHandlesParams {
+interface MintDeMiHandlesParams {
   changeAddress: string;
   minterKeyHash: string;
   latestHandlePrices: HandlePrices;
@@ -61,9 +61,9 @@ interface MintNewHandlesParams {
  * (policy-tokens mint + ref/user handle outputs), and finalizing to unsigned
  * CBOR.
  */
-const buildMintNewHandlesPlan = async (
-  params: MintNewHandlesParams,
-): Promise<Result<MintNewHandlesPlan, Error>> => {
+const buildMintDeMiHandlesPlan = async (
+  params: MintDeMiHandlesParams,
+): Promise<Result<MintDeMiHandlesPlan, Error>> => {
   const { ordersTxInputs, blockfrostApiKey, freeVirtualContexts } = params;
   const network = getNetwork(blockfrostApiKey);
 
@@ -199,13 +199,13 @@ const buildMintNewHandlesPlan = async (
 
 /**
  * Mint new handles by consuming `ordersTxInputs` and finalizing to unsigned CBOR. Thin wrapper over
- * `buildMintNewHandlesPlan` — callers that need to inject fee outputs / tx metadata should use
- * `buildMintNewHandlesPlan` directly and run their own finalize.
+ * `buildMintDeMiHandlesPlan` — callers that need to inject fee outputs / tx metadata should use
+ * `buildMintDeMiHandlesPlan` directly and run their own finalize.
  */
 const mintNewHandles = async (
-  params: MintNewHandlesParams,
+  params: MintDeMiHandlesParams,
 ): Promise<Result<FinalizedTx, Error>> => {
-  const planResult = await buildMintNewHandlesPlan(params);
+  const planResult = await buildMintDeMiHandlesPlan(params);
   if (!planResult.ok) return Err(planResult.error);
   return Ok(await finalizeTxPlan(planResult.data.plan));
 };
@@ -218,5 +218,5 @@ const coreInlineDatumToCbor = (
   return (Serialization as any).PlutusData.fromCore(datum).toCbor() as string;
 };
 
-export type { MintNewHandlesParams };
-export { buildMintNewHandlesPlan, mintNewHandles };
+export type { MintDeMiHandlesParams };
+export { buildMintDeMiHandlesPlan, mintNewHandles };

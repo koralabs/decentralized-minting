@@ -25,7 +25,7 @@ export interface BurnHandle {
 }
 
 /**
- * DSH-404 — build the per-handle `BurnProof`s for a DeMi `BurnNewHandles` tx, advancing the local
+ * DSH-404 — build the per-handle `BurnProof`s for a DeMi `BurnDeMiHandles` tx, advancing the local
  * trie exactly as the contract's `all_burn_proofs_are_valid` does (the inverse of
  * `buildOrderProofs`):
  *

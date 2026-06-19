@@ -11,7 +11,7 @@ use tests/mocks/fake_tx.{
   make_settings_reference_input, make_transaction,
 }
 use validations/minting_data/types.{BurnProof}
-use validations/minting_data/validation.{can_burn_new_handles}
+use validations/minting_data/validation.{can_burn_demi_handles}
 
 fn spending_ref() -> OutputReference {
   OutputReference { transaction_id: #"aaab", output_index: 0 }
@@ -57,7 +57,7 @@ test burn_demi_handle_minter_signed_ok() {
       [],
       [allowed_minter_0],
     )
-  can_burn_new_handles(tx, spending_ref(), [burn_proof(handle)])
+  can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }
 
 test burn_demi_handle_unsigned_fails() fail {
@@ -71,7 +71,7 @@ test burn_demi_handle_unsigned_fails() fail {
       [],
       [],
     )
-  can_burn_new_handles(tx, spending_ref(), [burn_proof(handle)])
+  can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }
 
 test burn_demi_handle_wrong_signer_fails() fail {
@@ -85,7 +85,7 @@ test burn_demi_handle_wrong_signer_fails() fail {
       [],
       [#"deadbeef"],
     )
-  can_burn_new_handles(tx, spending_ref(), [burn_proof(handle)])
+  can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }
 
 // WS1 #3 / (B) — a key carrying a live registry value (a 001 label) cannot have its 222/000 burned.
@@ -103,5 +103,5 @@ test burn_demi_handle_with_live_label_fails() fail {
       [],
       [allowed_minter_0],
     )
-  can_burn_new_handles(tx, spending_ref(), [burn_proof(handle)])
+  can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }

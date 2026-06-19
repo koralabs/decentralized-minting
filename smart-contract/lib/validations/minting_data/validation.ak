@@ -31,7 +31,7 @@ use validations/policy_window.{assert_mint_within_policy_window}
 // and minted values are sent to correct addresses
 // - Proofs are valid (NOTE: must be in same order as orders UTxOs)
 //
-pub fn can_mint_new_handles(
+pub fn can_mint_demi_handles(
   transaction: Transaction,
   spending_output_reference: OutputReference,
   proofs: List<OrderProof>,
@@ -41,7 +41,7 @@ pub fn can_mint_new_handles(
   anchor_time_ms: Int,
   slot_length_ms: Int,
 ) -> Bool {
-  trace @"can_mint_new_handles"
+  trace @"can_mint_demi_handles"
   let Transaction {
     inputs,
     reference_inputs,
@@ -349,7 +349,7 @@ fn process_legacy_handles(
 }
 
 // Validation:
-// DeMi-policy handle BURNING. The mirror of can_mint_new_handles: each proof deletes its handle
+// DeMi-policy handle BURNING. The mirror of can_mint_demi_handles: each proof deletes its handle
 // from the MPT (proving it was present) and the tx must burn exactly the matching -1 of that
 // handle's tokens (000 for a virtual, 100+222 for an nft/root) under the DeMi policy. A free
 // virtual's name is removed from the root's free set (reopening the slot). No fees on a burn.
@@ -357,12 +357,12 @@ fn process_legacy_handles(
 // Authorization is NOT here: the holder must provide the 222/000 as burned inputs (you can only
 // burn what you hold) and the pz contract must release its held 100/000 — this redeemer only keeps
 // the MPT root in sync with the burn. Gated by the governor (can_burn_handles).
-pub fn can_burn_new_handles(
+pub fn can_burn_demi_handles(
   transaction: Transaction,
   spending_output_reference: OutputReference,
   proofs: List<BurnProof>,
 ) -> Bool {
-  trace @"can_burn_new_handles"
+  trace @"can_burn_demi_handles"
   let Transaction { inputs, reference_inputs, outputs, mint, extra_signatories, .. } =
     transaction
 

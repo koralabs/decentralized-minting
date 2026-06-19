@@ -586,7 +586,7 @@ export default {
       "title": "MintingDataRedeemer",
       "anyOf": [
         {
-          "title": "MintNewHandles",
+          "title": "MintDeMiHandles",
           "dataType": "constructor",
           "index": 0,
           "fields": [
@@ -638,7 +638,7 @@ export default {
           ]
         },
         {
-          "title": "BurnNewHandles",
+          "title": "BurnDeMiHandles",
           "dataType": "constructor",
           "index": 5,
           "fields": [
