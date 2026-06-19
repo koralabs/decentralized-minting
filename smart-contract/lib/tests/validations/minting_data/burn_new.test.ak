@@ -87,3 +87,21 @@ test burn_demi_handle_wrong_signer_fails() fail {
     )
   can_burn_new_handles(tx, spending_ref(), [burn_proof(handle)])
 }
+
+// WS1 #3 / (B) — a key carrying a live registry value (a 001 label) cannot have its 222/000 burned.
+// The key-delete uses value #"", so the MPF inclusion proof fails for a labeled key. The labels must
+// be cleared first. Enforced for free by the delete semantics — this test pins it.
+test burn_demi_handle_with_live_label_fails() fail {
+  let handle = "sub@abc"
+  let labeled = mpt.insert(mpt.empty, handle, #"00001070", [])
+  let tx =
+    make_transaction(
+      [make_minting_data_input(mpt.root(labeled), minting_data_script_hash)],
+      [make_settings_reference_input()],
+      [make_minting_data_output(mpt.root(mpt.empty), minting_data_script_hash)],
+      burn_value(handle),
+      [],
+      [allowed_minter_0],
+    )
+  can_burn_new_handles(tx, spending_ref(), [burn_proof(handle)])
+}
