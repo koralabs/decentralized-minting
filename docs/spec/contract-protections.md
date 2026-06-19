@@ -149,6 +149,7 @@ All currently **unstarted**; none block shipping the registry + reconcile. Each 
 failing-invariant tests above turned green.
 
 1. **`demimntmpt` `can_burn_new_handles`: require `allowed_minter`** — close the burn-side sig hole.
+   *(landed `3864b0b` — 176/0, with the first full-tx burn-test harness.)*
 2. **`demimntmpt` label burn: drop the policy pin on −1** — resolve the label's real policy; keep the
    pin on +1.
 3. **`demimntmpt` key delete: empty-registry guard** — no deleting a key with a non-empty value.
