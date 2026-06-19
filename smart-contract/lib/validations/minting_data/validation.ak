@@ -363,12 +363,18 @@ pub fn can_burn_new_handles(
   proofs: List<BurnProof>,
 ) -> Bool {
   trace @"can_burn_new_handles"
-  let Transaction { inputs, reference_inputs, outputs, mint, .. } = transaction
+  let Transaction { inputs, reference_inputs, outputs, mint, extra_signatories, .. } =
+    transaction
 
-  // settings -> the DeMi policy id the burned tokens live under
+  // settings -> the DeMi policy id the burned tokens live under + the allowed minters
   let Settings { data: settings_data, .. } = find_settings(reference_inputs)
   expect settings_datum: SettingsV1 = settings_data
-  let SettingsV1 { policy_id: new_policy_id, .. } = settings_datum
+  let SettingsV1 { policy_id: new_policy_id, allowed_minters, .. } = settings_datum
+
+  // WS1 #1 — a burn mutates the registry root, so it must be minter-authorized (the minter is the
+  // single serialized writer of the root), symmetric with the mint paths. Any settings allowed_minter
+  // signing suffices: a burn carries no fee, so no specific minter_index is needed.
+  expect list.any(allowed_minters, fn(m) { list.has(extra_signatories, m) })
 
   // find minting data input (own input) + its current root
   expect Some(spending_input) = find_input(inputs, spending_output_reference)
