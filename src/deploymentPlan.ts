@@ -25,9 +25,12 @@ const MINTING_DATA_HANDLE = "handle_root@handle_settings";
 const HANDLE_PRICE_HANDLE = "kora@handle_prices";
 
 /**
- * Compute the MPT root hash by fetching all handles from the API and
- * building a fresh trie. No ghost handles — the migration is the
- * opportunity to set the on-chain root to match the real handle set.
+ * Compute the MPT root hash by fetching all handles AND their WS1 asset-label
+ * registry values from the API and building a fresh trie — byte-identical to
+ * the engine's buildApiRootTrie (minting.handle.me legacyMinting/utils.ts). No
+ * ghost handles — the migration is the opportunity to set the on-chain root to
+ * match the real handle set, INCLUDING the per-handle label sets the WS1
+ * demimntmpt (can_mint_label_assets) guard records in each trie value.
  */
 export const computeMptRootHash = async ({
   network,
@@ -61,7 +64,20 @@ export const computeMptRootHash = async ({
     page++;
   }
 
-  const trieList = handles.map((h) => ({ key: h, value: "" }));
+  // WS1: a handle's trie value is its encoded asset-label set (001/002/… settings),
+  // fetched from the api (the source of truth) — byte-identical to the engine's
+  // buildApiRootTrie. The legacy value:"" path computed a NO-LABELS root, which the
+  // WS1 demimntmpt (can_mint_label_assets) and the engine's root check both reject.
+  // No fallback: if labels are unreachable we ABORT rather than migrate to a wrong root.
+  const labelsResponse = await fetchFn(`${baseUrl}/mpt-root/registry-labels`, {
+    headers: { Accept: "application/json", "User-Agent": userAgent },
+  });
+  if (!labelsResponse.ok) {
+    throw new Error(`failed to fetch registry labels: HTTP ${labelsResponse.status}`);
+  }
+  const { labels } = (await labelsResponse.json()) as { labels: Record<string, string> };
+
+  const trieList = handles.map((h) => ({ key: h, value: labels[h] ? Buffer.from(labels[h], "hex") : "" }));
   const trie = await Trie.fromList(trieList);
   return trie.hash.toString("hex");
 };
