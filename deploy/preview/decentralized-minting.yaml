@@ -20,7 +20,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: 951f1da186b0b07b6b28596552da7733b8806ee2c131216c92eec2f8
+      mint_governor: fd5425aef537e2bd066cc817b4a16d1bac86bb78149a0881959744e9
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -42,12 +42,15 @@ settings:
       # registry; never the V2 helper. See feedback_plutus_language_tag_hash.
       pz_script_address: addr_test1wp70zp2cdamexjjjfj0837y8nge5vqgyl9tcaxkfyl6h0cc9ad65m
       order_script_hash: 72e4550dfd999d6a18bdbc0105bcb0b0e55691c19592ec02967f51f3
-      # WS1 demimntmpt cutover (2026-06-21): minting-data migrated demimntmpt5(ba5cb74f) →
-      # demimntmpt6(c945b5cd) via tx-03; mint_governor follows (demimnt6 951f1da1, derived from
-      # the new minting-data hash). These MUST track the live deployed contracts so the deploy
-      # plan emits the settings-update tx and the engine resolves the correct ref scripts.
-      minting_data_script_hash: c945b5cdf3615668b3ee54149f723005c5bff18adb8a601adeb3a150
-      # WS5 discount config — all discounts off at launch; 3 free virtual subs; no HAL policy.
+      # Free-virtual-removal cutover (2026-06-22): demimntmpt/demimnt recompiled with the
+      # free-virtual OrderProof/BurnProof fields stripped, REUSING the existing deployment
+      # SubHandles (demimntmpt6, demimnt6) rather than allocating new ordinals — only proxies
+      # need fresh ordinals. minting-data migrates c945b5cd → efa546e5; mint_governor follows
+      # (demimnt6 fd5425ae, derived from the new minting-data hash). These MUST track the live
+      # deployed contracts so the plan emits the settings-update tx and the engine resolves the
+      # correct ref scripts.
+      minting_data_script_hash: efa546e561beb3cd1a15ca26ceb6a47f95e471b8dec0c5ed1a59dc9e
+      # WS5 discount config — all discounts off at launch; free virtuals REMOVED (count 0); no HAL policy.
       discount_config:
         partner_nft_bps: 0
         hal_bps: 0
@@ -55,7 +58,7 @@ settings:
         legendary_bps: 0
         ultra_rare_bps: 0
         rare_bps: 0
-        free_virtual_count: 3
+        free_virtual_count: 0
         hal_policy_id: ""
       # SubHandle additive fees (flat lovelace) — today: Kora Labs minter fee 2 ADA, treasury 0.
       # Enforced per subhandle mint: minter fee -> an allowed minter, treasury fee -> treasury_address.

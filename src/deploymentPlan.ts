@@ -454,6 +454,14 @@ export const buildDeploymentPlan = ({
     const scriptHashChanged = live.currentScriptHash !== expected.expectedScriptHash;
     const settingsChanged = settingsDiffRows.length > 0;
     const driftType = classifyDrift(scriptHashChanged, settingsChanged);
+    // A new deployment SubHandle ordinal only exists to keep an OLD contract version
+    // addressable while something stays locked to it — true only for proxies (the frozen
+    // minting policy / value-holding spend proxies). Non-proxy validators migrate their
+    // locked state forward on cutover, so the old version is dead the moment the new one
+    // lands; allocating a fresh ordinal for them just wastes handles. So: proxies allocate
+    // on a hash change; validators reuse their current SubHandle (redeploy CBOR in place).
+    const isProxy = contract.build.kind === "minting_policy";
+    const allocateNewSubhandle = scriptHashChanged && isProxy;
     return {
       contract_slug: contract.contractSlug,
       script_type: contract.scriptType,
@@ -469,18 +477,18 @@ export const buildDeploymentPlan = ({
         ignored_paths: desired.ignoredSettings,
       },
       subhandle: {
-        action: scriptHashChanged ? "allocate" : "reuse",
-        value: scriptHashChanged ? nextSubhandles[contract.contractSlug] ?? null : live.currentSubhandle,
+        action: allocateNewSubhandle ? "allocate" : "reuse",
+        value: allocateNewSubhandle ? nextSubhandles[contract.contractSlug] ?? null : live.currentSubhandle,
       },
       expected_post_deploy_state: {
         repo: REPO_NAME,
         network: desired.network,
         contract_slug: contract.contractSlug,
         expected_script_hash: expected.expectedScriptHash,
-        expected_subhandle: scriptHashChanged ? nextSubhandles[contract.contractSlug] ?? null : live.currentSubhandle,
+        expected_subhandle: allocateNewSubhandle ? nextSubhandles[contract.contractSlug] ?? null : live.currentSubhandle,
         assigned_handles: {
           settings: desired.assignedHandles.settings,
-          scripts: scriptHashChanged ? [nextSubhandles[contract.contractSlug]].filter(Boolean) : desired.assignedHandles.scripts,
+          scripts: allocateNewSubhandle ? [nextSubhandles[contract.contractSlug]].filter(Boolean) : desired.assignedHandles.scripts,
         },
         settings: {
           type: desired.settings.type,

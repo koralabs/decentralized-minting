@@ -1053,6 +1053,34 @@ const buildPlutusSpendTxInline = async ({
   );
 
   let finalBody = { ...finalTx.body, fee: selection.selection.fee };
+  // The input selector prices the unsigned skeleton, but the assembled body runs
+  // a few bytes larger (final witness layout + evaluated-redeemer encoding), so
+  // the node's computed min fee exceeds selection.selection.fee by tens of
+  // lovelace (observed FeeTooSmallUTxO short ~1848). Add a flat buffer and take
+  // it from the admin change output so inputs = outputs + fee still balances
+  // (bumping fee alone breaks the invariant and is rejected). Do this BEFORE the
+  // collateral block so totalCollateral is sized off the final (bumped) fee.
+  const FEE_BUFFER = 10000n;
+  const adjustedOutputs = [...finalBody.outputs];
+  // Only the migration output carries the new-root datum; the admin change
+  // output has none. Match on that (the change may carry a token from the
+  // selected fee UTxO, and its address object may not be byte-identical to
+  // changeAddressBech32 after round-trip — so neither is a reliable key).
+  const changeIdx = adjustedOutputs.findIndex(
+    (o) => !o.datum && !o.datumHash,
+  );
+  if (changeIdx >= 0) {
+    const ch = adjustedOutputs[changeIdx];
+    adjustedOutputs[changeIdx] = {
+      ...ch,
+      value: { ...ch.value, coins: ch.value.coins - FEE_BUFFER },
+    };
+    finalBody = {
+      ...finalBody,
+      fee: finalBody.fee + FEE_BUFFER,
+      outputs: adjustedOutputs,
+    };
+  }
   // Token-bearing collateral requires a collateral return (Conway): keep only the
   // protocol-required collateral (ceil(fee * collateralPercentage/100)) as the
   // forfeitable amount and return the rest (tokens + excess ADA) to the admin.
