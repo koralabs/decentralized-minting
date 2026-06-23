@@ -42,17 +42,6 @@ interface MintDeMiHandlesParams {
   collateralUtxo?: CardanoTypes.Utxo;
   db: Trie;
   blockfrostApiKey: string;
-  /**
-   * FREE private virtual claims, keyed by order ref (`${txId}#${index}`). Present only for orders
-   * the engine has determined are free private virtuals under the root's allowance — it carries the
-   * root's CURRENT free-name set + label set (from the engine's trie/settings tracking) so the mint
-   * build can bump the root key and construct the `FreeVirtualData` proof. Absent => the order is
-   * paid (nft sub, public virtual, root, or a private virtual past the allowance).
-   */
-  freeVirtualContexts?: Record<
-    string,
-    { rootFreeNames: string[]; rootLabels: string }
-  >;
 }
 
 /**
@@ -64,7 +53,7 @@ interface MintDeMiHandlesParams {
 const buildMintDeMiHandlesPlan = async (
   params: MintDeMiHandlesParams,
 ): Promise<Result<MintDeMiHandlesPlan, Error>> => {
-  const { ordersTxInputs, blockfrostApiKey, freeVirtualContexts } = params;
+  const { ordersTxInputs, blockfrostApiKey } = params;
   const network = getNetwork(blockfrostApiKey);
 
   ordersTxInputs.sort((a, b) =>
@@ -73,9 +62,6 @@ const buildMintDeMiHandlesPlan = async (
   if (ordersTxInputs.length === 0) {
     return Err(new Error("No Order requested"));
   }
-
-  const orderRef = (order: CardanoTypes.Utxo): string =>
-    `${order[0].txId}#${order[0].index}`;
 
   const orderedHandles: NewHandle[] = ordersTxInputs.map((order) => {
     const datumCbor = coreInlineDatumToCbor(order[1].datum);
@@ -87,7 +73,6 @@ const buildMintDeMiHandlesPlan = async (
       treasuryFee: order[1].value.coins,
       minterFee: order[1].value.coins,
       isVirtual: decodedOrder.is_virtual === 1n,
-      freeVirtual: freeVirtualContexts?.[orderRef(order)],
     };
   });
 

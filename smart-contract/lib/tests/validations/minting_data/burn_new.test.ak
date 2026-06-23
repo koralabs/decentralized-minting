@@ -32,7 +32,6 @@ fn burn_proof(handle: ByteArray) -> BurnProof {
     mpt_proof: [],
     handle_name: handle,
     is_virtual: 1,
-    free_virtual: None,
     root_absence: None,
   }
 }
@@ -54,7 +53,6 @@ test burn_demi_handle_orphan_invalid_proof_fails() fail {
       mpt_proof: [],
       handle_name: handle,
       is_virtual: 1,
-      free_virtual: None,
       root_absence: Some([]),
     }
   let tx =

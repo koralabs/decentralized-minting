@@ -1,7 +1,6 @@
 import { invariant } from "../../helpers/index.js";
 import {
   BurnProof,
-  FreeVirtualData,
   LabelAssetProof,
   LegacyHandleProof,
   MintingData,
@@ -36,36 +35,20 @@ const decodeMintingDataDatum = (
   return { mpt_root_hash };
 };
 
-// FreeVirtualData { root_proof, root_free_names: List<ByteArray>, root_labels } (constructor 0).
-const buildFreeVirtualData = (fv: FreeVirtualData): PlutusData =>
-  mkConstr(0, [
-    buildMPTProofData(fv.root_proof),
-    mkList(fv.root_free_names.map(mkBytes)),
-    mkBytes(fv.root_labels),
-  ]);
-
-// Option<FreeVirtualData>: Some(data) = constr 0 / None = constr 1.
-const buildOptionFreeVirtualData = (fv?: FreeVirtualData): PlutusData =>
-  fv ? mkConstr(0, [buildFreeVirtualData(fv)]) : mkConstr(1, []);
-
 // Option<mpt.Proof>: Some(proof) = constr 0 / None = constr 1. WS1 orphan-reap root-absence proof.
 const buildOptionMPTProofData = (proof?: MPTProof): PlutusData =>
   proof ? mkConstr(0, [buildMPTProofData(proof)]) : mkConstr(1, []);
 
-// OrderProof { mpt_proof, free_virtual: Option<FreeVirtualData> } (constructor 0).
+// OrderProof { mpt_proof } (constructor 0).
 const buildOrderProofData = (proof: OrderProof): PlutusData =>
-  mkConstr(0, [
-    buildMPTProofData(proof.mpt_proof),
-    buildOptionFreeVirtualData(proof.free_virtual),
-  ]);
+  mkConstr(0, [buildMPTProofData(proof.mpt_proof)]);
 
-// BurnProof { mpt_proof, handle_name, is_virtual, free_virtual: Option<FreeVirtualData> } (constr 0).
+// BurnProof { mpt_proof, handle_name, is_virtual, root_absence: Option<mpt.Proof> } (constr 0).
 const buildBurnProofData = (proof: BurnProof): PlutusData =>
   mkConstr(0, [
     buildMPTProofData(proof.mpt_proof),
     mkBytes(proof.handle_name),
     mkInt(proof.is_virtual),
-    buildOptionFreeVirtualData(proof.free_virtual),
     buildOptionMPTProofData(proof.root_absence),
   ]);
 
@@ -100,15 +83,13 @@ const buildMintingDataBurnLegacyHandlesRedeemer = (
   proofs: LegacyHandleProof[],
 ): PlutusData => mkConstr(3, [mkList(proofs.map(buildLegacyHandleProofData))]);
 
-// WS1 — LabelAssetProof { mpt_proof, handle_name, label, old_free_names, old_labels, amount } (constr 0).
+// WS1 — LabelAssetProof { mpt_proof, handle_name, label, old_labels, amount } (constr 0).
 const buildLabelAssetProofData = (proof: LabelAssetProof): PlutusData => {
-  const { mpt_proof, handle_name, label, old_free_names, old_labels, amount } =
-    proof;
+  const { mpt_proof, handle_name, label, old_labels, amount } = proof;
   return mkConstr(0, [
     buildMPTProofData(mpt_proof),
     mkBytes(handle_name),
     mkBytes(label),
-    mkList(old_free_names.map(mkBytes)),
     mkBytes(old_labels),
     mkInt(amount),
   ]);
@@ -134,11 +115,11 @@ export {
   buildLabelAssetProofData,
   buildLegacyHandleProofData,
   buildMintingData,
-  buildMintingDataBurnLegacyHandlesRedeemer,
   buildMintingDataBurnDeMiHandlesRedeemer,
+  buildMintingDataBurnLegacyHandlesRedeemer,
+  buildMintingDataMintDeMiHandlesRedeemer,
   buildMintingDataMintLabelAssetsRedeemer,
   buildMintingDataMintLegacyHandlesRedeemer,
-  buildMintingDataMintDeMiHandlesRedeemer,
   buildMintingDataUpdateMPTRedeemer,
   buildOrderProofData,
   decodeMintingDataDatum,

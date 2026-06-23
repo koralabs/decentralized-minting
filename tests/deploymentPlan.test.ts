@@ -326,12 +326,15 @@ describe("decentralized minting deployment plan", () => {
     const hash = await computeMptRootHash({
       network: "preview",
       userAgent: "test",
-      fetchFn: vi.fn(async () =>
-        new Response(handles.join("\n"), {
+      fetchFn: vi.fn(async (url: string | URL | Request) => {
+        if (String(url).includes("/mpt-root/registry-labels")) {
+          return new Response(JSON.stringify({ labels: {} }), { status: 200 });
+        }
+        return new Response(handles.join("\n"), {
           status: 200,
           headers: { "x-handles-search-total": String(handles.length) },
-        })
-      ) as typeof fetch,
+        });
+      }) as typeof fetch,
     });
 
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
@@ -340,12 +343,15 @@ describe("decentralized minting deployment plan", () => {
     const hash2 = await computeMptRootHash({
       network: "preview",
       userAgent: "test",
-      fetchFn: vi.fn(async () =>
-        new Response([...handles, "dave"].join("\n"), {
+      fetchFn: vi.fn(async (url: string | URL | Request) => {
+        if (String(url).includes("/mpt-root/registry-labels")) {
+          return new Response(JSON.stringify({ labels: {} }), { status: 200 });
+        }
+        return new Response([...handles, "dave"].join("\n"), {
           status: 200,
           headers: { "x-handles-search-total": "4" },
-        })
-      ) as typeof fetch,
+        });
+      }) as typeof fetch,
     });
     expect(hash2).not.toBe(hash);
   });

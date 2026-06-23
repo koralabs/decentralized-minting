@@ -413,7 +413,8 @@ export const buildSettingsUpdateTx = async ({
     pz_script_address: desiredSettings.pz_script_address as string,
     order_script_hash: orderScriptHashOverride ?? built.orders.validatorHash,
     minting_data_script_hash: built.mintingData.validatorHash,
-    // WS5: discount config from the deployment settings (defaults to all-off / 3 free virtuals).
+    // WS5: discount config from the deployment settings (defaults to all-off). `free_virtual_count`
+    // is retained for ABI stability but is UNUSED — no contract logic reads it; deploy default is 0.
     discount_config: (() => {
       const dc = ((desiredSettings as Record<string, unknown>).discount_config ??
         {}) as Record<string, unknown>;
@@ -425,7 +426,7 @@ export const buildSettingsUpdateTx = async ({
         legendary_bps: n(dc.legendary_bps),
         ultra_rare_bps: n(dc.ultra_rare_bps),
         rare_bps: n(dc.rare_bps),
-        free_virtual_count: BigInt((dc.free_virtual_count as number | undefined) ?? 3),
+        free_virtual_count: BigInt((dc.free_virtual_count as number | undefined) ?? 0),
         hal_policy_id: (dc.hal_policy_id as string | undefined) ?? "",
       };
     })(),

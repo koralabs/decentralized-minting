@@ -19,7 +19,7 @@ use decentralized_minting/sub_handle.{
 }
 use validations/discount_eligibility.{DiscountContext, effective_handle_price}
 use validations/minting_data/types.{
-  BurnProof, FreeVirtualData, LabelAssetProof, LegacyHandleProof, OrderProof,
+  BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
 }
 
 // WS6: root-handle character cap. Bumped 15 -> 28 (the on-chain gatekeeper that actually
@@ -51,7 +51,6 @@ pub fn all_orders_are_satisfied(
   handle_price_info: HandlePriceInfo,
   sub_handle_minter_fee: Int,
   sub_handle_treasury_fee: Int,
-  free_virtual_count: Int,
   proofs: List<OrderProof>,
   root: mpt.MerklePatriciaForestry,
   expected_mint_value: Value,
@@ -100,9 +99,9 @@ pub fn all_orders_are_satisfied(
             ..
           } = datum
 
-          // parse proofs (one OrderProof per order; free_virtual = Some for a free private virtual)
+          // parse proofs (one OrderProof per order)
           expect [order_proof, ..rest_proofs] = proofs
-          let OrderProof { mpt_proof, free_virtual } = order_proof
+          let OrderProof { mpt_proof } = order_proof
 
           let order_input_lovelace =
             value.quantity_of(
@@ -132,7 +131,7 @@ pub fn all_orders_are_satisfied(
               expect
                 check_legacy_handle_validity(requested_handle, is_virtual_bool)
 
-              // mint the sub's tokens (positional output consumption) — every sub mints, free or paid
+              // mint the sub's tokens (positional output consumption)
               let (rest, mint_v) =
                 if is_virtual_bool {
                   check_virtual_sub_output(
@@ -153,69 +152,38 @@ pub fn all_orders_are_satisfied(
                   )
                 }
 
-              when free_virtual is {
-                // FREE private virtual: must have a slot; bump the root's free-name set; owes nothing.
-                // (Gated by the allowed-minter signature on the tx — only a legitimate free private
-                // virtual is marked Some.)
-                Some(fv) -> {
-                  expect is_virtual_bool
-                  expect
-                    registry_value.has_free_slot(
-                      fv.root_free_names,
-                      free_virtual_count,
-                    )
-                  let root_bumped =
-                    add_root_free_name(
-                      root_after_handle,
-                      root_name,
-                      fv,
-                      sub_name,
-                    )
-                  (
-                    root_bumped,
-                    rest,
-                    mint_v,
-                    total_handles_price,
-                    total_sub_minter_fee,
-                    total_sub_treasury_fee,
-                    owner_fees,
-                  )
-                }
-                // PAID sub (nft, public virtual, or a private virtual past the allowance): owner fee
-                // (tier price) -> owner payment_address, plus flat minter + flat treasury.
-                None -> {
-                  let owner_settings =
-                    find_root_handle_settings(
-                      reference_inputs,
-                      root_name,
-                      policy_id,
-                      legacy_policy_id,
-                    )
-                  let owner_fee =
-                    get_sub_handle_price(
-                      owner_settings,
-                      bytearray.length(sub_name),
-                      is_virtual_bool,
-                    )
-                  let (_n, _v, _r0, _r1, _r2, _t, _m, payment_address) =
-                    owner_settings
-                  let owner_cred = owner_payment_credential(payment_address)
+              // PAID sub (nft, public virtual, or private virtual): owner fee (tier price) ->
+              // owner payment_address, plus flat minter + flat treasury.
+              let owner_settings =
+                find_root_handle_settings(
+                  reference_inputs,
+                  root_name,
+                  policy_id,
+                  legacy_policy_id,
+                )
+              let owner_fee =
+                get_sub_handle_price(
+                  owner_settings,
+                  bytearray.length(sub_name),
+                  is_virtual_bool,
+                )
+              let (_n, _v, _r0, _r1, _r2, _t, _m, payment_address) =
+                owner_settings
+              let owner_cred = owner_payment_credential(payment_address)
 
-                  // the order UTxO must fund all three additive fees
-                  expect
-                    order_input_lovelace >= owner_fee + sub_handle_minter_fee + sub_handle_treasury_fee
+              // the order UTxO must fund all three additive fees
+              expect
+                order_input_lovelace >= owner_fee + sub_handle_minter_fee + sub_handle_treasury_fee
 
-                  (
-                    root_after_handle,
-                    rest,
-                    mint_v,
-                    total_handles_price,
-                    total_sub_minter_fee + sub_handle_minter_fee,
-                    total_sub_treasury_fee + sub_handle_treasury_fee,
-                    add_owner_fee(owner_fees, owner_cred, owner_fee),
-                  )
-                }
-              }
+              (
+                root_after_handle,
+                rest,
+                mint_v,
+                total_handles_price,
+                total_sub_minter_fee + sub_handle_minter_fee,
+                total_sub_treasury_fee + sub_handle_treasury_fee,
+                add_owner_fee(owner_fees, owner_cred, owner_fee),
+              )
             } else {
               // ROOT handle: rarity price minus any discount; feeds the percentage split
               let handle_price =
@@ -263,7 +231,6 @@ pub fn all_orders_are_satisfied(
             handle_price_info,
             sub_handle_minter_fee,
             sub_handle_treasury_fee,
-            free_virtual_count,
             rest_proofs,
             updated_root,
             new_mint_value,
@@ -288,7 +255,6 @@ pub fn all_orders_are_satisfied(
             handle_price_info,
             sub_handle_minter_fee,
             sub_handle_treasury_fee,
-            free_virtual_count,
             proofs,
             root,
             expected_mint_value,
@@ -426,7 +392,6 @@ pub fn all_label_proofs_are_valid(
         mpt_proof,
         handle_name,
         label,
-        old_free_names,
         old_labels,
         amount,
       } = proof
@@ -457,14 +422,11 @@ pub fn all_label_proofs_are_valid(
             )
         }
 
-      // update the registry value at this key, preserving the free-virtual name set (the value
-      // is encode(free_names, labels); label_set.apply guards amount = +/-1 and add/remove legality)
-      let old_value = registry_value.encode(old_free_names, old_labels)
+      // update the registry value at this key (the value is encode(labels); label_set.apply
+      // guards amount = +/-1 and add/remove legality)
+      let old_value = registry_value.encode(old_labels)
       let new_value =
-        registry_value.encode(
-          old_free_names,
-          label_set.apply(old_labels, label, amount),
-        )
+        registry_value.encode(label_set.apply(old_labels, label, amount))
       let new_root =
         mpt.update(root, handle_name, mpt_proof, old_value, new_value)
 
@@ -688,47 +650,9 @@ fn check_virtual_sub_output(
   (rest_outputs, new_mint_value)
 }
 
-// Add this sub's name to the ROOT key's free-name set (a FREE private-virtual mint). A second
-// `mpt.update` on the root value, after the sub key was inserted. The proof + current free-name
-// set + labels come from the order's FreeVirtualData; the new value adds the sub name to the set.
-fn add_root_free_name(
-  root: mpt.MerklePatriciaForestry,
-  root_name: ByteArray,
-  fv: FreeVirtualData,
-  sub_name: ByteArray,
-) -> mpt.MerklePatriciaForestry {
-  let FreeVirtualData { root_proof, root_free_names, root_labels } = fv
-  let old_value = registry_value.encode(root_free_names, root_labels)
-  let new_value =
-    registry_value.encode(
-      registry_value.add_free_name(root_free_names, sub_name),
-      root_labels,
-    )
-  mpt.update(root, root_name, root_proof, old_value, new_value)
-}
-
-// Remove this sub's name from the ROOT key's free-name set (a FREE private-virtual BURN → reopen
-// the slot). The inverse of add_root_free_name: a second mpt.update on the root value, after the
-// sub key was deleted.
-fn remove_root_free_name(
-  root: mpt.MerklePatriciaForestry,
-  root_name: ByteArray,
-  fv: FreeVirtualData,
-  sub_name: ByteArray,
-) -> mpt.MerklePatriciaForestry {
-  let FreeVirtualData { root_proof, root_free_names, root_labels } = fv
-  let old_value = registry_value.encode(root_free_names, root_labels)
-  let new_value =
-    registry_value.encode(
-      registry_value.remove_free_name(root_free_names, sub_name),
-      root_labels,
-    )
-  mpt.update(root, root_name, root_proof, old_value, new_value)
-}
-
 // Process each DeMi-policy BURN proof, accumulating the new MPT root and the expected (negative)
 // mint value. The mirror of all_orders_are_satisfied's mint: delete the handle key (proves it was
-// present), subtract its tokens, and for a free virtual remove its name from the root set (reopen).
+// present) and subtract its tokens.
 pub fn all_burn_proofs_are_valid(
   proofs: List<BurnProof>,
   root: mpt.MerklePatriciaForestry,
@@ -739,14 +663,13 @@ pub fn all_burn_proofs_are_valid(
   when proofs is {
     [] -> continuation(root, expected_mint_value)
     [proof, ..rest_proofs] -> {
-      let BurnProof { mpt_proof, handle_name, is_virtual, free_virtual, root_absence } =
-        proof
+      let BurnProof { mpt_proof, handle_name, is_virtual, root_absence } = proof
       let is_virtual_bool = parse_bool_from_int(is_virtual)
 
       // check handle is valid
       expect check_legacy_handle_validity(handle_name, is_virtual_bool)
 
-      let (root_name, _is_sub, sub_name) = parse_handle_name(handle_name)
+      let (root_name, _is_sub, _sub_name) = parse_handle_name(handle_name)
 
       // WS1 orphan reap — a supplied root-absence proof requires the sub's ROOT key to be provably
       // absent from the MPT. This is the on-chain gate that lets a private orphan be reaped without
@@ -757,7 +680,7 @@ pub fn all_burn_proofs_are_valid(
       }
 
       // delete the handle's own key (proves existence-before, absence-after)
-      let root_after_handle = update_root(root, handle_name, -1, mpt_proof)
+      let updated_root = update_root(root, handle_name, -1, mpt_proof)
 
       // -1 of the handle's tokens (000 for a virtual, 100+222 for an nft/root) under the DeMi policy
       let new_mint_value =
@@ -768,17 +691,6 @@ pub fn all_burn_proofs_are_valid(
           is_virtual_bool,
           -1,
         )
-
-      // free-virtual reopen: a name in the root's free set is removed (else the set is untouched)
-      let updated_root =
-        when free_virtual is {
-          Some(fv) -> {
-            expect is_virtual_bool
-            expect registry_value.has_free_name(fv.root_free_names, sub_name)
-            remove_root_free_name(root_after_handle, root_name, fv, sub_name)
-          }
-          None -> root_after_handle
-        }
 
       all_burn_proofs_are_valid(
         rest_proofs,

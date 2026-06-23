@@ -26,7 +26,7 @@ const PINNED_HASHES = {
   // (legacy_policy_id, admin_vkh + WS7 slot anchor: anchor_slot,
   // anchor_time_ms, slot_length_ms), aiken v1.1.22 build.
   mintingDataSpend5Params:
-    "8c455db351126684aa41841654a8d68144a65895c98f9ced7b063488",
+    "dc4efa43b2c4652c064ced9897589f77b557a7fbaae31f991797e1d1",
 };
 
 const findValidator = (title: string) => {

@@ -154,7 +154,6 @@ pub fn can_mint_demi_handles(
       handle_price_info,
       sub_handle_minter_fee,
       sub_handle_treasury_fee,
-      discount_config.free_virtual_count,
       proofs,
       root,
       value.zero,
