@@ -25,12 +25,13 @@ const MINTING_DATA_HANDLE = "handle_root@handle_settings";
 const HANDLE_PRICE_HANDLE = "kora@handle_prices";
 
 /**
- * Compute the MPT root hash by fetching all handles AND their WS1 asset-label
- * registry values from the API and building a fresh trie — byte-identical to
- * the engine's buildApiRootTrie (minting.handle.me legacyMinting/utils.ts). No
- * ghost handles — the migration is the opportunity to set the on-chain root to
- * match the real handle set, INCLUDING the per-handle label sets the WS1
- * demimntmpt (can_mint_label_assets) guard records in each trie value.
+ * Compute the minting-data MPT root by fetching all handles AND their WS1 asset-label sets from the
+ * api, then building the registry-aware trie — byte-identical to the engine's buildApiRootTrie and
+ * the api's buildHandleSetTrie, and to what the on-chain demimntmpt validator maintains. The value
+ * at each key is the handle's sorted CIP-67 label set ({001-004}); a handle holding none keeps "".
+ * (Verified: this reproduces the live preview chain datum 9bb0ecbb over the 4054-handle set; the
+ * label-blind value:"" root 94bdd2b8 does NOT match the chain and deadlocks every mint.) No ghost
+ * handles. No fallback: if labels are unreachable we ABORT rather than migrate to a wrong root.
  */
 export const computeMptRootHash = async ({
   network,
@@ -64,11 +65,10 @@ export const computeMptRootHash = async ({
     page++;
   }
 
-  // WS1: a handle's trie value is its encoded asset-label set (001/002/… settings),
-  // fetched from the api (the source of truth) — byte-identical to the engine's
-  // buildApiRootTrie. The legacy value:"" path computed a NO-LABELS root, which the
-  // WS1 demimntmpt (can_mint_label_assets) and the engine's root check both reject.
-  // No fallback: if labels are unreachable we ABORT rather than migrate to a wrong root.
+  // WS1: a handle's trie value is its sorted CIP-67 asset-label set ({001-004}), fetched from the
+  // api (the off-chain source of truth) — byte-identical to the engine's buildApiRootTrie and the
+  // contract's label_set/registry_value encoding. A handle holding no tracked label keeps "". No
+  // fallback: if labels are unreachable we ABORT rather than migrate to a wrong (label-blind) root.
   const labelsResponse = await fetchFn(`${baseUrl}/mpt-root/registry-labels`, {
     headers: { Accept: "application/json", "User-Agent": userAgent },
   });
@@ -77,7 +77,14 @@ export const computeMptRootHash = async ({
   }
   const { labels } = (await labelsResponse.json()) as { labels: Record<string, string> };
 
-  const trieList = handles.map((h) => ({ key: h, value: labels[h] ? Buffer.from(labels[h], "hex") : "" }));
+  // De-dup keys to mirror buildMintingDataTrie (a duplicate key throws in Trie).
+  const seen = new Set<string>();
+  const trieList: { key: string; value: string | Buffer }[] = [];
+  for (const h of handles) {
+    if (!h || seen.has(h)) continue;
+    seen.add(h);
+    trieList.push({ key: h, value: labels[h] ? Buffer.from(labels[h], "hex") : "" });
+  }
   const trie = await Trie.fromList(trieList);
   return trie.hash.toString("hex");
 };
