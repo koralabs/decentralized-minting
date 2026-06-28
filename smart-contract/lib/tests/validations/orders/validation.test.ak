@@ -1,8 +1,7 @@
 use cardano/address.{Credential, Script, from_script, from_verification_key}
 use cardano/assets as value
-use cardano/transaction.{NoDatum, Output}
+use cardano/transaction.{InlineDatum, NoDatum, Output, OutputReference}
 use decentralized_minting/orders.{OrderDatum}
-use sundae/multisig.{Signature}
 use tests/mocks/fake_constants.{min_order_lovelace, mint_governor}
 use tests/mocks/fake_tx.{
   make_order_input, make_settings_reference_input, make_transaction,
@@ -13,9 +12,10 @@ use validations/orders/validation.{
 
 const owner_vkh = #"01"
 
+// owner is a RAW payment key hash (matches the off-chain order builder), not a MultisigScript.
 fn order_datum() -> OrderDatum {
   OrderDatum {
-    owner: Signature(owner_vkh),
+    owner: owner_vkh,
     requested_handle: "test",
     destination_address: from_verification_key(owner_vkh),
     discount_claim: None,
@@ -28,33 +28,43 @@ fn governor_executed() -> Pairs<Credential, Int> {
   [Pair(Script(mint_governor), 0)]
 }
 
-fn owner_refund_output(lovelace: Int) -> Output {
+// a refund output to the owner, tagged with the order's OutputReference — the binding the
+// validator now requires so a single output can't satisfy two different refunds.
+fn owner_refund_output(lovelace: Int, tag: OutputReference) -> Output {
   Output {
     address: from_verification_key(owner_vkh),
     value: value.from_lovelace(lovelace),
-    datum: NoDatum,
+    datum: InlineDatum(tag),
     reference_script: None,
   }
 }
 
-fn refund_tx(withdrawals: Pairs<Credential, Int>, outputs: List<Output>) {
+// build a refund tx; outputs are produced from the order's ref so tests can tag correctly.
+fn refund_tx(
+  withdrawals: Pairs<Credential, Int>,
+  build_outputs: fn(OutputReference) -> List<Output>,
+) {
   let order_input = make_order_input(owner_vkh, "test")
+  let order_ref = order_input.output_reference
   let tx =
     make_transaction(
       [order_input],
       [make_settings_reference_input()],
-      outputs,
+      build_outputs(order_ref),
       value.zero,
       withdrawals,
       [],
     )
-  (tx, order_input.output_reference)
+  (tx, order_ref)
 }
 
-// admin-authorized refund returning the order's lovelace to the owner -> ok
+// admin-authorized refund, owner-output tagged with the order ref -> ok
 test refund_ok() {
   let (tx, order_ref) =
-    refund_tx(governor_executed(), [owner_refund_output(min_order_lovelace)])
+    refund_tx(
+      governor_executed(),
+      fn(r) { [owner_refund_output(min_order_lovelace, r)] },
+    )
   can_refund_order(tx, order_ref, order_datum())
 }
 
@@ -63,14 +73,15 @@ test refund_overpay_ok() {
   let (tx, order_ref) =
     refund_tx(
       governor_executed(),
-      [owner_refund_output(min_order_lovelace + 1_000_000)],
+      fn(r) { [owner_refund_output(min_order_lovelace + 1_000_000, r)] },
     )
   can_refund_order(tx, order_ref, order_datum())
 }
 
 // no admin withdrawal -> not authorized
 test refund_without_admin_fails() fail {
-  let (tx, order_ref) = refund_tx([], [owner_refund_output(min_order_lovelace)])
+  let (tx, order_ref) =
+    refund_tx([], fn(r) { [owner_refund_output(min_order_lovelace, r)] })
   can_refund_order(tx, order_ref, order_datum())
 }
 
@@ -79,21 +90,78 @@ test refund_underpay_rejected() {
   let (tx, order_ref) =
     refund_tx(
       governor_executed(),
-      [owner_refund_output(min_order_lovelace - 1)],
+      fn(r) { [owner_refund_output(min_order_lovelace - 1, r)] },
     )
   can_refund_order(tx, order_ref, order_datum()) == False
 }
 
 // funds go to someone other than the owner -> rejected (can't redirect)
 test refund_to_other_rejected() {
-  let other =
-    Output {
-      address: from_verification_key(#"02"),
-      value: value.from_lovelace(min_order_lovelace),
-      datum: NoDatum,
-      reference_script: None,
-    }
-  let (tx, order_ref) = refund_tx(governor_executed(), [other])
+  let (tx, order_ref) =
+    refund_tx(
+      governor_executed(),
+      fn(r) {
+        [
+          Output {
+            address: from_verification_key(#"02"),
+            value: value.from_lovelace(min_order_lovelace),
+            datum: InlineDatum(r),
+            reference_script: None,
+          },
+        ]
+      },
+    )
+  can_refund_order(tx, order_ref, order_datum()) == False
+}
+
+// funds sent to a SCRIPT address with the owner's hash bytes -> rejected (wrong cred kind)
+test refund_to_script_credential_rejected() {
+  let (tx, order_ref) =
+    refund_tx(
+      governor_executed(),
+      fn(r) {
+        [
+          Output {
+            address: from_script(owner_vkh),
+            value: value.from_lovelace(min_order_lovelace),
+            datum: InlineDatum(r),
+            reference_script: None,
+          },
+        ]
+      },
+    )
+  can_refund_order(tx, order_ref, order_datum()) == False
+}
+
+// #5c double-satisfaction: an owner-output with NO order-ref tag can't satisfy the refund —
+// this is exactly the loophole the old `list.any` left open (one untagged output, many orders).
+test refund_untagged_rejected() {
+  let (tx, order_ref) =
+    refund_tx(
+      governor_executed(),
+      fn(_r) {
+        [
+          Output {
+            address: from_verification_key(owner_vkh),
+            value: value.from_lovelace(min_order_lovelace),
+            datum: NoDatum,
+            reference_script: None,
+          },
+        ]
+      },
+    )
+  can_refund_order(tx, order_ref, order_datum()) == False
+}
+
+// #5c double-satisfaction: an owner-output tagged with a DIFFERENT order's ref can't be
+// reused to satisfy THIS order -> two orders can never share one refund output.
+test refund_wrong_tag_rejected() {
+  let other_ref = OutputReference { transaction_id: #"bbbb", output_index: 0 }
+  let (tx, order_ref) =
+    refund_tx(
+      governor_executed(),
+      fn(_r) { [owner_refund_output(min_order_lovelace, other_ref)] },
+    )
   can_refund_order(tx, order_ref, order_datum()) == False
 }
 
@@ -117,8 +185,7 @@ test order_execute_rejects_without_governor_fails() fail {
   can_execute_order(tx)
 }
 
-// Cancel: only the order's owner (sundae multisig) can reclaim their lovelace — no governor needed,
-// and no one else can sign it away.
+// Cancel: the order's owner (raw key hash) must sign — no governor needed.
 test order_cancel_requires_owner_signature() {
   let tx = make_transaction([], [], [], value.zero, [], [owner_vkh])
   can_cancel_order(tx, order_datum())
@@ -127,17 +194,4 @@ test order_cancel_requires_owner_signature() {
 test order_cancel_rejects_without_owner_signature_fails() fail {
   let tx = make_transaction([], [], [], value.zero, [], [])
   can_cancel_order(tx, order_datum())
-}
-
-// funds sent to a SCRIPT address with the owner's hash bytes -> rejected (wrong cred kind)
-test refund_to_script_credential_rejected() {
-  let scripted =
-    Output {
-      address: from_script(owner_vkh),
-      value: value.from_lovelace(min_order_lovelace),
-      datum: NoDatum,
-      reference_script: None,
-    }
-  let (tx, order_ref) = refund_tx(governor_executed(), [scripted])
-  can_refund_order(tx, order_ref, order_datum()) == False
 }
