@@ -122,7 +122,7 @@ grep -A2 'handles-decentralized-minting' minting.handle.me/package.json   # engi
 # then confirm the deployed preprod demimntmpt hash == 4ae33c5f… (the yaml value)
 ```
 
-### Finding 3 — heavy-build timeout: preprod BFF Lambda needs ≥120s
+### Finding 3 — heavy-build timeout: BFF needs ≥120s (REVISED for the box)
 
 The BFF DeMi/personalize build (V3 transform + scalus eval + unoptimized-cbor
 diagnostic re-eval) runs ~25–50s on a heavy wallet. The default request
@@ -131,15 +131,22 @@ looks like CORS. On the **box (preview)** this is `KORA_FN_TIMEOUT_SECONDS=120`
 threaded into the fn manifest — confirmed durable (the box's `fn deploy`
 preserves it across redeploys).
 
-**preprod is AWS/Lambda, not the box** (`feedback_preview_not_on_aws`) —
-`KORA_FN_TIMEOUT_SECONDS` does NOT apply. Set the BFF Lambda function timeout
-to ≥120s in the preprod deploy config; confirm the API Gateway / invoke path
-doesn't cap below it.
+⚠️ **REVISED 2026-06-29: preprod is being driven on the box, NOT AWS.** Verified
+a `kora-preprod` fn app exists on the box (`ssh kora-sf 'fn list apps'`)
+alongside `kora-preview` and `kora-mainnet`. So the **box mechanism applies,
+same as preview** — `KORA_FN_TIMEOUT_SECONDS=120` in the fn manifest. The
+earlier "preprod = AWS/Lambda timeout" guidance is SUPERSEDED.
 
-```bash
-aws lambda get-function-configuration --function-name handle-me \
-  --qualifier preprod --query 'Timeout'   # expect >= 120
-```
+**But the preprod box-deploy path does not exist yet** —
+`handle.me/.github/workflows/deploy-box.yml` is preview-only (`on: push:
+[preview]`, `NETWORK: PREVIEW`, `kora-preview-*` fns, `preview.*` domains), and
+the AWS `deploy.yml` still triggers on preprod push. Establishing it is the
+first hurdle (see "Box cutover log" below): either parameterize deploy-box.yml
+for preprod (add `push: [preprod]` here AND drop preprod from deploy.yml, per
+deploy-box.yml's own header) or deploy preprod fns manually via the
+adahandle-deployments common scripts with `NETWORK=PREPROD`. Also confirm DNS
+(`preprod.handle.me` / `.bff.` / `.auth.`) points at the box — a box deploy is
+inert until it does.
 
 ### Finding 4 — debug a failing DeMi tx with `aiken tx simulate`, NOT scalus
 
@@ -187,5 +194,31 @@ engine constants).
   preview "drift" this session was a false alarm — the root matched chain; the
   real bug was Finding 1. Don't reach for it reflexively on preprod.
 - **Env-branch discipline**: `preview → preprod → mainnet` are staged; do not
-  push concurrently (shared Lambda), and never propagate to mainnet without
-  explicit per-deploy authorization (`feedback_no_unauthorized_mainnet`).
+  push concurrently, and never propagate to mainnet without explicit per-deploy
+  authorization (`feedback_no_unauthorized_mainnet`).
+
+---
+
+## Box cutover log — issues hit + mainnet-prep notes
+
+> **This is the primary running deliverable of the first preprod-on-box cutover.**
+> Every divergence from expectation, every box-vs-AWS difference, every fix —
+> append it here, dated, as you go. `kora-mainnet` is also a box app, so these
+> notes are the seed for the eventual mainnet cutover (there is no mainnet
+> cutover doc yet — this log becomes it). Logging is not optional.
+
+### Starting map — known divergences to resolve first (grounding check 2026-06-29)
+- `kora-preprod` fn app EXISTS on the box; preprod is provisioned there
+  (`kora-preview` / `kora-preprod` / `kora-mainnet` all present).
+- `deploy-box.yml` is preview-only — **no preprod target**. AWS `deploy.yml`
+  still owns preprod push. Establish the box deploy path before anything else
+  (Finding 3).
+- **DNS unknown**: confirm `preprod.handle.me` / `preprod.bff.handle.me` /
+  `preprod.auth.handle.me` resolve to the box vs still AWS. A box deploy is
+  inert until DNS points at the box.
+- minting.handle.me preprod branch DeMi package is stale (`2.0.3` on the main
+  checkout); the preview branch carries `3.0.2` + the sub-mint fix (`236c7a1`).
+  Reconcile/merge forward before the engine deploy (Findings 1 + 2).
+
+### Run log
+_(empty — the first preprod-on-box cutover run populates this; date each entry)_
