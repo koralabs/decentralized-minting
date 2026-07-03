@@ -20,7 +20,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: fd5425aef537e2bd066cc817b4a16d1bac86bb78149a0881959744e9
+      mint_governor: 56f18c5ab4f468dead369938bfc7cd7f88db3a8e1d22a6da41c94c8e
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -52,7 +52,11 @@ settings:
       # (demimnt6 fd5425ae, derived from the new minting-data hash). These MUST track the live
       # deployed contracts so the plan emits the settings-update tx and the engine resolves the
       # correct ref scripts.
-      minting_data_script_hash: efa546e561beb3cd1a15ca26ceb6a47f95e471b8dec0c5ed1a59dc9e
+      # WS7 fail-closed cutover (2026-07-02): policy_window gate hardened fail-open → fail-closed
+      # ($handle_policies 222 ref input + bounded validity now REQUIRED; last_mint_slot enforced).
+      # demimntmpt efa546e5 → 86e193d6; mint_governor follows (demimnt fd5425ae → 56f18c5a, derived
+      # from the new minting-data hash). demiord + proxy unchanged.
+      minting_data_script_hash: 86e193d6a9e5efa615122913b5fee430d995f74e77f3722a39e6575c
       # WS5 discount config — all discounts off at launch; free virtuals REMOVED (count 0); no HAL policy.
       discount_config:
         partner_nft_bps: 0
