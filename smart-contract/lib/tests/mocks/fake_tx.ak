@@ -1,6 +1,8 @@
 use aiken/interval
+use aiken/primitive/bytearray
 use cardano/address.{Address, Credential} as credential
 use cardano/assets.{AssetName, PolicyId, Value} as value
+use common/cip68.{prefix_222}
 use cardano/transaction.{
   Datum, InlineDatum, Input, NoDatum, Output, OutputReference, Transaction,
   placeholder,
@@ -66,6 +68,31 @@ pub fn make_order_input(
 pub fn make_test_address() -> Address {
   credential.from_verification_key(#"00")
     |> credential.with_delegation_key(#"00")
+}
+
+// $handle_policies registry reference input: the admin (legacy) 222 owner token carrying the
+// policy-window `List<Pairs<policy,(first,last,sunset)>>` datum. Required by the fail-closed
+// policy_window gate on every mint. `window = (0,0,0)` = dormant/allowed.
+pub fn make_handle_policies_reference_input(
+  admin_policy: PolicyId,
+  listed_policy: PolicyId,
+  window: (Int, Int, Int),
+) -> Input {
+  let asset_name = bytearray.concat(prefix_222, "handle_policies")
+  let datum_value: List<Pairs<PolicyId, (Int, Int, Int)>> =
+    [[Pair(listed_policy, window)]]
+  Input {
+    output_reference: OutputReference {
+      transaction_id: #"dded",
+      output_index: 0,
+    },
+    output: Output {
+      address: credential.from_verification_key(#"dded"),
+      value: value.zero |> value.add(admin_policy, asset_name, 1),
+      datum: InlineDatum(datum_value),
+      reference_script: None,
+    },
+  }
 }
 
 pub fn make_settings_reference_input() -> Input {

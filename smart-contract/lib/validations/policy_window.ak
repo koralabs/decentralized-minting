@@ -20,11 +20,13 @@ const handle_policies_name: ByteArray = "handle_policies"
 // network slot anchor (the validator's compile-time params), then the tx validity upper bound
 // must fall inside the window.
 //
-// Dormant-safe by construction:
-//   - ref input absent  -> unrestricted (the engine only attaches it once enforcing)
-//   - policy not listed  -> unrestricted
-//   - all window slots 0 -> always open (the current state — nothing sunsets yet)
-// Hardening at activation = require the ref input instead of allowing its absence.
+// FAIL-CLOSED (hardened 2026-07-02 — was fail-open, which left last_mint_slot unenforced so a
+// "passing" mint proved nothing about the window):
+//   - ref input absent / no inline datum -> FAIL (the $handle_policies ref input is REQUIRED)
+//   - mint policy not listed in the datum -> FAIL (only registered handle policies may mint)
+//   - all window slots 0 for a listed policy -> allowed (explicit "no bound set yet")
+// The engine attaches the $handle_policies 222 owner-token ref input + a bounded validity range on
+// every mint; an unbounded validity can't prove it lands before last_minting_slot/sunset.
 pub fn assert_mint_within_policy_window(
   reference_inputs: List<Input>,
   admin_policy_id: PolicyId,
@@ -42,10 +44,10 @@ pub fn assert_mint_within_policy_window(
       policies_asset_name,
     )
   is {
-    None -> True
+    None -> fail @"$handle_policies reference input with inline datum is required"
     Some(datum) ->
       when find_policy_window(datum, mint_policy_id) is {
-        None -> True
+        None -> fail @"mint policy is not registered in $handle_policies"
         Some(window) ->
           mint_allowed_in_window(
             window_to_posix(window, anchor_slot, anchor_time_ms, slot_length_ms),

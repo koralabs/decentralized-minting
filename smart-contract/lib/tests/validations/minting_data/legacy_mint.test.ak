@@ -5,8 +5,8 @@ use cardano/transaction.{OutputReference}
 use common/cip68.{prefix_100, prefix_222}
 use tests/mocks/fake_constants.{minting_data_script_hash}
 use tests/mocks/fake_tx.{
-  make_minting_data_input, make_minting_data_output,
-  make_settings_reference_input, make_transaction,
+  make_handle_policies_reference_input, make_minting_data_input,
+  make_minting_data_output, make_settings_reference_input, make_transaction,
 }
 use validations/minting_data/types.{LegacyHandleProof}
 use validations/minting_data/validation.{
@@ -50,7 +50,10 @@ test legacy_root_mint_ok() {
   let tx =
     make_transaction(
       [make_minting_data_input(empty_root(), minting_data_script_hash)],
-      [make_settings_reference_input()],
+      [
+        make_settings_reference_input(),
+        make_handle_policies_reference_input(legacy_policy, legacy_policy, (0, 0, 0)),
+      ],
       [make_minting_data_output(root_with(handle), minting_data_script_hash)],
       root_mint_value(handle, 1),
       [],
@@ -73,7 +76,10 @@ test legacy_root_mint_wrong_output_root_fails() fail {
   let tx =
     make_transaction(
       [make_minting_data_input(empty_root(), minting_data_script_hash)],
-      [make_settings_reference_input()],
+      [
+        make_settings_reference_input(),
+        make_handle_policies_reference_input(legacy_policy, legacy_policy, (0, 0, 0)),
+      ],
       // wrong: output keeps the empty root
       [make_minting_data_output(empty_root(), minting_data_script_hash)],
       root_mint_value(handle, 1),
@@ -97,7 +103,10 @@ test legacy_root_mint_unbacked_mint_fails() fail {
   let tx =
     make_transaction(
       [make_minting_data_input(empty_root(), minting_data_script_hash)],
-      [make_settings_reference_input()],
+      [
+        make_settings_reference_input(),
+        make_handle_policies_reference_input(legacy_policy, legacy_policy, (0, 0, 0)),
+      ],
       [make_minting_data_output(root_with(handle), minting_data_script_hash)],
       // mints a DIFFERENT handle than the proof
       root_mint_value("xyz", 1),
