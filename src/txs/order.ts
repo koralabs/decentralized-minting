@@ -4,7 +4,7 @@ import { Err, Ok, Result } from "ts-res";
 
 import { fetchHandlePriceInfoData } from "../configs/index.js";
 import { HANDLE_PRICE_INFO_HANDLE_NAME } from "../constants/index.js";
-import { plutusDataToCbor } from "../contracts/data/plutusData.js";
+import { mkBytes, plutusDataToCbor } from "../contracts/data/plutusData.js";
 import {
   buildDiscountClaimData,
   buildOrderCancelRedeemer,
@@ -12,7 +12,6 @@ import {
   decodeOrderDatum,
   DiscountClaim,
   HandlePrices,
-  makeSignatureMultiSigScriptData,
   OrderDatum,
 } from "../contracts/index.js";
 import { fetchBlockfrostUtxos } from "../helpers/cardano-sdk/blockfrostUtxo.js";
@@ -109,7 +108,12 @@ const request = async (params: RequestParams): Promise<
   );
 
   const order: OrderDatum = {
-    owner: makeSignatureMultiSigScriptData(paymentCred.hash as unknown as string),
+    // owner is a RAW payment key-hash ByteArray. The deployed demiord validator does
+    // `unBData(datum.owner)` on the Cancel/Refund paths (aiken `expect owner_key_hash: ByteArray =
+    // datum.owner`, verified on-chain), so a Signature/MultisigScript Constr here makes EVERY order
+    // permanently uncancelable AND unrefundable — its lovelace is locked forever if the governor
+    // never executes it. Must match the on-chain ABI + the orders validation tests (`owner: vkh`).
+    owner: mkBytes(paymentCred.hash as unknown as string),
     requested_handle: Buffer.from(handle).toString("hex"),
     destination_address: address,
     discount_claim: params.discount
