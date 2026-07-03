@@ -20,8 +20,9 @@ const slot_ms = 1000
 // List[ Map(policy -> [first,last,sunset]) ] — the confirmed on-chain shape.
 // Concrete type; coerces to Data when passed to find_policy_window's Data param.
 fn handle_policies_datum() -> List<Pairs<ByteArray, (Int, Int, Int)>> {
-  let policy_map =
-    [Pair(legacy_policy, (47931333, 0, 0)), Pair(policy_2, (151974982, 0, 0))]
+  let policy_map = [
+    Pair(legacy_policy, (47931333, 0, 0)), Pair(policy_2, (151974982, 0, 0)),
+  ]
   [policy_map]
 }
 
@@ -156,12 +157,11 @@ test slot_one_after_anchor() {
 }
 
 test window_to_posix_converts_set_keeps_unset() {
-  let w =
-    PolicyWindow {
-      first_minting_slot: anchor_slot + 1,
-      last_minting_slot: 0,
-      sunset_slot: anchor_slot + 60,
-    }
+  let w = PolicyWindow {
+    first_minting_slot: anchor_slot + 1,
+    last_minting_slot: 0,
+    sunset_slot: anchor_slot + 60,
+  }
   window_to_posix(w, anchor_slot, anchor_time_ms, slot_ms) == PolicyWindow {
     first_minting_slot: anchor_time_ms + 1000,
     last_minting_slot: 0,
@@ -173,14 +173,17 @@ test window_to_posix_converts_set_keeps_unset() {
 
 test posix_gate_before_sunset_ok() {
   // sunset at anchor_slot+1000 -> posix anchor_time+1_000_000; tx valid-to anchor_time+500_000
-  let slot_window =
-    PolicyWindow {
-      first_minting_slot: anchor_slot,
-      last_minting_slot: 0,
-      sunset_slot: anchor_slot + 1000,
-    }
-  let posix_window =
-    window_to_posix(slot_window, anchor_slot, anchor_time_ms, slot_ms)
+  let slot_window = PolicyWindow {
+    first_minting_slot: anchor_slot,
+    last_minting_slot: 0,
+    sunset_slot: anchor_slot + 1000,
+  }
+  let posix_window = window_to_posix(
+    slot_window,
+    anchor_slot,
+    anchor_time_ms,
+    slot_ms,
+  )
   mint_allowed_in_window(
     posix_window,
     interval.before(anchor_time_ms + 500_000),
@@ -188,14 +191,17 @@ test posix_gate_before_sunset_ok() {
 }
 
 test posix_gate_after_sunset_rejected() {
-  let slot_window =
-    PolicyWindow {
-      first_minting_slot: anchor_slot,
-      last_minting_slot: 0,
-      sunset_slot: anchor_slot + 1000,
-    }
-  let posix_window =
-    window_to_posix(slot_window, anchor_slot, anchor_time_ms, slot_ms)
+  let slot_window = PolicyWindow {
+    first_minting_slot: anchor_slot,
+    last_minting_slot: 0,
+    sunset_slot: anchor_slot + 1000,
+  }
+  let posix_window = window_to_posix(
+    slot_window,
+    anchor_slot,
+    anchor_time_ms,
+    slot_ms,
+  )
   // tx valid-to anchor_time+1_000_000 == the sunset -> rejected (exclusive)
   mint_allowed_in_window(
     posix_window,

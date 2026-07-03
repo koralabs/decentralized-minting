@@ -37,8 +37,7 @@ pub fn can_refund_order(
   order_output_reference: OutputReference,
   datum: OrderDatum,
 ) -> Bool {
-  let Transaction { inputs, reference_inputs, outputs, withdrawals, .. } =
-    transaction
+  let Transaction { inputs, reference_inputs, outputs, withdrawals, .. } = transaction
 
   // admin authorization (same source Execute uses)
   let Settings { mint_governor, .. } = find_settings(reference_inputs)
@@ -59,8 +58,7 @@ pub fn can_refund_order(
   list.any(
     outputs,
     fn(output) {
-      let Output { address, value: output_value, datum: output_datum, .. } =
-        output
+      let Output { address, value: output_value, datum: output_datum, .. } = output
       when (address.payment_credential, output_datum) is {
         (VerificationKey(vkh), InlineDatum(tag)) -> and {
             vkh == owner_key_hash,

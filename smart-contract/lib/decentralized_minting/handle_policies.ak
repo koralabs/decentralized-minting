@@ -76,14 +76,13 @@ pub fn window_to_posix(
   anchor_time_ms: Int,
   slot_length_ms: Int,
 ) -> PolicyWindow {
-  let convert =
-    fn(slot) {
-      if slot <= 0 {
-        0
-      } else {
-        slot_to_posix_ms(slot, anchor_slot, anchor_time_ms, slot_length_ms)
-      }
+  let convert = fn(slot) {
+    if slot <= 0 {
+      0
+    } else {
+      slot_to_posix_ms(slot, anchor_slot, anchor_time_ms, slot_length_ms)
     }
+  }
   PolicyWindow {
     first_minting_slot: convert(window.first_minting_slot),
     last_minting_slot: convert(window.last_minting_slot),
@@ -111,8 +110,7 @@ pub fn validity_upper_bound(range: Interval<Int>) -> Option<Int> {
 //     cutover is exclusive, so at/after sunset this policy can no longer mint.
 // All three open (0) => always allowed (the dormant default).
 pub fn is_within_window(window: PolicyWindow, upper: Int) -> Bool {
-  let PolicyWindow { first_minting_slot, last_minting_slot, sunset_slot } =
-    window
+  let PolicyWindow { first_minting_slot, last_minting_slot, sunset_slot } = window
   and {
     first_minting_slot <= 0 || upper >= first_minting_slot,
     last_minting_slot <= 0 || upper <= last_minting_slot,
@@ -127,13 +125,12 @@ pub fn mint_allowed_in_window(
   window: PolicyWindow,
   range: Interval<Int>,
 ) -> Bool {
-  let PolicyWindow { first_minting_slot, last_minting_slot, sunset_slot } =
-    window
+  let PolicyWindow { first_minting_slot, last_minting_slot, sunset_slot } = window
   let fully_open = and {
-      first_minting_slot <= 0,
-      last_minting_slot <= 0,
-      sunset_slot <= 0,
-    }
+    first_minting_slot <= 0,
+    last_minting_slot <= 0,
+    sunset_slot <= 0,
+  }
   when validity_upper_bound(range) is {
     Some(upper) -> is_within_window(window, upper)
     None -> fully_open

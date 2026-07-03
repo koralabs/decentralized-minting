@@ -5,8 +5,8 @@ use validations/minting_data/types.{
   BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
 }
 use validations/minting_data/validation.{
-  can_burn_legacy_handles, can_burn_demi_handles, can_mint_label_assets,
-  can_mint_legacy_handles, can_mint_demi_handles, can_update_mpt,
+  can_burn_demi_handles, can_burn_legacy_handles, can_mint_demi_handles,
+  can_mint_label_assets, can_mint_legacy_handles, can_update_mpt,
 }
 
 // NOTE: constructor order is part of the on-chain ABI — the off-chain redeemer builders encode

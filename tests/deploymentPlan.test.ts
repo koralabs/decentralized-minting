@@ -235,9 +235,12 @@ describe("decentralized minting deployment plan", () => {
       "kora@handle_prices.current_data",
       "kora@handle_prices.prev_data",
     ]);
+    // demimntmpt is a validator, so on a script-hash change the planner reuses its
+    // current SubHandle (redeploy CBOR in place) — only proxies allocate a new ordinal
+    // (deploymentPlan.ts: `allocateNewSubhandle = scriptHashChanged && isProxy`).
     expect(plan.summaryJson.contracts[1].subhandle).toEqual({
-      action: "allocate",
-      value: "demimntmpt2@handlecontract",
+      action: "reuse",
+      value: "demimntmpt1@handlecontract",
     });
   });
 

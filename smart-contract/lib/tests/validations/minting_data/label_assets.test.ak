@@ -18,10 +18,7 @@ const legacy_policy =
 const lbl_001 = #"00001070"
 
 fn spending_ref() -> OutputReference {
-  OutputReference {
-    transaction_id: #"aaab",
-    output_index: 0,
-  }
+  OutputReference { transaction_id: #"aaab", output_index: 0 }
 }
 
 // reference input holding the root's 222 owner NFT (the on-chain ownership proof)
@@ -67,15 +64,14 @@ test mint_label_asset_ok() {
   let handle = "abc"
   let old_root = mpt.root(base(handle))
   let new_root = mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
-  let tx =
-    make_transaction(
-      [make_minting_data_input(old_root, minting_data_script_hash)],
-      [make_settings_reference_input(), owner_222_ref(handle)],
-      [make_minting_data_output(new_root, minting_data_script_hash)],
-      label_mint_value(handle, 1),
-      [],
-      [allowed_minter_0],
-    )
+  let tx = make_transaction(
+    [make_minting_data_input(old_root, minting_data_script_hash)],
+    [make_settings_reference_input(), owner_222_ref(handle)],
+    [make_minting_data_output(new_root, minting_data_script_hash)],
+    label_mint_value(handle, 1),
+    [],
+    [allowed_minter_0],
+  )
   can_mint_label_assets(
     tx,
     spending_ref(),
@@ -90,16 +86,15 @@ test mint_label_asset_without_owner_ref_fails() fail {
   let handle = "abc"
   let old_root = mpt.root(base(handle))
   let new_root = mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
-  let tx =
-    make_transaction(
-      [make_minting_data_input(old_root, minting_data_script_hash)],
-      // no owner 222 ref
-      [make_settings_reference_input()],
-      [make_minting_data_output(new_root, minting_data_script_hash)],
-      label_mint_value(handle, 1),
-      [],
-      [allowed_minter_0],
-    )
+  let tx = make_transaction(
+    [make_minting_data_input(old_root, minting_data_script_hash)],
+    // no owner 222 ref
+    [make_settings_reference_input()],
+    [make_minting_data_output(new_root, minting_data_script_hash)],
+    label_mint_value(handle, 1),
+    [],
+    [allowed_minter_0],
+  )
   can_mint_label_assets(
     tx,
     spending_ref(),
@@ -114,16 +109,15 @@ test mint_label_asset_unsigned_fails() fail {
   let handle = "abc"
   let old_root = mpt.root(base(handle))
   let new_root = mpt.root(mpt.update(base(handle), handle, [], #"", lbl_001))
-  let tx =
-    make_transaction(
-      [make_minting_data_input(old_root, minting_data_script_hash)],
-      [make_settings_reference_input(), owner_222_ref(handle)],
-      [make_minting_data_output(new_root, minting_data_script_hash)],
-      label_mint_value(handle, 1),
-      [],
-      // no allowed_minter signature
-      [],
-    )
+  let tx = make_transaction(
+    [make_minting_data_input(old_root, minting_data_script_hash)],
+    [make_settings_reference_input(), owner_222_ref(handle)],
+    [make_minting_data_output(new_root, minting_data_script_hash)],
+    label_mint_value(handle, 1),
+    [],
+    // no allowed_minter signature
+    [],
+  )
   can_mint_label_assets(
     tx,
     spending_ref(),
@@ -162,16 +156,21 @@ test burn_label_asset_under_legacy_no_owner_ref_ok() {
   let handle = "abc"
   let old_root = mpt.root(labeled(handle))
   let new_root = mpt.root(mpt.update(labeled(handle), handle, [], lbl_001, #""))
-  let tx =
-    make_transaction(
-      [make_minting_data_input(old_root, minting_data_script_hash)],
-      [make_settings_reference_input()],
-      [make_minting_data_output(new_root, minting_data_script_hash)],
-      label_burn_value(handle, legacy_policy),
-      [],
-      [allowed_minter_0],
-    )
-  can_mint_label_assets(tx, spending_ref(), [burn_label_proof(handle)], legacy_policy, 0)
+  let tx = make_transaction(
+    [make_minting_data_input(old_root, minting_data_script_hash)],
+    [make_settings_reference_input()],
+    [make_minting_data_output(new_root, minting_data_script_hash)],
+    label_burn_value(handle, legacy_policy),
+    [],
+    [allowed_minter_0],
+  )
+  can_mint_label_assets(
+    tx,
+    spending_ref(),
+    [burn_label_proof(handle)],
+    legacy_policy,
+    0,
+  )
 }
 
 // the token must really be burned — a burn proof with no matching -1 in mint is rejected
@@ -179,14 +178,19 @@ test burn_label_asset_without_real_burn_fails() fail {
   let handle = "abc"
   let old_root = mpt.root(labeled(handle))
   let new_root = mpt.root(mpt.update(labeled(handle), handle, [], lbl_001, #""))
-  let tx =
-    make_transaction(
-      [make_minting_data_input(old_root, minting_data_script_hash)],
-      [make_settings_reference_input()],
-      [make_minting_data_output(new_root, minting_data_script_hash)],
-      value.zero,
-      [],
-      [allowed_minter_0],
-    )
-  can_mint_label_assets(tx, spending_ref(), [burn_label_proof(handle)], legacy_policy, 0)
+  let tx = make_transaction(
+    [make_minting_data_input(old_root, minting_data_script_hash)],
+    [make_settings_reference_input()],
+    [make_minting_data_output(new_root, minting_data_script_hash)],
+    value.zero,
+    [],
+    [allowed_minter_0],
+  )
+  can_mint_label_assets(
+    tx,
+    spending_ref(),
+    [burn_label_proof(handle)],
+    legacy_policy,
+    0,
+  )
 }

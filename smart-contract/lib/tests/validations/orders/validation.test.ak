@@ -46,110 +46,105 @@ fn refund_tx(
 ) {
   let order_input = make_order_input(owner_vkh, "test")
   let order_ref = order_input.output_reference
-  let tx =
-    make_transaction(
-      [order_input],
-      [make_settings_reference_input()],
-      build_outputs(order_ref),
-      value.zero,
-      withdrawals,
-      [],
-    )
+  let tx = make_transaction(
+    [order_input],
+    [make_settings_reference_input()],
+    build_outputs(order_ref),
+    value.zero,
+    withdrawals,
+    [],
+  )
   (tx, order_ref)
 }
 
 // admin-authorized refund, owner-output tagged with the order ref -> ok
 test refund_ok() {
-  let (tx, order_ref) =
-    refund_tx(
-      governor_executed(),
-      fn(r) { [owner_refund_output(min_order_lovelace, r)] },
-    )
+  let (tx, order_ref) = refund_tx(
+    governor_executed(),
+    fn(r) { [owner_refund_output(min_order_lovelace, r)] },
+  )
   can_refund_order(tx, order_ref, order_datum())
 }
 
 // refund output exceeding the order lovelace is fine too
 test refund_overpay_ok() {
-  let (tx, order_ref) =
-    refund_tx(
-      governor_executed(),
-      fn(r) { [owner_refund_output(min_order_lovelace + 1_000_000, r)] },
-    )
+  let (tx, order_ref) = refund_tx(
+    governor_executed(),
+    fn(r) { [owner_refund_output(min_order_lovelace + 1_000_000, r)] },
+  )
   can_refund_order(tx, order_ref, order_datum())
 }
 
 // no admin withdrawal -> not authorized
 test refund_without_admin_fails() fail {
-  let (tx, order_ref) =
-    refund_tx([], fn(r) { [owner_refund_output(min_order_lovelace, r)] })
+  let (tx, order_ref) = refund_tx(
+    [],
+    fn(r) { [owner_refund_output(min_order_lovelace, r)] },
+  )
   can_refund_order(tx, order_ref, order_datum())
 }
 
 // refund underpays the owner -> rejected
 test refund_underpay_rejected() {
-  let (tx, order_ref) =
-    refund_tx(
-      governor_executed(),
-      fn(r) { [owner_refund_output(min_order_lovelace - 1, r)] },
-    )
+  let (tx, order_ref) = refund_tx(
+    governor_executed(),
+    fn(r) { [owner_refund_output(min_order_lovelace - 1, r)] },
+  )
   can_refund_order(tx, order_ref, order_datum()) == False
 }
 
 // funds go to someone other than the owner -> rejected (can't redirect)
 test refund_to_other_rejected() {
-  let (tx, order_ref) =
-    refund_tx(
-      governor_executed(),
-      fn(r) {
-        [
-          Output {
-            address: from_verification_key(#"02"),
-            value: value.from_lovelace(min_order_lovelace),
-            datum: InlineDatum(r),
-            reference_script: None,
-          },
-        ]
-      },
-    )
+  let (tx, order_ref) = refund_tx(
+    governor_executed(),
+    fn(r) {
+      [
+        Output {
+          address: from_verification_key(#"02"),
+          value: value.from_lovelace(min_order_lovelace),
+          datum: InlineDatum(r),
+          reference_script: None,
+        },
+      ]
+    },
+  )
   can_refund_order(tx, order_ref, order_datum()) == False
 }
 
 // funds sent to a SCRIPT address with the owner's hash bytes -> rejected (wrong cred kind)
 test refund_to_script_credential_rejected() {
-  let (tx, order_ref) =
-    refund_tx(
-      governor_executed(),
-      fn(r) {
-        [
-          Output {
-            address: from_script(owner_vkh),
-            value: value.from_lovelace(min_order_lovelace),
-            datum: InlineDatum(r),
-            reference_script: None,
-          },
-        ]
-      },
-    )
+  let (tx, order_ref) = refund_tx(
+    governor_executed(),
+    fn(r) {
+      [
+        Output {
+          address: from_script(owner_vkh),
+          value: value.from_lovelace(min_order_lovelace),
+          datum: InlineDatum(r),
+          reference_script: None,
+        },
+      ]
+    },
+  )
   can_refund_order(tx, order_ref, order_datum()) == False
 }
 
 // #5c double-satisfaction: an owner-output with NO order-ref tag can't satisfy the refund —
 // this is exactly the loophole the old `list.any` left open (one untagged output, many orders).
 test refund_untagged_rejected() {
-  let (tx, order_ref) =
-    refund_tx(
-      governor_executed(),
-      fn(_r) {
-        [
-          Output {
-            address: from_verification_key(owner_vkh),
-            value: value.from_lovelace(min_order_lovelace),
-            datum: NoDatum,
-            reference_script: None,
-          },
-        ]
-      },
-    )
+  let (tx, order_ref) = refund_tx(
+    governor_executed(),
+    fn(_r) {
+      [
+        Output {
+          address: from_verification_key(owner_vkh),
+          value: value.from_lovelace(min_order_lovelace),
+          datum: NoDatum,
+          reference_script: None,
+        },
+      ]
+    },
+  )
   can_refund_order(tx, order_ref, order_datum()) == False
 }
 
@@ -157,31 +152,35 @@ test refund_untagged_rejected() {
 // reused to satisfy THIS order -> two orders can never share one refund output.
 test refund_wrong_tag_rejected() {
   let other_ref = OutputReference { transaction_id: #"bbbb", output_index: 0 }
-  let (tx, order_ref) =
-    refund_tx(
-      governor_executed(),
-      fn(_r) { [owner_refund_output(min_order_lovelace, other_ref)] },
-    )
+  let (tx, order_ref) = refund_tx(
+    governor_executed(),
+    fn(_r) { [owner_refund_output(min_order_lovelace, other_ref)] },
+  )
   can_refund_order(tx, order_ref, order_datum()) == False
 }
 
 // Execute: fulfillment (via the batched mint) is gated on the mint_governor withdrawal firing.
 test order_execute_requires_governor_withdrawal() {
-  let tx =
-    make_transaction(
-      [],
-      [make_settings_reference_input()],
-      [],
-      value.zero,
-      governor_executed(),
-      [],
-    )
+  let tx = make_transaction(
+    [],
+    [make_settings_reference_input()],
+    [],
+    value.zero,
+    governor_executed(),
+    [],
+  )
   can_execute_order(tx)
 }
 
 test order_execute_rejects_without_governor_fails() fail {
-  let tx =
-    make_transaction([], [make_settings_reference_input()], [], value.zero, [], [])
+  let tx = make_transaction(
+    [],
+    [make_settings_reference_input()],
+    [],
+    value.zero,
+    [],
+    [],
+  )
   can_execute_order(tx)
 }
 

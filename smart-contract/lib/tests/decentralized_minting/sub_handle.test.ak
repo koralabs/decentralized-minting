@@ -22,9 +22,7 @@ test owner_credential_enterprise_key() {
 
 // Enterprise script address (header type 7, payment = script): header bit 4 set -> Script.
 test owner_credential_enterprise_script() {
-  owner_payment_credential(bytearray.concat(#"70", vkh28())) == Script(
-    vkh28(),
-  )
+  owner_payment_credential(bytearray.concat(#"70", vkh28())) == Script(vkh28())
 }
 
 // Base address (header type 0): payment credential is bytes 1..28, stake part ignored.

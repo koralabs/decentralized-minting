@@ -42,40 +42,43 @@ pub fn can_mint_demi_handles(
   slot_length_ms: Int,
 ) -> Bool {
   trace @"can_mint_demi_handles"
-  let Transaction {
-    inputs,
-    reference_inputs,
-    outputs,
-    extra_signatories,
-    mint,
-    validity_range,
-    ..
-  } = transaction
+  let  
+      Transaction {
+        inputs,
+        reference_inputs,
+        outputs,
+        extra_signatories,
+        mint,
+        validity_range,
+        ..
+      }
+    = transaction
 
   // find settings and parse
   let Settings { data: settings_data, .. } = find_settings(reference_inputs)
   expect settings_datum: SettingsV1 = settings_data
-  let SettingsV1 {
-    policy_id: new_policy_id,
-    allowed_minters,
-    valid_handle_price_assets,
-    treasury_address,
-    treasury_fee_percentage,
-    pz_script_address,
-    order_script_hash,
-    discount_config,
-    sub_handle_minter_fee,
-    sub_handle_treasury_fee,
-    ..
-  } = settings_datum
+  let  
+      SettingsV1 {
+        policy_id: new_policy_id,
+        allowed_minters,
+        valid_handle_price_assets,
+        treasury_address,
+        treasury_fee_percentage,
+        pz_script_address,
+        order_script_hash,
+        discount_config,
+        sub_handle_minter_fee,
+        sub_handle_treasury_fee,
+        ..
+      }
+    = settings_datum
 
   // get allowed minter and valid handle price asset
-  let (allowed_minter, valid_handle_price_asset) =
-    get_allowed_minter_and_valid_handle_price_asset(
-      allowed_minters,
-      valid_handle_price_assets,
-      minter_index,
-    )
+  let (allowed_minter, valid_handle_price_asset) = get_allowed_minter_and_valid_handle_price_asset(
+    allowed_minters,
+    valid_handle_price_assets,
+    minter_index,
+  )
 
   // check if allowed_minter sign tx
   expect list.has(extra_signatories, allowed_minter)
@@ -99,20 +102,19 @@ pub fn can_mint_demi_handles(
   let MintingData { mpt_root_hash } = resolve_minting_data(minting_data_input)
 
   // parse outputs
-  expect [
-    minting_data_output,
-    handle_price_info_output,
-    treasury_output,
-    minter_output,
-    ..rest_outputs
-  ] = outputs
+  expect  
+      [
+        minting_data_output, handle_price_info_output, treasury_output,
+        minter_output,
+        ..rest_outputs
+      ]
+    = outputs
 
   // resolve handle price info from handle price info output
-  let handle_price_info =
-    resolve_handle_price_info(
-      handle_price_info_output,
-      valid_handle_price_asset,
-    )
+  let handle_price_info = resolve_handle_price_info(
+    handle_price_info_output,
+    valid_handle_price_asset,
+  )
 
   // expect proofs are not empty
   expect list.length(proofs) > 0
@@ -122,47 +124,45 @@ pub fn can_mint_demi_handles(
 
   // WS5: discount context — config from settings, partner allowlist root from the
   // $pfp_policy_ids reference input (legacy policy holds the admin handles)
-  let discount_ctx =
-    DiscountContext {
-      config: discount_config,
-      reference_inputs,
-      legacy_policy_id,
-      new_policy_id,
-      partner_root: read_partner_root(reference_inputs, legacy_policy_id),
-    }
+  let discount_ctx = DiscountContext {
+    config: discount_config,
+    reference_inputs,
+    legacy_policy_id,
+    new_policy_id,
+    partner_root: read_partner_root(reference_inputs, legacy_policy_id),
+  }
 
   // check orders with proofs. Root orders feed `total_handles_price` (percentage split); subhandle
   // orders accumulate flat minter/treasury totals + the merged per-owner fee list, and return the
   // leftover outputs (everything after the consumed token outputs) for the owner-fee check.
-  let
-    new_root,
-    expected_mint_value,
-    total_handles_price,
-    total_sub_minter_fee,
-    total_sub_treasury_fee,
-    owner_fees,
-    leftover_outputs,
-  <-
-    all_orders_are_satisfied(
-      order_script_hash,
-      inputs,
-      rest_outputs,
-      reference_inputs,
-      new_policy_id,
-      legacy_policy_id,
-      pz_script_address,
-      handle_price_info,
-      sub_handle_minter_fee,
-      sub_handle_treasury_fee,
-      proofs,
-      root,
-      value.zero,
-      0,
-      0,
-      0,
-      [],
-      discount_ctx,
-    )
+  let  
+      new_root,
+      expected_mint_value,
+      total_handles_price,
+      total_sub_minter_fee,
+      total_sub_treasury_fee,
+      owner_fees,
+      leftover_outputs
+    <- all_orders_are_satisfied(
+    order_script_hash,
+    inputs,
+    rest_outputs,
+    reference_inputs,
+    new_policy_id,
+    legacy_policy_id,
+    pz_script_address,
+    handle_price_info,
+    sub_handle_minter_fee,
+    sub_handle_treasury_fee,
+    proofs,
+    root,
+    value.zero,
+    0,
+    0,
+    0,
+    [],
+    discount_ctx,
+  )
 
   // calculate new root and expected mint value
   let new_mpt_root_hash = new_root |> mpt.root
@@ -182,25 +182,26 @@ pub fn can_mint_demi_handles(
   // Root-handle treasury/minter fee = percentage split of the root prices, with the 2-ADA floor.
   // The floor is a per-root-mint minimum, so it only applies when there ARE root handles in the
   // batch (total_handles_price > 0); an all-subhandle batch owes only the flat sub fees below.
-  let (root_treasury_fee, root_minter_fee) =
-    if total_handles_price > 0 {
-      calculate_treasury_fee_and_minter_fee(
-        total_handles_price,
-        treasury_fee_percentage,
-      )
-    } else {
-      (0, 0)
-    }
+  let (root_treasury_fee, root_minter_fee) = if total_handles_price > 0 {
+    calculate_treasury_fee_and_minter_fee(
+      total_handles_price,
+      treasury_fee_percentage,
+    )
+  } else {
+    (0, 0)
+  }
 
   // Design A — the subhandle flat minter/treasury fees fold into Kora's single batch outputs, so
   // one treasury UTxO + one minter UTxO cover the whole mixed root+sub batch.
   // check treasury output (root percentage + all sub flat treasury fees)
-  let Output {
-    address: treasury_output_address,
-    value: treasury_output_value,
-    datum: treasury_output_datum,
-    reference_script: treasury_output_reference_script,
-  } = treasury_output
+  let  
+      Output {
+        address: treasury_output_address,
+        value: treasury_output_value,
+        datum: treasury_output_datum,
+        reference_script: treasury_output_reference_script,
+      }
+    = treasury_output
   expect treasury_output_address == treasury_address
   expect treasury_output_datum == InlineDatum(Void)
   expect
@@ -208,12 +209,14 @@ pub fn can_mint_demi_handles(
   expect treasury_output_reference_script == None
 
   // check minter output (root percentage + all sub flat minter fees)
-  let Output {
-    value: minter_output_value,
-    datum: minter_output_datum,
-    reference_script: minter_output_reference_script,
-    ..
-  } = minter_output
+  let  
+      Output {
+        value: minter_output_value,
+        datum: minter_output_datum,
+        reference_script: minter_output_reference_script,
+        ..
+      }
+    = minter_output
   expect minter_output_datum == InlineDatum(Void)
   expect
     value.lovelace_of(minter_output_value) >= root_minter_fee + total_sub_minter_fee
@@ -321,10 +324,13 @@ fn process_legacy_handles(
 
   // single pass: MPT updates (handle keys) + the expected ± mint value. Legacy enforces only
   // uniqueness + correct tokens — no fees/allowance/discounts (those are DeMi-path-only).
-  let
-    new_root,
-    expected_mint_value,
-  <- all_proofs_are_valid(proofs, root, legacy_policy_id, amount, value.zero)
+  let new_root, expected_mint_value <- all_proofs_are_valid(
+    proofs,
+    root,
+    legacy_policy_id,
+    amount,
+    value.zero,
+  )
 
   // calculate new root and expected mint value
   let new_mpt_root_hash = new_root |> mpt.root
@@ -362,8 +368,16 @@ pub fn can_burn_demi_handles(
   proofs: List<BurnProof>,
 ) -> Bool {
   trace @"can_burn_demi_handles"
-  let Transaction { inputs, reference_inputs, outputs, mint, extra_signatories, .. } =
-    transaction
+  let  
+      Transaction {
+        inputs,
+        reference_inputs,
+        outputs,
+        mint,
+        extra_signatories,
+        ..
+      }
+    = transaction
 
   // settings -> the DeMi policy id the burned tokens live under + the allowed minters
   let Settings { data: settings_data, .. } = find_settings(reference_inputs)
@@ -386,10 +400,12 @@ pub fn can_burn_demi_handles(
   let root = mpt.from_root(mpt_root_hash)
 
   // delete each burned handle + accumulate the expected (negative) mint value
-  let
-    new_root,
-    expected_mint_value,
-  <- all_burn_proofs_are_valid(proofs, root, new_policy_id, value.zero)
+  let new_root, expected_mint_value <- all_burn_proofs_are_valid(
+    proofs,
+    root,
+    new_policy_id,
+    value.zero,
+  )
 
   let new_mpt_root_hash = new_root |> mpt.root
 
@@ -430,31 +446,34 @@ pub fn can_mint_label_assets(
   minter_index: Int,
 ) -> Bool {
   trace @"can_mint_label_assets"
-  let Transaction {
-    inputs,
-    reference_inputs,
-    outputs,
-    extra_signatories,
-    mint,
-    ..
-  } = transaction
+  let  
+      Transaction {
+        inputs,
+        reference_inputs,
+        outputs,
+        extra_signatories,
+        mint,
+        ..
+      }
+    = transaction
 
   // settings: allowed minter + the new policy id
   let Settings { data: settings_data, .. } = find_settings(reference_inputs)
   expect settings_datum: SettingsV1 = settings_data
-  let SettingsV1 {
-    policy_id: new_policy_id,
+  let  
+      SettingsV1 {
+        policy_id: new_policy_id,
+        allowed_minters,
+        valid_handle_price_assets,
+        ..
+      }
+    = settings_datum
+
+  let (allowed_minter, _valid_handle_price_asset) = get_allowed_minter_and_valid_handle_price_asset(
     allowed_minters,
     valid_handle_price_assets,
-    ..
-  } = settings_datum
-
-  let (allowed_minter, _valid_handle_price_asset) =
-    get_allowed_minter_and_valid_handle_price_asset(
-      allowed_minters,
-      valid_handle_price_assets,
-      minter_index,
-    )
+    minter_index,
+  )
   expect list.has(extra_signatories, allowed_minter)
 
   // find minting data input which is own input
@@ -472,19 +491,15 @@ pub fn can_mint_label_assets(
   let root = mpt.from_root(mpt_root_hash)
 
   // process label proofs, accumulating new root + expected mint value
-  let
-    new_root,
-    expected_mint_value,
-  <-
-    all_label_proofs_are_valid(
-      proofs,
-      root,
-      reference_inputs,
-      mint,
-      legacy_policy_id,
-      new_policy_id,
-      value.zero,
-    )
+  let new_root, expected_mint_value <- all_label_proofs_are_valid(
+    proofs,
+    root,
+    reference_inputs,
+    mint,
+    legacy_policy_id,
+    new_policy_id,
+    value.zero,
+  )
 
   // calculate new root
   let new_mpt_root_hash = new_root |> mpt.root

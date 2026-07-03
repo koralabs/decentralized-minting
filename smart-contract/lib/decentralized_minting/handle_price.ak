@@ -29,8 +29,11 @@ pub fn resolve_handle_price_info(
   let (policy_id, asset_name) = valid_handle_price_asset
 
   // check if output value has valid handle price asset
-  let has_valid_handle_price_asset =
-    value.quantity_of(output_value, policy_id, asset_name) == 1
+  let has_valid_handle_price_asset = value.quantity_of(
+    output_value,
+    policy_id,
+    asset_name,
+  ) == 1
   expect has_valid_handle_price_asset
 
   // resolve handle price info
@@ -45,8 +48,10 @@ pub fn get_handle_price(
 ) -> (Int, Int) {
   let HandlePriceInfo { current_data, prev_data, .. } = handle_price_info
 
-  let current_price =
-    get_handle_price_from_price_data(handle_length, current_data)
+  let current_price = get_handle_price_from_price_data(
+    handle_length,
+    current_data,
+  )
   let prev_price = get_handle_price_from_price_data(handle_length, prev_data)
   (current_price, prev_price)
 }

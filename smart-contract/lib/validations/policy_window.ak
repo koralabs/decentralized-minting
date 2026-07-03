@@ -44,7 +44,8 @@ pub fn assert_mint_within_policy_window(
       policies_asset_name,
     )
   is {
-    None -> fail @"$handle_policies reference input with inline datum is required"
+    None ->
+      fail @"$handle_policies reference input with inline datum is required"
     Some(datum) ->
       when find_policy_window(datum, mint_policy_id) is {
         None -> fail @"mint policy is not registered in $handle_policies"
@@ -67,8 +68,7 @@ fn find_handle_policies_datum(
   when reference_inputs is {
     [] -> None
     [ref_input, ..rest] -> {
-      let Input { output: Output { value: ref_value, datum, .. }, .. } =
-        ref_input
+      let Input { output: Output { value: ref_value, datum, .. }, .. } = ref_input
       if quantity_of(ref_value, policy_id, asset_name) >= 1 {
         when datum is {
           InlineDatum(d) -> Some(d)

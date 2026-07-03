@@ -18,17 +18,16 @@ pub type Settings {
 }
 
 pub fn find_settings(reference_inputs: List<Input>) -> Settings {
-  expect Some(settings_input) =
-    list.find(
-      reference_inputs,
-      fn(i) {
-        value.quantity_of(
-          i.output.value,
-          settings_asset_policy_id,
-          settings_asset_name,
-        ) == 1
-      },
-    )
+  expect Some(settings_input) = list.find(
+    reference_inputs,
+    fn(i) {
+      value.quantity_of(
+        i.output.value,
+        settings_asset_policy_id,
+        settings_asset_name,
+      ) == 1
+    },
+  )
   expect InlineDatum(settings_datum) = settings_input.output.datum
   expect settings_datum: Settings = settings_datum
   settings_datum

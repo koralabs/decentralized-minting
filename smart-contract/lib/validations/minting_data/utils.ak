@@ -91,134 +91,134 @@ pub fn all_orders_are_satisfied(
           // parse order datum
           expect InlineDatum(datum) = datum
           expect datum: OrderDatum = datum
-          let OrderDatum {
-            requested_handle,
-            destination_address,
-            discount_claim,
-            is_virtual,
-            ..
-          } = datum
+          let  
+              OrderDatum {
+                requested_handle,
+                destination_address,
+                discount_claim,
+                is_virtual,
+                ..
+              }
+            = datum
 
           // parse proofs (one OrderProof per order)
           expect [order_proof, ..rest_proofs] = proofs
           let OrderProof { mpt_proof } = order_proof
 
-          let order_input_lovelace =
-            value.quantity_of(
-              order_input.output.value,
-              ada_policy_id,
-              ada_asset_name,
-            )
+          let order_input_lovelace = value.quantity_of(
+            order_input.output.value,
+            ada_policy_id,
+            ada_asset_name,
+          )
 
           // insert the handle's own key (mint only)
-          let root_after_handle =
-            update_root(root, requested_handle, 1, mpt_proof)
+          let root_after_handle = update_root(
+            root,
+            requested_handle,
+            1,
+            mpt_proof,
+          )
 
-          let (root_name, is_sub, sub_name) =
-            parse_handle_name(requested_handle)
+          let (root_name, is_sub, sub_name) = parse_handle_name(
+            requested_handle,
+          )
 
-          let (
-            updated_root,
-            rest_outputs,
-            new_mint_value,
-            new_total_handles_price,
-            new_total_sub_minter_fee,
-            new_total_sub_treasury_fee,
-            new_owner_fees,
-          ) =
-            if is_sub {
-              let is_virtual_bool = parse_bool_from_int(is_virtual)
-              expect
-                check_legacy_handle_validity(requested_handle, is_virtual_bool)
-
-              // mint the sub's tokens (positional output consumption)
-              let (rest, mint_v) =
-                if is_virtual_bool {
-                  check_virtual_sub_output(
-                    outputs,
-                    policy_id,
-                    requested_handle,
-                    pz_script_address,
-                    expected_mint_value,
-                  )
-                } else {
-                  check_ref_and_user_outputs(
-                    outputs,
-                    policy_id,
-                    requested_handle,
-                    pz_script_address,
-                    destination_address,
-                    expected_mint_value,
-                  )
-                }
-
-              // PAID sub (nft, public virtual, or private virtual): owner fee (tier price) ->
-              // owner payment_address, plus flat minter + flat treasury.
-              let owner_settings =
-                find_root_handle_settings(
-                  reference_inputs,
-                  root_name,
-                  policy_id,
-                  legacy_policy_id,
-                )
-              let owner_fee =
-                get_sub_handle_price(
-                  owner_settings,
-                  bytearray.length(sub_name),
-                  is_virtual_bool,
-                )
-              let (_n, _v, _r0, _r1, _r2, _t, _m, payment_address) =
-                owner_settings
-              let owner_cred = owner_payment_credential(payment_address)
-
-              // the order UTxO must fund all three additive fees
-              expect
-                order_input_lovelace >= owner_fee + sub_handle_minter_fee + sub_handle_treasury_fee
-
+          let  
               (
-                root_after_handle,
-                rest,
-                mint_v,
-                total_handles_price,
-                total_sub_minter_fee + sub_handle_minter_fee,
-                total_sub_treasury_fee + sub_handle_treasury_fee,
-                add_owner_fee(owner_fees, owner_cred, owner_fee),
+                updated_root,
+                rest_outputs,
+                new_mint_value,
+                new_total_handles_price,
+                new_total_sub_minter_fee,
+                new_total_sub_treasury_fee,
+                new_owner_fees,
+              )
+            = if is_sub {
+            let is_virtual_bool = parse_bool_from_int(is_virtual)
+            expect
+              check_legacy_handle_validity(requested_handle, is_virtual_bool)
+
+            // mint the sub's tokens (positional output consumption)
+            let (rest, mint_v) = if is_virtual_bool {
+              check_virtual_sub_output(
+                outputs,
+                policy_id,
+                requested_handle,
+                pz_script_address,
+                expected_mint_value,
               )
             } else {
-              // ROOT handle: rarity price minus any discount; feeds the percentage split
-              let handle_price =
-                check_new_handle_validity_and_get_price(
-                  requested_handle,
-                  handle_price_info,
-                )
-              // WS5: apply any (validated) discount claim. A forged claim fails the tx.
-              let effective_price =
-                effective_handle_price(
-                  handle_price,
-                  discount_claim,
-                  destination_address,
-                  discount_ctx,
-                )
-              expect order_input_lovelace >= effective_price
-              let (rest, mint_v) =
-                check_ref_and_user_outputs(
-                  outputs,
-                  policy_id,
-                  requested_handle,
-                  pz_script_address,
-                  destination_address,
-                  expected_mint_value,
-                )
-              (
-                root_after_handle,
-                rest,
-                mint_v,
-                total_handles_price + effective_price,
-                total_sub_minter_fee,
-                total_sub_treasury_fee,
-                owner_fees,
+              check_ref_and_user_outputs(
+                outputs,
+                policy_id,
+                requested_handle,
+                pz_script_address,
+                destination_address,
+                expected_mint_value,
               )
             }
+
+            // PAID sub (nft, public virtual, or private virtual): owner fee (tier price) ->
+            // owner payment_address, plus flat minter + flat treasury.
+            let owner_settings = find_root_handle_settings(
+              reference_inputs,
+              root_name,
+              policy_id,
+              legacy_policy_id,
+            )
+            let owner_fee = get_sub_handle_price(
+              owner_settings,
+              bytearray.length(sub_name),
+              is_virtual_bool,
+            )
+            let (_n, _v, _r0, _r1, _r2, _t, _m, payment_address) = owner_settings
+            let owner_cred = owner_payment_credential(payment_address)
+
+            // the order UTxO must fund all three additive fees
+            expect
+              order_input_lovelace >= owner_fee + sub_handle_minter_fee + sub_handle_treasury_fee
+
+            (
+              root_after_handle,
+              rest,
+              mint_v,
+              total_handles_price,
+              total_sub_minter_fee + sub_handle_minter_fee,
+              total_sub_treasury_fee + sub_handle_treasury_fee,
+              add_owner_fee(owner_fees, owner_cred, owner_fee),
+            )
+          } else {
+            // ROOT handle: rarity price minus any discount; feeds the percentage split
+            let handle_price = check_new_handle_validity_and_get_price(
+              requested_handle,
+              handle_price_info,
+            )
+            // WS5: apply any (validated) discount claim. A forged claim fails the tx.
+            let effective_price = effective_handle_price(
+              handle_price,
+              discount_claim,
+              destination_address,
+              discount_ctx,
+            )
+            expect order_input_lovelace >= effective_price
+            let (rest, mint_v) = check_ref_and_user_outputs(
+              outputs,
+              policy_id,
+              requested_handle,
+              pz_script_address,
+              destination_address,
+              expected_mint_value,
+            )
+            (
+              root_after_handle,
+              rest,
+              mint_v,
+              total_handles_price + effective_price,
+              total_sub_minter_fee,
+              total_sub_treasury_fee,
+              owner_fees,
+            )
+          }
 
           all_orders_are_satisfied(
             order_script_hash,
@@ -289,8 +289,7 @@ pub fn add_owner_fee(
     owner_fees
   } else {
     when owner_fees is {
-      [] ->
-        [(cred, fee)]
+      [] -> [(cred, fee)]
       [(c, f), ..rest] ->
         if c == cred {
           [(c, f + fee), ..rest]
@@ -349,14 +348,13 @@ pub fn all_proofs_are_valid(
       let new_root = update_root(root, handle_name, amount, mpt_proof)
 
       // update mint value (positive on mint, negative on burn)
-      let new_mint_value =
-        update_mint_value(
-          expected_mint_value,
-          legacy_policy_id,
-          handle_name,
-          is_virtual_bool,
-          amount,
-        )
+      let new_mint_value = update_mint_value(
+        expected_mint_value,
+        legacy_policy_id,
+        handle_name,
+        is_virtual_bool,
+        amount,
+      )
 
       all_proofs_are_valid(
         rest_proofs,
@@ -388,13 +386,8 @@ pub fn all_label_proofs_are_valid(
   when proofs is {
     [] -> continuation(root, expected_mint_value)
     [proof, ..rest_proofs] -> {
-      let LabelAssetProof {
-        mpt_proof,
-        handle_name,
-        label,
-        old_labels,
-        amount,
-      } = proof
+      let LabelAssetProof { mpt_proof, handle_name, label, old_labels, amount }
+        = proof
 
       let label_asset_name = bytearray.concat(label, handle_name)
 
@@ -404,35 +397,40 @@ pub fn all_label_proofs_are_valid(
       //   -1 (burn): the label's REAL policy, read from `mint` (legacy OR new). A burn only removes a
       //              label, so nothing is forgeable; pinning to the 222 would strand cross-pollinated
       //              handles (an f0ff label under a DeMi 222). The minter sig still gates the burn.
-      let policy =
-        when amount is {
-          1 ->
-            find_owner_policy(
-              reference_inputs,
-              handle_name,
-              legacy_policy_id,
-              new_policy_id,
-            )
-          _ ->
-            find_label_burn_policy(
-              mint,
-              label_asset_name,
-              legacy_policy_id,
-              new_policy_id,
-            )
-        }
+      let policy = when amount is {
+        1 ->
+          find_owner_policy(
+            reference_inputs,
+            handle_name,
+            legacy_policy_id,
+            new_policy_id,
+          )
+        _ ->
+          find_label_burn_policy(
+            mint,
+            label_asset_name,
+            legacy_policy_id,
+            new_policy_id,
+          )
+      }
 
       // update the registry value at this key (the value is encode(labels); label_set.apply
       // guards amount = +/-1 and add/remove legality)
       let old_value = registry_value.encode(old_labels)
-      let new_value =
-        registry_value.encode(label_set.apply(old_labels, label, amount))
-      let new_root =
-        mpt.update(root, handle_name, mpt_proof, old_value, new_value)
+      let new_value = registry_value.encode(
+        label_set.apply(old_labels, label, amount),
+      )
+      let new_root = mpt.update(
+        root,
+        handle_name,
+        mpt_proof,
+        old_value,
+        new_value,
+      )
 
       // expected mint: +/-1 of (policy, label ++ handle_name)
-      let new_mint_value =
-        expected_mint_value |> value.add(policy, label_asset_name, amount)
+      let new_mint_value = expected_mint_value
+        |> value.add(policy, label_asset_name, amount)
 
       all_label_proofs_are_valid(
         rest_proofs,
@@ -512,8 +510,9 @@ pub fn check_new_handle_validity_and_get_price(
 ) -> Int {
   // parse handle name
   // get root handle name and is sub handle
-  let (_root_handle_name, is_sub_handle, _sub_handle_name) =
-    parse_handle_name(handle_name)
+  let (_root_handle_name, is_sub_handle, _sub_handle_name) = parse_handle_name(
+    handle_name,
+  )
 
   // sub handle is not supported for new handles
   expect !is_sub_handle
@@ -525,8 +524,10 @@ pub fn check_new_handle_validity_and_get_price(
   // check handle's charset (root handle has no `@`)
   expect is_valid_handle_charset(handle_name)
 
-  let (current_price, prev_price) =
-    get_handle_price(handle_price_info, handle_length)
+  let (current_price, prev_price) = get_handle_price(
+    handle_price_info,
+    handle_length,
+  )
 
   // we only consider the miniume price for user's sake
   let handle_price = math.min(current_price, prev_price)
@@ -539,8 +540,9 @@ pub fn check_legacy_handle_validity(
 ) -> Bool {
   // parse handle name
   // get root handle name and is sub handle
-  let (root_handle_name, is_sub_handle, sub_handle_name) =
-    parse_handle_name(handle_name)
+  let (root_handle_name, is_sub_handle, sub_handle_name) = parse_handle_name(
+    handle_name,
+  )
   let handle_length = bytearray.length(handle_name)
   let root_handle_length = bytearray.length(root_handle_name)
   let sub_handle_length = bytearray.length(sub_handle_name)
@@ -582,35 +584,37 @@ fn check_ref_and_user_outputs(
 
   // parse ref and user outputs
   expect [ref_output, user_output, ..rest_outputs] = outputs
-  let Output {
-    address: ref_output_address,
-    value: ref_output_value,
-    reference_script: ref_output_reference_script,
-    ..
-  } = ref_output
-  let Output { address: user_output_address, value: user_output_value, .. } =
-    user_output
+  let  
+      Output {
+        address: ref_output_address,
+        value: ref_output_value,
+        reference_script: ref_output_reference_script,
+        ..
+      }
+    = ref_output
+  let Output { address: user_output_address, value: user_output_value, .. } = user_output
 
   // check ref output
   expect ref_output_address == pz_script_address
-  let expected_ref_value =
-    value.zero
-      |> value.add(policy_id, ref_asset_name, 1)
+  let expected_ref_value = value.zero
+    |> value.add(policy_id, ref_asset_name, 1)
   expect value.without_lovelace(ref_output_value) == expected_ref_value
   // ref asset's datum is set by minter
   expect ref_output_reference_script == None
 
   // check user output
   expect user_output_address == destination_address
-  let user_output_value_has_handle =
-    value.quantity_of(user_output_value, policy_id, user_asset_name) == 1
+  let user_output_value_has_handle = value.quantity_of(
+    user_output_value,
+    policy_id,
+    user_asset_name,
+  ) == 1
   expect user_output_value_has_handle
 
   // update mint value
-  let new_mint_value =
-    mint_value
-      |> value.add(policy_id, ref_asset_name, 1)
-      |> value.add(policy_id, user_asset_name, 1)
+  let new_mint_value = mint_value
+    |> value.add(policy_id, ref_asset_name, 1)
+    |> value.add(policy_id, user_asset_name, 1)
 
   (rest_outputs, new_mint_value)
 }
@@ -629,23 +633,23 @@ fn check_virtual_sub_output(
   let virtual_asset_name = bytearray.concat(prefix_000, handle_name)
 
   expect [virtual_output, ..rest_outputs] = outputs
-  let Output {
-    address: virtual_output_address,
-    value: virtual_output_value,
-    reference_script: virtual_output_reference_script,
-    ..
-  } = virtual_output
+  let  
+      Output {
+        address: virtual_output_address,
+        value: virtual_output_value,
+        reference_script: virtual_output_reference_script,
+        ..
+      }
+    = virtual_output
 
   expect virtual_output_address == pz_script_address
-  let expected_virtual_value =
-    value.zero
-      |> value.add(policy_id, virtual_asset_name, 1)
+  let expected_virtual_value = value.zero
+    |> value.add(policy_id, virtual_asset_name, 1)
   expect value.without_lovelace(virtual_output_value) == expected_virtual_value
   expect virtual_output_reference_script == None
 
-  let new_mint_value =
-    mint_value
-      |> value.add(policy_id, virtual_asset_name, 1)
+  let new_mint_value = mint_value
+    |> value.add(policy_id, virtual_asset_name, 1)
 
   (rest_outputs, new_mint_value)
 }
@@ -674,23 +678,23 @@ pub fn all_burn_proofs_are_valid(
       // WS1 orphan reap — a supplied root-absence proof requires the sub's ROOT key to be provably
       // absent from the MPT. This is the on-chain gate that lets a private orphan be reaped without
       // the root's signature; `None` is a normal burn (root present, minter + pers gated).
-      expect when root_absence is {
-        Some(root_proof) -> mpt.miss(root, root_name, root_proof)
-        None -> True
-      }
+      expect
+        when root_absence is {
+          Some(root_proof) -> mpt.miss(root, root_name, root_proof)
+          None -> True
+        }
 
       // delete the handle's own key (proves existence-before, absence-after)
       let updated_root = update_root(root, handle_name, -1, mpt_proof)
 
       // -1 of the handle's tokens (000 for a virtual, 100+222 for an nft/root) under the DeMi policy
-      let new_mint_value =
-        update_mint_value(
-          expected_mint_value,
-          new_policy_id,
-          handle_name,
-          is_virtual_bool,
-          -1,
-        )
+      let new_mint_value = update_mint_value(
+        expected_mint_value,
+        new_policy_id,
+        handle_name,
+        is_virtual_bool,
+        -1,
+      )
 
       all_burn_proofs_are_valid(
         rest_proofs,
@@ -744,11 +748,10 @@ pub fn calculate_treasury_fee_and_minter_fee(
   expect treasury_fee_percentage >= 0
   expect treasury_fee_percentage <= 100
 
-  let treasury_fee =
-    math.max(
-      total_handles_price * treasury_fee_percentage / 100,
-      min_treasury_fee,
-    )
+  let treasury_fee = math.max(
+    total_handles_price * treasury_fee_percentage / 100,
+    min_treasury_fee,
+  )
   let minter_fee = total_handles_price - treasury_fee
   (treasury_fee, minter_fee)
 }

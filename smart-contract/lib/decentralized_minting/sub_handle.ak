@@ -53,8 +53,10 @@ pub fn get_root_handle_settings(
   new_policy_id: PolicyId,
   legacy_policy_id: PolicyId,
 ) -> OwnerSettings {
-  expect Some(reference_input) =
-    list.at(reference_inputs, root_handle_settings_index)
+  expect Some(reference_input) = list.at(
+    reference_inputs,
+    root_handle_settings_index,
+  )
 
   // check if reference input has root handle 001 NFT
   // root handle settings asset can be
@@ -63,8 +65,11 @@ pub fn get_root_handle_settings(
   let settings_asset_name = bytearray.concat(prefix_001, root_handle_name)
   let Input { output: Output { value: v, .. }, .. } = reference_input
   let quantity_if_new = value.quantity_of(v, new_policy_id, settings_asset_name)
-  let quantity_if_legacy =
-    value.quantity_of(v, legacy_policy_id, settings_asset_name)
+  let quantity_if_legacy = value.quantity_of(
+    v,
+    legacy_policy_id,
+    settings_asset_name,
+  )
   let root_handle_settings_asset_quantity = quantity_if_new + quantity_if_legacy
   expect root_handle_settings_asset_quantity == 1
 
@@ -88,12 +93,11 @@ pub fn find_root_handle_settings(
     [] -> fail @"ROOT_HANDLE_SETTINGS_NOT_REFERENCED"
     [ref_input, ..rest] -> {
       let Input { output: Output { value: v, datum, .. }, .. } = ref_input
-      let has_settings =
-        value.quantity_of(v, new_policy_id, settings_asset_name) + value.quantity_of(
-          v,
-          legacy_policy_id,
-          settings_asset_name,
-        ) == 1
+      let has_settings = value.quantity_of(
+        v,
+        new_policy_id,
+        settings_asset_name,
+      ) + value.quantity_of(v, legacy_policy_id, settings_asset_name) == 1
       if has_settings {
         expect InlineDatum(inline_datum) = datum
         expect owner_settings: OwnerSettings = inline_datum
@@ -121,15 +125,13 @@ pub fn get_sub_handle_price(
   sub_handle_length: Int,
   is_virtual: Bool,
 ) -> Int {
-  let (nft_sub_handle_settings, virtual_sub_handle_settings, _, _, _, _, _, _) =
-    root_handle_settings
+  let (nft_sub_handle_settings, virtual_sub_handle_settings, _, _, _, _, _, _) = root_handle_settings
 
-  let sub_handle_settings =
-    if is_virtual {
-      virtual_sub_handle_settings
-    } else {
-      nft_sub_handle_settings
-    }
+  let sub_handle_settings = if is_virtual {
+    virtual_sub_handle_settings
+  } else {
+    nft_sub_handle_settings
+  }
 
   let (_, _, tier_pricing, _, _) = sub_handle_settings
   get_sub_handle_price_from_tier_pricing(tier_pricing, sub_handle_length)

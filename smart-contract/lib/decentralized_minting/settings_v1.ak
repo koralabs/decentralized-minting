@@ -55,7 +55,9 @@ pub fn get_allowed_minter_and_valid_handle_price_asset(
   minter_index: Int,
 ) -> (VerificationKeyHash, (PolicyId, AssetName)) {
   expect Some(allowed_minter) = list.at(allowed_minters, minter_index)
-  expect Some(valid_handle_price_asset) =
-    list.at(valid_handle_price_assets, minter_index)
+  expect Some(valid_handle_price_asset) = list.at(
+    valid_handle_price_assets,
+    minter_index,
+  )
   (allowed_minter, valid_handle_price_asset)
 }

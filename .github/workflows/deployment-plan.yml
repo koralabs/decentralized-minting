@@ -68,7 +68,7 @@ jobs:
           sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
           for attempt in 1 2 3 4 5; do
             curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh || true
-            if ~/.aiken/bin/aikup install v1.0.29-alpha; then break; fi
+            if ~/.aiken/bin/aikup install v1.1.22; then break; fi
             echo "aiken install attempt $attempt failed; retrying in $((attempt * 20))s..."
             sleep $((attempt * 20))
           done

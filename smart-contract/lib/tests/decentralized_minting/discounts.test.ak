@@ -34,16 +34,14 @@ test both_no_stake_not_a_match() {
 }
 
 test payment_credential_kind_differs() {
-  let holder =
-    Address {
-      payment_credential: VerificationKey(#"aa"),
-      stake_credential: None,
-    }
-  let destination =
-    Address {
-      payment_credential: Script(#"aa"),
-      stake_credential: None,
-    }
+  let holder = Address {
+    payment_credential: VerificationKey(#"aa"),
+    stake_credential: None,
+  }
+  let destination = Address {
+    payment_credential: Script(#"aa"),
+    stake_credential: None,
+  }
   shares_credential(holder, destination) == False
 }
 
@@ -112,12 +110,11 @@ test og_number_zero_not_og() {
 }
 
 test missing_og_number_not_og() {
-  let datum =
-    Cip68Datum {
-      metadata: [Pair("name", as_data("$test"))],
-      version: 1,
-      extra: as_data(0),
-    }
+  let datum = Cip68Datum {
+    metadata: [Pair("name", as_data("$test"))],
+    version: 1,
+    extra: as_data(0),
+  }
   is_og(datum) == False
 }
 

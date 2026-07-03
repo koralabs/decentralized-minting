@@ -48,22 +48,20 @@ fn burn_value(handle: ByteArray) -> Value {
 // proof is exercised off-chain / in the combined-tx tests; aiken has no in-test proof builder.)
 test burn_demi_handle_orphan_invalid_proof_fails() fail {
   let handle = "sub@abc"
-  let proof =
-    BurnProof {
-      mpt_proof: [],
-      handle_name: handle,
-      is_virtual: 1,
-      root_absence: Some([]),
-    }
-  let tx =
-    make_transaction(
-      [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
-      [make_settings_reference_input()],
-      [make_minting_data_output(new_root(handle), minting_data_script_hash)],
-      burn_value(handle),
-      [],
-      [allowed_minter_0],
-    )
+  let proof = BurnProof {
+    mpt_proof: [],
+    handle_name: handle,
+    is_virtual: 1,
+    root_absence: Some([]),
+  }
+  let tx = make_transaction(
+    [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
+    [make_settings_reference_input()],
+    [make_minting_data_output(new_root(handle), minting_data_script_hash)],
+    burn_value(handle),
+    [],
+    [allowed_minter_0],
+  )
   can_burn_demi_handles(tx, spending_ref(), [proof])
 }
 
@@ -72,15 +70,14 @@ test burn_demi_handle_orphan_invalid_proof_fails() fail {
 // keys without the matching -1.)
 test burn_demi_handle_mint_must_match_proofs_fails() fail {
   let handle = "sub@abc"
-  let tx =
-    make_transaction(
-      [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
-      [make_settings_reference_input()],
-      [make_minting_data_output(new_root(handle), minting_data_script_hash)],
-      value.zero,
-      [],
-      [allowed_minter_0],
-    )
+  let tx = make_transaction(
+    [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
+    [make_settings_reference_input()],
+    [make_minting_data_output(new_root(handle), minting_data_script_hash)],
+    value.zero,
+    [],
+    [allowed_minter_0],
+  )
   can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }
 
@@ -90,43 +87,40 @@ test burn_demi_handle_mint_must_match_proofs_fails() fail {
 
 test burn_demi_handle_minter_signed_ok() {
   let handle = "sub@abc"
-  let tx =
-    make_transaction(
-      [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
-      [make_settings_reference_input()],
-      [make_minting_data_output(new_root(handle), minting_data_script_hash)],
-      burn_value(handle),
-      [],
-      [allowed_minter_0],
-    )
+  let tx = make_transaction(
+    [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
+    [make_settings_reference_input()],
+    [make_minting_data_output(new_root(handle), minting_data_script_hash)],
+    burn_value(handle),
+    [],
+    [allowed_minter_0],
+  )
   can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }
 
 test burn_demi_handle_unsigned_fails() fail {
   let handle = "sub@abc"
-  let tx =
-    make_transaction(
-      [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
-      [make_settings_reference_input()],
-      [make_minting_data_output(new_root(handle), minting_data_script_hash)],
-      burn_value(handle),
-      [],
-      [],
-    )
+  let tx = make_transaction(
+    [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
+    [make_settings_reference_input()],
+    [make_minting_data_output(new_root(handle), minting_data_script_hash)],
+    burn_value(handle),
+    [],
+    [],
+  )
   can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }
 
 test burn_demi_handle_wrong_signer_fails() fail {
   let handle = "sub@abc"
-  let tx =
-    make_transaction(
-      [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
-      [make_settings_reference_input()],
-      [make_minting_data_output(new_root(handle), minting_data_script_hash)],
-      burn_value(handle),
-      [],
-      [#"deadbeef"],
-    )
+  let tx = make_transaction(
+    [make_minting_data_input(mpt.root(base(handle)), minting_data_script_hash)],
+    [make_settings_reference_input()],
+    [make_minting_data_output(new_root(handle), minting_data_script_hash)],
+    burn_value(handle),
+    [],
+    [#"deadbeef"],
+  )
   can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }
 
@@ -136,14 +130,13 @@ test burn_demi_handle_wrong_signer_fails() fail {
 test burn_demi_handle_with_live_label_fails() fail {
   let handle = "sub@abc"
   let labeled = mpt.insert(mpt.empty, handle, #"00001070", [])
-  let tx =
-    make_transaction(
-      [make_minting_data_input(mpt.root(labeled), minting_data_script_hash)],
-      [make_settings_reference_input()],
-      [make_minting_data_output(mpt.root(mpt.empty), minting_data_script_hash)],
-      burn_value(handle),
-      [],
-      [allowed_minter_0],
-    )
+  let tx = make_transaction(
+    [make_minting_data_input(mpt.root(labeled), minting_data_script_hash)],
+    [make_settings_reference_input()],
+    [make_minting_data_output(mpt.root(mpt.empty), minting_data_script_hash)],
+    burn_value(handle),
+    [],
+    [allowed_minter_0],
+  )
   can_burn_demi_handles(tx, spending_ref(), [burn_proof(handle)])
 }

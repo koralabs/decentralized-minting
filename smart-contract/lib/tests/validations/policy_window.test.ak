@@ -22,8 +22,9 @@ fn policies_ref_input(
   window: (Int, Int, Int),
 ) -> Input {
   let asset_name = bytearray.concat(prefix_222, "handle_policies")
-  let datum_value: List<Pairs<ByteArray, (Int, Int, Int)>> =
-    [[Pair(listed_policy, window)]]
+  let datum_value: List<Pairs<ByteArray, (Int, Int, Int)>> = [
+    [Pair(listed_policy, window)],
+  ]
   Input {
     output_reference: OutputReference {
       transaction_id: #"bbbb",

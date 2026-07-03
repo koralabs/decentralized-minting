@@ -33,16 +33,15 @@ pub fn effective_handle_price(
   destination: Address,
   ctx: DiscountContext,
 ) -> Int {
-  let bps =
-    discount_bps_for_claim(
-      claim,
-      ctx.reference_inputs,
-      destination,
-      ctx.config,
-      ctx.legacy_policy_id,
-      ctx.new_policy_id,
-      ctx.partner_root,
-    )
+  let bps = discount_bps_for_claim(
+    claim,
+    ctx.reference_inputs,
+    destination,
+    ctx.config,
+    ctx.legacy_policy_id,
+    ctx.new_policy_id,
+    ctx.partner_root,
+  )
   apply_discount(handle_price, bps)
 }
 
@@ -87,13 +86,12 @@ pub fn discount_bps_for_claim(
   when claim is {
     None -> 0
     Some(RarityClaim { handle_name }) -> {
-      let holder =
-        owner_holder(
-          reference_inputs,
-          handle_name,
-          legacy_policy_id,
-          new_policy_id,
-        )
+      let holder = owner_holder(
+        reference_inputs,
+        handle_name,
+        legacy_policy_id,
+        new_policy_id,
+      )
       expect shares_credential(holder, destination)
       if is_legendary(handle_name) {
         config.legendary_bps
@@ -106,21 +104,19 @@ pub fn discount_bps_for_claim(
       }
     }
     Some(OgClaim { handle_name }) -> {
-      let holder =
-        owner_holder(
-          reference_inputs,
-          handle_name,
-          legacy_policy_id,
-          new_policy_id,
-        )
+      let holder = owner_holder(
+        reference_inputs,
+        handle_name,
+        legacy_policy_id,
+        new_policy_id,
+      )
       expect shares_credential(holder, destination)
-      let ref_datum =
-        og_reference_datum(
-          reference_inputs,
-          handle_name,
-          legacy_policy_id,
-          new_policy_id,
-        )
+      let ref_datum = og_reference_datum(
+        reference_inputs,
+        handle_name,
+        legacy_policy_id,
+        new_policy_id,
+      )
       expect is_og(ref_datum)
       config.og_bps
     }
@@ -131,8 +127,11 @@ pub fn discount_bps_for_claim(
       config.partner_nft_bps
     }
     Some(HalClaim { asset_name }) -> {
-      let holder =
-        asset_holder(reference_inputs, config.hal_policy_id, asset_name)
+      let holder = asset_holder(
+        reference_inputs,
+        config.hal_policy_id,
+        asset_name,
+      )
       expect shares_credential(holder, destination)
       config.hal_bps
     }
@@ -170,13 +169,11 @@ fn owner_holder(
     [] -> fail @"OWNER_222_NOT_REFERENCED"
     [ref_input, ..rest] -> {
       let Output { address, value, .. } = ref_input.output
-      if
-      quantity_of(value, legacy_policy_id, owner_name) >= 1 || quantity_of(
+      if quantity_of(value, legacy_policy_id, owner_name) >= 1 || quantity_of(
         value,
         new_policy_id,
         owner_name,
-      ) >= 1{
-      
+      ) >= 1 {
         address
       } else {
         owner_holder(rest, handle_name, legacy_policy_id, new_policy_id)
@@ -197,13 +194,11 @@ fn og_reference_datum(
     [] -> fail @"OG_REFERENCE_TOKEN_NOT_REFERENCED"
     [ref_input, ..rest] -> {
       let Output { value, datum, .. } = ref_input.output
-      if
-      quantity_of(value, legacy_policy_id, ref_name) >= 1 || quantity_of(
+      if quantity_of(value, legacy_policy_id, ref_name) >= 1 || quantity_of(
         value,
         new_policy_id,
         ref_name,
-      ) >= 1{
-      
+      ) >= 1 {
         expect InlineDatum(d) = datum
         expect cip68: Cip68Datum = d
         cip68

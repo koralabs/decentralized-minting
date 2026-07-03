@@ -35,7 +35,7 @@ jobs:
       - name: Install Aiken
         run: |
           curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
-          ~/.aiken/bin/aikup install v1.0.29-alpha
+          ~/.aiken/bin/aikup install v1.1.22
           sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
 
       - name: Lint
@@ -68,7 +68,7 @@ jobs:
       - name: Install Aiken
         run: |
           curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
-          ~/.aiken/bin/aikup install v1.0.29-alpha
+          ~/.aiken/bin/aikup install v1.1.22
           sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
 
       - name: Run tests

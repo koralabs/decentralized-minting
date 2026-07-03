@@ -2,11 +2,11 @@ use aiken/interval
 use aiken/primitive/bytearray
 use cardano/address.{Address, Credential} as credential
 use cardano/assets.{AssetName, PolicyId, Value} as value
-use common/cip68.{prefix_222}
 use cardano/transaction.{
   Datum, InlineDatum, Input, NoDatum, Output, OutputReference, Transaction,
   placeholder,
 }
+use common/cip68.{prefix_222}
 use common/hashes.{ScriptHash, VerificationKeyHash}
 use decentralized_minting/discount.{DiscountConfig}
 use decentralized_minting/handle_price.{HandlePriceInfo}
@@ -41,16 +41,15 @@ pub fn make_order_input(
   owner_verification_key_hash: VerificationKeyHash,
   requested_handle: ByteArray,
 ) -> Input {
-  let order: OrderDatum =
-    OrderDatum {
-      owner: Signature(owner_verification_key_hash),
-      requested_handle,
-      destination_address: credential.from_verification_key(
-        owner_verification_key_hash,
-      ),
-      discount_claim: None,
-      is_virtual: 0,
-    }
+  let order: OrderDatum = OrderDatum {
+    owner: Signature(owner_verification_key_hash),
+    requested_handle,
+    destination_address: credential.from_verification_key(
+      owner_verification_key_hash,
+    ),
+    discount_claim: None,
+    is_virtual: 0,
+  }
   Input {
     output_reference: OutputReference {
       transaction_id: #"aaaa",
@@ -79,8 +78,9 @@ pub fn make_handle_policies_reference_input(
   window: (Int, Int, Int),
 ) -> Input {
   let asset_name = bytearray.concat(prefix_222, "handle_policies")
-  let datum_value: List<Pairs<PolicyId, (Int, Int, Int)>> =
-    [[Pair(listed_policy, window)]]
+  let datum_value: List<Pairs<PolicyId, (Int, Int, Int)>> = [
+    [Pair(listed_policy, window)],
+  ]
   Input {
     output_reference: OutputReference {
       transaction_id: #"dded",
@@ -96,34 +96,36 @@ pub fn make_handle_policies_reference_input(
 }
 
 pub fn make_settings_reference_input() -> Input {
-  let settings_v1: SettingsV1 =
-    SettingsV1 {
-      policy_id: new_policy_id,
-      allowed_minters: [allowed_minter_0, allowed_minter_1],
-      valid_handle_price_assets: [
-        valid_handle_price_asset_0(),
-        valid_handle_price_asset_1(),
-      ],
-      treasury_address: treasury_address(),
-      treasury_fee_percentage,
-      pz_script_address: pz_script_address(),
-      order_script_hash,
-      minting_data_script_hash,
-      discount_config: DiscountConfig {
-        partner_nft_bps: 0,
-        hal_bps: 0,
-        og_bps: 0,
-        legendary_bps: 0,
-        ultra_rare_bps: 0,
-        rare_bps: 0,
-        free_virtual_count: 3,
-        hal_policy_id: #"",
-      },
-      sub_handle_minter_fee: 2_000_000,
-      sub_handle_treasury_fee: 0,
-    }
-  let settings: Settings =
-    Settings { mint_governor, mint_version, data: settings_v1 }
+  let settings_v1: SettingsV1 = SettingsV1 {
+    policy_id: new_policy_id,
+    allowed_minters: [allowed_minter_0, allowed_minter_1],
+    valid_handle_price_assets: [
+      valid_handle_price_asset_0(),
+      valid_handle_price_asset_1(),
+    ],
+    treasury_address: treasury_address(),
+    treasury_fee_percentage,
+    pz_script_address: pz_script_address(),
+    order_script_hash,
+    minting_data_script_hash,
+    discount_config: DiscountConfig {
+      partner_nft_bps: 0,
+      hal_bps: 0,
+      og_bps: 0,
+      legendary_bps: 0,
+      ultra_rare_bps: 0,
+      rare_bps: 0,
+      free_virtual_count: 3,
+      hal_policy_id: #"",
+    },
+    sub_handle_minter_fee: 2_000_000,
+    sub_handle_treasury_fee: 0,
+  }
+  let settings: Settings = Settings {
+    mint_governor,
+    mint_version,
+    data: settings_v1,
+  }
 
   Input {
     output_reference: OutputReference {

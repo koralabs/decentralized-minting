@@ -19,17 +19,16 @@ pub type MintingData {
 }
 
 pub fn find_minting_data(inputs: List<Input>) -> (Output, MintingData) {
-  expect Some(minting_data_input) =
-    list.find(
-      inputs,
-      fn(input) {
-        value.quantity_of(
-          input.output.value,
-          minting_data_asset_policy_id,
-          minting_data_asset_name,
-        ) == 1
-      },
-    )
+  expect Some(minting_data_input) = list.find(
+    inputs,
+    fn(input) {
+      value.quantity_of(
+        input.output.value,
+        minting_data_asset_policy_id,
+        minting_data_asset_name,
+      ) == 1
+    },
+  )
 
   let minting_data_output = minting_data_input.output
   expect InlineDatum(inline_minting_data) = minting_data_output.datum

@@ -24,5 +24,8 @@ test update_mpt_unsigned_fails() fail {
 
 test update_mpt_with_mint_fails() fail {
   // mints something -> rejected (UpdateMPT must be a pure datum swap)
-  can_update_mpt(make_transaction([], [], [], nonzero_mint(), [], [admin]), admin)
+  can_update_mpt(
+    make_transaction([], [], [], nonzero_mint(), [], [admin]),
+    admin,
+  )
 }
