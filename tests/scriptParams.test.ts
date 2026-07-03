@@ -24,9 +24,11 @@ const PINNED_HASHES = {
   mintV1WithdrawBytesA56: "342bbb9cf450e63ad336ad6c65b1cb55aaa4cc7f097fb6738908c7fe",
   // demimntmpt.spend — Plutus V3 applied hash with the 5 params
   // (legacy_policy_id, admin_vkh + WS7 slot anchor: anchor_slot,
-  // anchor_time_ms, slot_length_ms), aiken v1.1.22 build.
+  // anchor_time_ms, slot_length_ms), aiken v1.1.22 build — WS7 fail-closed
+  // policy_window (unapplied demimntmpt e2c9ee52; the prior dc4efa43 pin was
+  // the stale pre-fail-closed a63af4b2 build that shipped in v3.0.2).
   mintingDataSpend5Params:
-    "dc4efa43b2c4652c064ced9897589f77b557a7fbaae31f991797e1d1",
+    "db0220954dafc3f6f17b11a24274eee4503ed407ba9b8f40e64ffef8",
 };
 
 const findValidator = (title: string) => {
