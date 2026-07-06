@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:aiken": "cd smart-contract &&  aiken check",
     "deployment-plan:preview": "NETWORK=preview tsx scripts/generateDeploymentPlan.ts --desired deploy/preview/decentralized-minting.yaml --artifacts-dir /tmp/decentralized-minting-plan",
-    "deployment-plan:preprod": "NETWORK=preprod tsx scripts/generateDeploymentPlan.ts --desired deploy/preprod/decentralized-minting.yaml --artifacts-dir /tmp/decentralized-minting-plan"
+    "deployment-plan:preprod": "NETWORK=preprod tsx scripts/generateDeploymentPlan.ts --desired deploy/preprod/decentralized-minting.yaml --artifacts-dir /tmp/decentralized-minting-plan",
+    "deployment-plan:mainnet": "NETWORK=mainnet tsx scripts/generateDeploymentPlan.ts --desired deploy/mainnet/decentralized-minting.yaml --artifacts-dir /tmp/decentralized-minting-plan"
   },
   "repository": {
     "type": "git",
