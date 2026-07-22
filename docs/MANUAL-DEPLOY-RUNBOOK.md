@@ -37,12 +37,23 @@ posts convergence. Never sign chained txs out of order.
 
 ## Per-network `HANDLECONTRACT_NATIVE_SCRIPT_CBOR`
 - **preview** = 1-of-2 ScriptAny (above).
-- **preprod / mainnet** = 3-of-3 (ScriptAll wrapping ScriptAny groups) — *different* CBOR per
-  network. Source the value the same way it was sourced before: it's the GitHub Actions var
-  `HANDLECONTRACT_NATIVE_SCRIPT_CBOR_<NET>` (not always readable), recoverable from prior
-  Claude Code session transcripts (`grep -r HANDLECONTRACT_NATIVE_SCRIPT_CBOR ~/.claude/projects/*/*.jsonl`),
-  or from the live on-chain handlecontract address. Only the payment-credential script (pair 0)
-  goes in the var; Eternl reconstructs the full credential-pair array.
+- **preprod** = 1-of-2 native (signers `5b468ea6`/`548afd43` — see the preprod cutover records).
+- **mainnet** = **2-of-4 `atLeast`** (verified 2026-07-22 from chain:
+  Blockfrost `/scripts/d0496ab7…/json` = `atLeast 2 of` keyhashes `0d147948`,
+  `fafa1196`, `75cca354`, `b5fa0998`; `blake2b_224(0x00‖cbor)` reproduces
+  `d0496ab7c9be3c99…` = the payment credential of the handlecontract address
+  `addr1x8gyj64…`). Full payment-credential script CBOR:
+  `830302848200581c0d147948e63cf418abccbc8e53f1f759b0e2375ba7cc07b351d09c9d8200581cfafa11964fda9a4ec829d9cc6fcc98bae73621a10b0be64cf7a91db88200581c75cca35458a485e3c61d3803da366933424628e47c335a32d2cbbac28200581cb5fa099804ba14c5494dc97ddc15e114043704c6ad90ac87d7d805aa`
+  (An earlier revision of this doc said "preprod/mainnet = 3-of-3" — that was
+  wrong on both counts; trust the on-chain recovery recipe over stale notes.)
+  Other sources: GitHub Actions var `HANDLECONTRACT_NATIVE_SCRIPT_CBOR_<NET>`
+  (not always readable), prior session transcripts
+  (`grep -r HANDLECONTRACT_NATIVE_SCRIPT_CBOR ~/.claude/projects/*/*.jsonl`),
+  or the live on-chain handlecontract address as above. Only the
+  payment-credential script (pair 0) goes in the var; Eternl reconstructs the
+  full credential-pair array.
+- **Planner artifacts built WITHOUT this env var are NOT importable/signable
+  in Eternl** — rebuild the plan with it set before trigger day.
 
 ## Hard rules / gotchas (each one cost a session)
 - **Native script MUST be attached** (env var above) or Eternl can't sign. This is the #1 repeat failure.
