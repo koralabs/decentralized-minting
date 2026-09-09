@@ -83,7 +83,11 @@ export const computeMptRootHash = async ({
   for (const h of handles) {
     if (!h || seen.has(h)) continue;
     seen.add(h);
-    trieList.push({ key: h, value: labels[h] ? Buffer.from(labels[h], "hex") : "" });
+    const labelHex = Object.prototype.hasOwnProperty.call(labels, h) ? labels[h] : "";
+    if (typeof labelHex !== "string" || !/^(?:[0-9a-f]{8})*$/.test(labelHex)) {
+      throw new Error(`invalid registry label set for handle ${JSON.stringify(h)}`);
+    }
+    trieList.push({ key: h, value: labelHex ? Buffer.from(labelHex, "hex") : "" });
   }
   const trie = await Trie.fromList(trieList);
   return trie.hash.toString("hex");

@@ -359,6 +359,40 @@ describe("decentralized minting deployment plan", () => {
     expect(hash2).not.toBe(hash);
   });
 
+  it("computes a root for handles named like Object prototype properties", async () => {
+    // User-visible invariant: every valid handle belongs in the root, including "constructor".
+    // Failure caught: labels["constructor"] inherited Object.prototype.constructor and passed a
+    // function to Buffer.from once WS1 labels became non-empty on mainnet.
+    const hash = await computeMptRootHash({
+      network: "mainnet",
+      userAgent: "test",
+      fetchFn: vi.fn(async (url: string | URL | Request) =>
+        String(url).includes("/mpt-root/registry-labels")
+          ? new Response(JSON.stringify({ labels: { labeled: "00001070" } }), { status: 200 })
+          : new Response("constructor\nlabeled\n", {
+              status: 200,
+              headers: { "x-handles-search-total": "2" },
+            })
+      ) as typeof fetch,
+    });
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("rejects malformed owned registry-label values instead of computing a corrupt root", async () => {
+    await expect(computeMptRootHash({
+      network: "mainnet",
+      userAgent: "test",
+      fetchFn: vi.fn(async (url: string | URL | Request) =>
+        String(url).includes("/mpt-root/registry-labels")
+          ? new Response(JSON.stringify({ labels: { alice: "not-hex" } }), { status: 200 })
+          : new Response("alice\n", {
+              status: 200,
+              headers: { "x-handles-search-total": "1" },
+            })
+      ) as typeof fetch,
+    })).rejects.toThrow(/invalid registry label set/);
+  });
+
   it("fetches old validator CBOR from Handle API script endpoint", async () => {
     // Feature: the plan must fetch the currently deployed (old) validator script for migration.
     // Failure mode: migration tx would include wrong script witness, failing on-chain validation.
