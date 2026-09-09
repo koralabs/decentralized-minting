@@ -5,7 +5,7 @@ import { Cardano } from "../src/helpers/cardano-sdk/index.js";
 import { fetchBlockfrostUtxos } from "../src/helpers/cardano-sdk/blockfrostUtxo.js";
 
 const HASH = "83d1a3c701d88332edad6df0cc0cffcb7412be02774d38ff33e2302b";
-const FUNDING = "addr1v8tq9j8f2nmqd6756e4l3n5sp0jk762al6syz6ku3xy2nec27ft6s";
+const FUNDING = process.env.FUNDING_ADDRESS || "addr1v8tq9j8f2nmqd6756e4l3n5sp0jk762al6syz6ku3xy2nec27ft6s";
 const key = process.env.BLOCKFROST_API_KEY!;
 
 const main = async () => {
