@@ -16,6 +16,10 @@ assigned_handles:
     - orders@handle_settings
 ignored_settings:
   - settings.values.handle_root@handle_settings.mpt_root_hash
+  # kora@handle_prices is ALGO-OWNED: the pricing cron rewrites this datum continuously.
+  # The cutover settings tx must never write a stale price snapshot (Jesse, 2026-09-09).
+  - settings.values.kora@handle_prices.current_data
+  - settings.values.kora@handle_prices.prev_data
 settings:
   type: decentralized_minting_settings
   values:
