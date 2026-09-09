@@ -27,14 +27,16 @@ const registerStakingAddress = async ({
   spareUtxos,
   bech32StakingAddress,
   blockfrostApiKey,
+  getBuildContext = getBlockfrostBuildContext,
 }: {
   network: NetworkName;
   changeAddress: string;
   spareUtxos: CardanoTypes.Utxo[];
   bech32StakingAddress: string;
   blockfrostApiKey: string;
+  getBuildContext?: typeof getBlockfrostBuildContext;
 }): Promise<string> => {
-  const buildContext = await getBlockfrostBuildContext(network, blockfrostApiKey);
+  const buildContext = await getBuildContext(network, blockfrostApiKey);
   const changeAddressBech32 = asPaymentAddress(changeAddress);
 
   // Parse staking credential from the reward account bech32
@@ -59,6 +61,7 @@ const registerStakingAddress = async ({
     certificates: [certificate],
     changeAddress: changeAddressBech32 as string,
     buildContext,
+    implicitCoinDeposit: BigInt(buildContext.protocolParameters.stakeKeyDeposit),
   });
 };
 
@@ -69,6 +72,7 @@ const finalizeTx = async ({
   certificates,
   changeAddress,
   buildContext,
+  implicitCoinDeposit = 0n,
 }: {
   preSelected: CardanoTypes.Utxo[];
   utxos: CardanoTypes.Utxo[];
@@ -76,6 +80,7 @@ const finalizeTx = async ({
   certificates?: CardanoTypes.Certificate[];
   changeAddress: string;
   buildContext: BlockfrostBuildContext;
+  implicitCoinDeposit?: bigint;
 }): Promise<string> => {
   const changeAddressBech32 = asPaymentAddress(changeAddress);
   const inputSelector = roundRobinRandomImprove({
@@ -103,6 +108,7 @@ const finalizeTx = async ({
       redeemersByType: {},
       txEvaluator,
     }),
+    ...(implicitCoinDeposit > 0n ? { implicitValue: { coin: { deposit: implicitCoinDeposit } } } : {}),
   });
 
   const final = buildBody(selection.selection, outputs, certificates);
