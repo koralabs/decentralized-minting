@@ -266,6 +266,40 @@ interface LiveSettingsState {
   values: DesiredDeploymentState["settings"]["values"] | null;
 }
 
+// DeMi and legacy mints must send reference tokens to one place: the network's current pz proxy
+// (the latest persprx<N>@handlecontract). The legacy engine reads this same datum field, so this
+// check is what keeps the shared value current. A plan that would write anything else is refused.
+export const assertPzScriptAddressIsCurrentProxy = async ({
+  network,
+  pzScriptAddress,
+  userAgent,
+  fetchFn = fetch,
+}: {
+  network: "preview" | "preprod" | "mainnet";
+  pzScriptAddress: string;
+  userAgent: string;
+  fetchFn?: typeof fetch;
+}): Promise<void> => {
+  const response = await fetchFn(`${handlesApiBaseUrlForNetwork(network)}/scripts?latest=true&type=persprx`, {
+    headers: { "User-Agent": userAgent },
+  });
+  if (!response.ok) throw new Error(`failed to fetch ${network} /scripts: HTTP ${response.status}`);
+  const scripts = (await response.json()) as Record<string, { handle?: string; latest?: boolean }>;
+  const current = Object.entries(scripts).filter(
+    ([, entry]) => entry.latest && /^persprx\d+@handlecontract$/.test(entry.handle ?? "")
+  );
+  if (current.length !== 1) {
+    throw new Error(`${network}: expected exactly one latest persprx in /scripts, found ${current.length}`);
+  }
+  const [currentAddress, entry] = current[0];
+  if (pzScriptAddress !== currentAddress) {
+    throw new Error(
+      `${network}: demi@handle_settings.pz_script_address ${pzScriptAddress} is not the current pz proxy ` +
+        `${currentAddress} (${entry.handle}); DeMi and legacy mints would diverge from the latest proxy`
+    );
+  }
+};
+
 export const handlesApiBaseUrlForNetwork = (network: string): string => {
   if (network === "preview") return "https://preview.api.handle.me";
   if (network === "preprod") return "https://preprod.api.handle.me";

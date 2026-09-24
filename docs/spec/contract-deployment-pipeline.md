@@ -86,6 +86,11 @@ The comparable shared settings state in this repo is:
 
 The `mpt_root_hash` field changes frequently and is ignored by default for deployment drift.
 
+## Mint Destination Invariant
+- DeMi and legacy mints (roots, NFT SubHandles, virtual SubHandles) send the new CIP-68 reference token to **one** address: `demi@handle_settings.pz_script_address`. `demimntmpt` enforces it for DeMi mints, and the minting engine's legacy path reads the same datum field (`minting.handle.me` `src/helpers/minting/pzMintDestination.ts`). No mint path may resolve its destination any other way.
+- That value must be the network's **current** pz proxy (the latest `persprx<N>@handlecontract` in `api.handle.me/scripts`). `scripts/generateDeploymentPlan.ts` refuses to plan otherwise (`assertPzScriptAddressIsCurrentProxy`).
+- Deploying a new `persprx` therefore requires a DeMi settings update to its address, on every network.
+
 ## SubHandle Rules
 - A script hash change uses the committed `deployment_handle_slug` values and allocates the next `<slug><ordinal>@handlecontract` name.
 - Existing legacy live handles can remain attached to older contracts during the transition.

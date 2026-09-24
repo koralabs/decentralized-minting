@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  assertPzScriptAddressIsCurrentProxy,
   buildDeploymentPlan,
   buildExpectedContractStates,
   buildUnsignedDeploymentTxArtifact,
@@ -419,5 +420,45 @@ describe("decentralized minting deployment plan", () => {
     expect(renderTransactionOrderMarkdown([])).toEqual([
       "- No transaction artifacts generated (no drift detected or Blockfrost API key unavailable).",
     ]);
+  });
+});
+
+// Invariant: DeMi and legacy mints share one reference-token destination (the DeMi datum field) and it
+// must be the network's current persprx. Failure caught: mainnet DeMi settings pointing at V2 pers5
+// while the latest proxy was persprx1 (7a04600f…). Removing the planner call lets such a plan build.
+describe("assertPzScriptAddressIsCurrentProxy", () => {
+  const CURRENT = "addr1w9aqgcq0y2n3q8426h7msmg2j8rchawgav57seuehk5rpmgdk7k9e";
+  const OLD_V2 = "addr1wxktka03n943759y4pcexpmftdhzsrrv8kcd2qs8cwgtdhgg6j4ux";
+  const scriptsFetch = (index: Record<string, { handle: string; latest: boolean }>) =>
+    vi.fn(async (url: string | URL | Request) => {
+      expect(String(url)).toBe("https://api.handle.me/scripts?latest=true&type=persprx");
+      return new Response(JSON.stringify(index), { status: 200 });
+    }) as unknown as typeof fetch;
+
+  it("accepts the current persprx address", async () => {
+    await expect(
+      assertPzScriptAddressIsCurrentProxy({
+        network: "mainnet", pzScriptAddress: CURRENT, userAgent: "t",
+        fetchFn: scriptsFetch({ [CURRENT]: { handle: "persprx1@handlecontract", latest: true } }),
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it("refuses any other address", async () => {
+    await expect(
+      assertPzScriptAddressIsCurrentProxy({
+        network: "mainnet", pzScriptAddress: OLD_V2, userAgent: "t",
+        fetchFn: scriptsFetch({ [CURRENT]: { handle: "persprx1@handlecontract", latest: true } }),
+      })
+    ).rejects.toThrow(/is not the current pz proxy .*persprx1@handlecontract/);
+  });
+
+  it("refuses when the registry has no single current proxy", async () => {
+    await expect(
+      assertPzScriptAddressIsCurrentProxy({
+        network: "mainnet", pzScriptAddress: CURRENT, userAgent: "t",
+        fetchFn: scriptsFetch({ [CURRENT]: { handle: "persprx1@handlecontract", latest: false } }),
+      })
+    ).rejects.toThrow(/expected exactly one latest persprx/);
   });
 });
