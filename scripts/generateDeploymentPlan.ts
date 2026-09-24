@@ -72,6 +72,7 @@ const main = async () => {
       contracts: desired.contracts,
       liveContracts,
       userAgent,
+      blockfrostApiKey: blockfrostApiKey || null,
     }),
   });
   const generatedArtifacts = ["summary.json", "summary.md", "deployment-plan.json"];
