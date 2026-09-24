@@ -20,7 +20,6 @@ jobs:
         with:
           node-version: "22"
           check-latest: true
-          check-latest: true
 
       - name: Update npm
         run: npm install -g npm@latest
@@ -54,7 +53,6 @@ jobs:
         with:
           node-version: "22"
           check-latest: true
-          check-latest: true
 
       - name: Update npm
         run: npm install -g npm@latest
@@ -87,7 +85,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "22"
-          check-latest: true
           check-latest: true
 
       - name: Update npm
