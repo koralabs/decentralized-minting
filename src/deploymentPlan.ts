@@ -184,11 +184,14 @@ const discoverOneSubhandle = async ({
   deploymentHandleSlug,
   currentSubhandle,
   userAgent,
+  blockfrostApiKey,
 }: {
   network: "preview" | "preprod" | "mainnet";
   deploymentHandleSlug: string;
   currentSubhandle?: string | null;
   userAgent: string;
+  // Required with currentSubhandle: the helper reuses it only when nothing is locked under its script.
+  blockfrostApiKey?: string | null;
 }): Promise<string> => {
   const scriptPath = resolveDiscoverSubhandlesScript();
   const args = [
@@ -200,6 +203,9 @@ const discoverOneSubhandle = async ({
   ];
   if (currentSubhandle) {
     args.push("--current-subhandle", currentSubhandle);
+  }
+  if (blockfrostApiKey) {
+    args.push("--blockfrost-api-key", blockfrostApiKey);
   }
   const { stdout } = await execFileP("python3", args, { encoding: "utf8" });
   const result = stdout.trim();
@@ -216,11 +222,13 @@ export const discoverNextContractSubhandles = async ({
   contracts,
   liveContracts = [],
   userAgent,
+  blockfrostApiKey = null,
 }: {
   network: "preview" | "preprod" | "mainnet";
   contracts: DesiredContractTarget[];
   liveContracts?: LiveContractState[];
   userAgent: string;
+  blockfrostApiKey?: string | null;
 }): Promise<Record<string, string>> => {
   const entries = await Promise.all(
     contracts.map(async (contract) => {
@@ -232,6 +240,7 @@ export const discoverNextContractSubhandles = async ({
           deploymentHandleSlug: contract.deploymentHandleSlug,
           currentSubhandle: liveContract?.currentSubhandle ?? null,
           userAgent,
+          blockfrostApiKey,
         }),
       ] as const;
     })
