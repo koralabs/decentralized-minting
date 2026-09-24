@@ -29,7 +29,7 @@ settings:
         - f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a.000de1406b6f72614068616e646c655f707269636573
       treasury_address: addr_test1qz96txepzdhj7ryyse0mq9a97eey2es07dydshr9cgapgyv06l2rv7x0p0vtg5kufwj3avaa909ex8uswsnxnad9ccqsyaga0j
       treasury_fee_percentage: 10
-      pz_script_address: addr_test1wzzctdyf9nkgrzqw6vxhaq8mpla7zhzjyjmk6txyu0wsgrgek9nj3
+      pz_script_address: addr_test1wpaqgcq0y2n3q8426h7msmg2j8rchawgav57seuehk5rpmgk7222u
       order_script_hash: d9b3709892158087eceb93c4fd46d112d1f81c76a874e052d1e671cb
       minting_data_script_hash: 9c3fcd4bbc1f2db49fa76d50304deedb85517cf14a439c09d96ed823
     handle_root@handle_settings:

@@ -40,7 +40,7 @@ settings:
       # 404), so DeMi subs landed on a dead address (could not be personalized — "No
       # script found"). persprx is V3: hash with plutusV3ScriptHash or read the api
       # registry; never the V2 helper. See feedback_plutus_language_tag_hash.
-      pz_script_address: addr_test1wp70zp2cdamexjjjfj0837y8nge5vqgyl9tcaxkfyl6h0cc9ad65m
+      pz_script_address: addr_test1wpaqgcq0y2n3q8426h7msmg2j8rchawgav57seuehk5rpmgk7222u
       # 2026-06-27 (#5c): demiord recompiled — owner decoded as raw key hash (fixes the
       # MultisigScript ABI mismatch that made Refund/Cancel revert) + each refund bound to a
       # distinct OutputReference-tagged output (kills the refund double-satisfaction).
