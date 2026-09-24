@@ -98,27 +98,22 @@ jobs:
           chmod +x "$discover_dir/discover_subhandles.py"
           echo "DISCOVER_SUBHANDLES_PATH=$discover_dir/discover_subhandles.py" >> "$GITHUB_ENV"
 
-      - name: Decrypt KMS environment bundle
+      # Secrets come from GitHub (AWS KMS is gone: the old KMS_ENV_BUNDLE_ENC
+      # decrypt failed with AccessDenied on every run since 2026-09-09).
+      - name: Resolve network secrets
         env:
-          KMS_ENV_BUNDLE_ENC: ${{ secrets.KMS_ENV_BUNDLE_ENC }}
+          PREVIEW_BLOCKFROST_API_KEY: ${{ secrets.PREVIEW_BLOCKFROST_API_KEY }}
+          PREPROD_BLOCKFROST_API_KEY: ${{ secrets.PREPROD_BLOCKFROST_API_KEY }}
+          MAINNET_BLOCKFROST_API_KEY: ${{ secrets.MAINNET_BLOCKFROST_API_KEY }}
         run: |
-          if [ -z "$KMS_ENV_BUNDLE_ENC" ]; then
-            echo "No KMS_ENV_BUNDLE_ENC available, skipping decryption"
-            exit 0
-          fi
-          plaintext=$(echo "$KMS_ENV_BUNDLE_ENC" | base64 -d | aws kms decrypt --ciphertext-blob fileb:///dev/stdin --output text --query Plaintext | base64 -d)
-          for key in $(echo "$plaintext" | python3 -c "import sys,json; [print(k) for k in json.load(sys.stdin).keys()]"); do
-            value=$(echo "$plaintext" | python3 -c "import sys,json; print(json.load(sys.stdin).get('$key',''))")
-            echo "::add-mask::$value"
-            echo "$key=$value" >> "$GITHUB_ENV"
-          done
-          # Map generic keys to network-prefixed keys for ensure_handlecontract_sessions
+          set -eu
           NETWORK_UPPER="$(echo '${{ matrix.network }}' | tr '[:lower:]' '[:upper:]')"
-          bf_key=$(echo "$plaintext" | python3 -c "import sys,json; print(json.load(sys.stdin).get('BLOCKFROST_API_KEY',''))")
-          policy_id=$(echo "$plaintext" | python3 -c "import sys,json; print(json.load(sys.stdin).get('POLICY_ID',''))")
-          echo "${NETWORK_UPPER}_BLOCKFROST_API_KEY=$bf_key" >> "$GITHUB_ENV"
-          echo "${NETWORK_UPPER}_POLICY_ID=$policy_id" >> "$GITHUB_ENV"
-          echo "Decrypted KMS bundle keys: $(echo "$plaintext" | python3 -c "import sys,json; print(' '.join(sorted(json.load(sys.stdin).keys())))")"
+          var="${NETWORK_UPPER}_BLOCKFROST_API_KEY"
+          bf_key="${!var:-}"
+          if [ -z "$bf_key" ]; then echo "::error::$var secret is not configured"; exit 1; fi
+          echo "::add-mask::$bf_key"
+          echo "BLOCKFROST_API_KEY=$bf_key" >> "$GITHUB_ENV"
+          echo "${var}=$bf_key" >> "$GITHUB_ENV"
 
       - name: Generate deployment plan (initial)
         env:
