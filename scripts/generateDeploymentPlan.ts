@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import {
+  assertPzScriptAddressIsCurrentProxy,
   buildUnsignedDeploymentTxArtifact,
   buildUnsignedSettingsUpdateTxArtifact,
   buildDeploymentPlan,
@@ -52,6 +53,11 @@ const main = async () => {
   const nativeScriptCborHex = (process.env.HANDLECONTRACT_NATIVE_SCRIPT_CBOR || "").trim();
   const desired = await loadDesiredDeploymentState(args.desired);
   const userAgent = (process.env.KORA_USER_AGENT || "kora-contract-deployments/1.0").trim();
+  await assertPzScriptAddressIsCurrentProxy({
+    network: desired.network,
+    pzScriptAddress: desired.settings.values["demi@handle_settings"].pz_script_address,
+    userAgent,
+  });
   const expectedContracts = buildExpectedContractStates(desired);
   const liveContracts = await fetchLiveContractStates({
     network: desired.network,
