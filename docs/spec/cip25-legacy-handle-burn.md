@@ -131,14 +131,23 @@ not a de-facto "anything else is CIP-25" catch-all).
 
 ## Tests (`smart-contract/lib/tests/validations/minting_data/legacy_mint.test.ak`)
 
-**On master, every new test below already fails** (`is_virtual: 2` traps in
-`parse_bool_from_int` before kind 2 exists at all), but that only proves kind
-2 doesn't exist yet — it does not prove each test exercises the specific
-mechanism its name claims. Each test below was instead verified by mutation
-testing against the committed fix, in an isolated `/tmp` scratch copy (not
-committed): the specific line was deleted/changed, `aiken check` was rerun,
-and the test flipped red. That mapping is recorded in the test file's header
-comment.
+On master, `is_virtual: 2` (or `3`) traps in `parse_bool_from_int` before kind
+2 exists at all — but for a `test ... fail { .. }`, a trap is exactly what
+`fail` expects, so **aiken reports every `fail`-annotated test below as PASS
+on master, not fail** (verified directly: ran this test file against master's
+validation code). Only `cip25_burn_ok` (no `fail` annotation, the happy path)
+genuinely fails on master. "It fails on master" is therefore not evidence any
+test exercises the mechanism its name claims — that is established instead by
+mutation testing against the committed fix, in an isolated `/tmp` scratch
+copy (not committed): the specific line was deleted/changed, `aiken check`
+was rerun, and the test flipped red. That mapping is recorded in the test
+file's header comment.
+
+`legacy_virtual_burn_still_uses_000_not_bare_name` is different in kind from
+the rest: kind `1` already exists on master, so this test is a genuine
+regression guard that already PASSES on master (correctly) — it is not a
+"new capability" test at all, it exists to catch a future accidental
+renumbering of kinds 0/1.
 
 - `cip25_burn_ok` — happy path: root `{handle}` -> empty, mint is exactly
   `-1 handle_name` (no prefix). Red if the kind-2 mint-value branch is
@@ -163,9 +172,9 @@ comment.
   domain-guard `expect`s in `all_proofs_are_valid` deleted, because
   `update_legacy_mint_value`'s match is exhaustive — proving the mint-value
   builder does not fall back to treating an unknown kind as CIP-25.
-- `legacy_virtual_burn_still_uses_000_not_bare_name` — regression guard: kind
-  `1` (virtual) still burns the `000` token, not the bare name, so the kind
-  numbering did not silently swap.
+- `legacy_virtual_burn_still_uses_000_not_bare_name` — regression guard
+  (passes on both master and this branch): kind `1` (virtual) still burns the
+  `000` token, not the bare name, so the kind numbering did not silently swap.
 - The full pre-existing suite (`legacy_root_mint_ok`, `legacy_root_burn_ok`,
   every DeMi/label-asset test, etc.) is unaffected — **196/196 pass** after
   this change (186 pre-existing + 10 new).
@@ -178,20 +187,82 @@ This changes `demimntmpt`'s compiled code, which changes `minting_data_script_ha
 (and, downstream, the `demimnt` governor's hash, since it is parameterized by
 that hash). **The delta is not the same on every network** — preview/preprod
 and mainnet are on different `demimntmpt` generations today, verified by
-rebuilding this branch and master with each network's real build parameters
+rebuilding master and this branch with each network's real build parameters
 (`legacy_policy_id`, `admin_verification_key_hash`, and the WS7 slot anchor
-from `src/contracts/config.ts` `getSlotAnchor`) and hashing the result exactly
-as `src/contracts/config.ts` `buildContracts` does:
+from `src/contracts/config.ts` `getSlotAnchor`) using `aiken blueprint apply`
++ `aiken blueprint hash` directly — the same parameter-application path a
+real deploy uses, and the same method that exactly reproduces preview's and
+preprod's live deployed hashes from master's plutus.json (see "Exact commands"
+below for the literal invocations and CBOR parameter encodings used):
 
-| network | currently deployed `demimntmpt` | master @ HEAD (pre-this-branch), same params | this branch, same params |
-| --- | --- | --- | --- |
-| preview | `86e193d6a9e5efa615122913b5fee430d995f74e77f3722a39e6575c` | `86e193d6a9e5…` (**matches** — preview already runs master) | `f91c4be1f9d8e02e255dc2e761fa2848089687ddb510cbc32c7d045e` |
-| preprod | `9c3fcd4bbc1f2db49fa76d50304deedb85517cf14a439c09d96ed823` | `9c3fcd4bbc1f…` (**matches** — preprod already runs master) | `ed0da48dfbbc03d0942d98e4dc45c9dc1e9369fffb0113f9a66e83b8` |
-| mainnet | `dae8d5a2…` (pre-WS1/WS7; see `MAINNET_CUTOVER_PREP.md` §1) | not applicable — mainnet has not cut over to master yet | `037397062bc8ab0a4db4ee2ce1153331d10e22fae3cc4e7978ac6e33` |
+| network | currently deployed `demimntmpt` | this branch (`b5939c6`), same params |
+| --- | --- | --- |
+| preview | `86e193d6a9e5efa615122913b5fee430d995f74e77f3722a39e6575c` | `92367457e3f279a83391d1d58d83ba552c6f9ca79de4aba031a7c6b9` |
+| preprod | `9c3fcd4bbc1f2db49fa76d50304deedb85517cf14a439c09d96ed823` | `74b2c62ea8d42a78a4577d73d2f28c6d10b7a18efac36cd701c3af63` |
+| mainnet | `dae8d5a2…` (pre-WS1/WS7; see `MAINNET_CUTOVER_PREP.md` §1) | `10db6dde1525e8263373be65f64df7f02fda91df6ad5ad8d0abd20e4` |
 
-(`demimnt`, same params: preview this-branch `962248f7d816ef7e33212e09698312fe8ebf17a5156e461c8a91186a`,
-preprod this-branch `d8bca51a4a6f442ccf81f766e91cf2c664279ce78defa0be8a9a23c7`,
-mainnet this-branch `6e6779ca3a3810f5aeac2b208a37e80b54209a8e05ccb5b17342327d`.)
+(`demimnt`, this branch (`b5939c6`), same params: preview
+`ce46ee523fc31f5e669cdbede69dd98eacf58dd9f46471fbd1f1b19c`, preprod
+`a9edd503ad711bec9d5dad251ded387c10ec659b7b4ed03ea39be104`, mainnet
+`aa9d62d4bfd182fb4e220d634a984e711ec8c1f8b67341c4ce24a468`.)
+
+**All six values above are for commit `b5939c6` only. Rebuild and confirm at
+deploy time — any later contract change (including a future commit on this
+branch) invalidates them.**
+
+Separately, rebuilding **`master` @ HEAD (before this branch)** with the same
+method reproduces preview's and preprod's exact live hashes
+(`demimntmpt 86e193d6…` / `9c3fcd4bbc1f…`), which is the evidence for the
+claim below that preview/preprod already run master.
+
+### Exact commands used to produce the table above
+
+```sh
+cd smart-contract
+aiken build   # regenerate plutus.json from this branch's source (commit b5939c6)
+
+# CBOR-encode each parameter as Plutus Data (byte strings: CBOR major-type-2
+# header + hex; unsigned ints: plain CBOR major-type-0). Values below are for
+# legacy_policy_id / admin_verification_key_hash (network-independent) and
+# each network's WS7 slot anchor from src/contracts/config.ts getSlotAnchor:
+#   legacy_policy_id            = 581cf0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a
+#   admin_verification_key_hash = 581c4da965a049dfd15ed1ee19fba6e2974a0b79fc416dd1796a1f97f5e1
+#   preview: anchor_slot=0            -> 00
+#            anchor_time_ms=1666656000000 -> 1b000001840c705800
+#            slot_length_ms=1000       -> 1903e8
+#   preprod: anchor_slot=86400        -> 1a00015180
+#            anchor_time_ms=1655769600000 -> 1b00000181838f1000
+#            slot_length_ms=1000       -> 1903e8
+#   mainnet: anchor_slot=4492800      -> 1a00448e00
+#            anchor_time_ms=1596059091000 -> 1b000001739c890038
+#            slot_length_ms=1000       -> 1903e8
+
+# apply demimntmpt's 5 parameters IN ORDER (plutus.json's declared parameter
+# order: legacy_policy_id, admin_verification_key_hash, anchor_slot,
+# anchor_time_ms, slot_length_ms), chaining -o into the next -i, one CBOR
+# hex arg per invocation, e.g. for preview:
+aiken blueprint apply -i plutus.json          -m demimntmpt -v demimntmpt -o /tmp/preview-1.json 581cf0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a
+aiken blueprint apply -i /tmp/preview-1.json  -m demimntmpt -v demimntmpt -o /tmp/preview-2.json 581c4da965a049dfd15ed1ee19fba6e2974a0b79fc416dd1796a1f97f5e1
+aiken blueprint apply -i /tmp/preview-2.json  -m demimntmpt -v demimntmpt -o /tmp/preview-3.json 00
+aiken blueprint apply -i /tmp/preview-3.json  -m demimntmpt -v demimntmpt -o /tmp/preview-4.json 1b000001840c705800
+aiken blueprint apply -i /tmp/preview-4.json  -m demimntmpt -v demimntmpt -o /tmp/preview-5.json 1903e8
+aiken blueprint hash  -i /tmp/preview-5.json  -m demimntmpt -v demimntmpt
+# -> 92367457e3f279a83391d1d58d83ba552c6f9ca79de4aba031a7c6b9
+
+# repeat with preprod's / mainnet's anchor values for the other two rows.
+
+# demimnt takes ONE parameter: minting_data_script_hash (the demimntmpt hash
+# just computed above), CBOR-encoded the same way (28-byte hash -> 581c + hex):
+aiken blueprint apply -i plutus.json -m demimnt -v demimnt -o /tmp/preview-demimnt.json 581c92367457e3f279a83391d1d58d83ba552c6f9ca79de4aba031a7c6b9
+aiken blueprint hash  -i /tmp/preview-demimnt.json -m demimnt -v demimnt
+# -> ce46ee523fc31f5e669cdbede69dd98eacf58dd9f46471fbd1f1b19c
+# repeat with preprod's / mainnet's demimntmpt hash as the parameter.
+```
+
+Note the `-m`/`-v` values: `aiken blueprint apply`/`hash` match on
+module=`demimntmpt`, validator=`demimntmpt` (not `spend`) — the blueprint's
+double-namespaced title from aiken v1.1.22 is `demimntmpt.demimntmpt.spend`,
+but `apply`/`hash` key off the module+validator pair, not the handler suffix.
 
 The preview/preprod row confirms **this repo's `master` — WS1 label registry
 (`MintLabelAssets`), WS7 sunset-window gate, `BurnDeMiHandles`, and the
@@ -269,9 +340,10 @@ this is a narrow, additive redeploy of just the CIP-25 change:
 
 1. Rebuild `demimntmpt` (+ dependent `demimnt`) with each network's real
    params from this branch; the table above already gives the expected
-   hashes (`f91c4be1…`/`962248f7…` preview, `ed0da48d…`/`d8bca51a…` preprod) —
-   confirm with a full `aiken build` + `deployment-plan:<network>` run rather
-   than trusting this doc's numbers at deploy time.
+   hashes for commit `b5939c6` (`92367457…`/`ce46ee52…` preview,
+   `74b2c62e…`/`a9edd503…` preprod) — **rebuild and confirm at deploy time
+   using the exact commands above; any later contract change invalidates
+   these numbers.**
 2. Update `deploy/<network>/decentralized-minting.yaml` target hashes; run
    `npm run deployment-plan:<network>` and review drift — expect
    `script_hash_only` (root datum content unchanged on these two networks).
@@ -299,10 +371,11 @@ ordering followed exactly:
    **before or atomic with** the BFF.
 3. Rebuild `demimntmpt`/`demimnt`/`demiord` with mainnet params **from this
    branch, not from the stale recorded hashes** (`f2799138…`/`83d1a3c7…` are
-   stale — see above); this branch's mainnet-param hashes are
-   `037397062bc8ab0a4db4ee2ce1153331d10e22fae3cc4e7978ac6e33`
-   (`demimntmpt`) / `6e6779ca3a3810f5aeac2b208a37e80b54209a8e05ccb5b17342327d`
-   (`demimnt`) — reconfirm at deploy time, do not trust this doc.
+   stale — see above); this branch's (commit `b5939c6`) mainnet-param hashes
+   are `10db6dde1525e8263373be65f64df7f02fda91df6ad5ad8d0abd20e4`
+   (`demimntmpt`) / `aa9d62d4bfd182fb4e220d634a984e711ec8c1f8b67341c4ce24a468`
+   (`demimnt`) — **rebuild and confirm at deploy time using the exact
+   commands above; any later contract change invalidates these numbers.**
 4. Deploy those contracts + register `demimnt`'s new reward account
    **before** its first withdrawal use.
 5. Run the MPT migration: address-move **and** the decided historical-001

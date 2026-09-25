@@ -162,11 +162,16 @@ test legacy_root_burn_ok() {
 
 // --- CIP-25 legacy handle burn (kind 2): delete the bare-name key, burn exactly `-1 name` ---
 // This is the operator-required feature: a pre-2023 CIP-25 handle (e.g. mainnet `$xar12345`) has
-// no label prefix at all, so it cannot be represented by kind 0 (100+222) or kind 1 (000). On
-// master (before this change) `is_virtual: 2` traps in `parse_bool_from_int` immediately, so EVERY
-// test below does fail on master -- but that only proves kind 2 doesn't exist yet, not that each
-// test exercises the specific mechanism its name claims. Verified instead by mutation testing
-// against the committed fix (each mutation applied in an isolated /tmp scratch copy, not committed):
+// no label prefix at all, so it cannot be represented by kind 0 (100+222) or kind 1 (000).
+//
+// NOTE on "fails without this change": on master, `is_virtual: 2` (or `3`) traps in
+// `parse_bool_from_int` immediately -- but for every `test ... fail { .. }` below, a trap is
+// exactly what `fail` expects, so aiken reports those as PASS on master, not fail (verified: built
+// this test file against master's validation code and confirmed every `fail`-annotated test below
+// reports "pass" there). Only `cip25_burn_ok` (no `fail` annotation, the happy path) genuinely
+// fails on master. So "it fails on master" is not evidence any of these tests exercise the
+// mechanism their name claims -- that is established instead by mutation testing against the
+// committed fix (each mutation applied in an isolated /tmp scratch copy, not committed):
 //   - cip25_mint_rejected_fails   <- deleting `expect kind != 2 || amount == -1` turns it red
 //   - cip25_burn_ok               <- changing the kind-2 branch to emit 100+222 turns it red
 //   - cip25_burn_wrong_asset_fails / cip25_burn_extra_asset_fails / cip25_burn_wrong_policy_fails
@@ -386,8 +391,9 @@ test legacy_kind3_burn_fails() fail {
   can_burn_legacy_handles(tx, spending_ref(), [bad_proof], legacy_policy)
 }
 
-// edge: kinds 0 (root/nft) and 1 (virtual) are unaffected -- a virtual sub handle burn still
-// mints/burns the 000 token, not the bare name (guards against the kind-mapping regressing)
+// regression guard (kind 1 already exists on master and this test passes there too -- it is not a
+// new-capability test): a virtual sub handle burn still mints/burns the 000 token, not the bare
+// name, so widening is_virtual's domain to 3 kinds did not silently renumber 0/1's meaning
 test legacy_virtual_burn_still_uses_000_not_bare_name() {
   let handle = "sub@root"
   let virtual_proof = LegacyHandleProof {
