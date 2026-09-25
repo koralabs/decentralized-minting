@@ -139,10 +139,13 @@ jobs:
           npm ci
         working-directory: minting.handle.me
 
+      # The engine pays the root-owner fee and writes the session (POST /handlecontract-session);
+      # CI holds only the bearer secret — never POLICY_KEY or the box's session store.
       - name: Ensure handlecontract sessions
         env:
           NETWORK: ${{ matrix.network }}
-        run: python3 scripts/ensure_handlecontract_sessions.py --artifacts-dir artifacts --minting-repo minting.handle.me
+          KORA_BOT_MINT_SECRET: ${{ secrets[format('{0}_KORA_BOT_MINT_SECRET', matrix.network == 'preview' && 'PREVIEW' || matrix.network == 'preprod' && 'PREPROD' || 'MAINNET')] }}
+        run: python3 scripts/ensure_handlecontract_sessions.py --artifacts-dir artifacts
 
       # Each ref-script deploy sources its inputs from the handlecontract script
       # home and needs its own ~56 ADA ada-only UTxO; with one big UTxO there the
