@@ -2,7 +2,7 @@ use aiken/merkle_patricia_forestry as mpt
 use aiken/primitive/bytearray
 use cardano/assets.{Value} as value
 use cardano/transaction.{OutputReference}
-use common/cip68.{prefix_100, prefix_222}
+use common/cip68.{prefix_000, prefix_100, prefix_222}
 use tests/mocks/fake_constants.{minting_data_script_hash}
 use tests/mocks/fake_tx.{
   make_handle_policies_reference_input, make_minting_data_input,
@@ -22,6 +22,16 @@ fn spending_ref() -> OutputReference {
 
 fn root_proof(handle: ByteArray) -> LegacyHandleProof {
   LegacyHandleProof { mpt_proof: [], handle_name: handle, is_virtual: 0 }
+}
+
+// kind 2: a bare CIP-25 legacy handle (no label prefix at all -- e.g. mainnet `$xar12345`)
+fn cip25_proof(handle: ByteArray) -> LegacyHandleProof {
+  LegacyHandleProof { mpt_proof: [], handle_name: handle, is_virtual: 2 }
+}
+
+// a CIP-25 burn mints/burns exactly `-1 * handle_name`, no label prefix
+fn cip25_mint_value(handle: ByteArray, qty: Int) -> Value {
+  value.zero |> value.add(legacy_policy, handle, qty)
 }
 
 // a non-virtual root legacy handle mints its 100 + 222 tokens
@@ -148,4 +158,160 @@ test legacy_root_burn_ok() {
     [root_proof(handle)],
     legacy_policy,
   )
+}
+
+// --- CIP-25 legacy handle burn (kind 2): delete the bare-name key, burn exactly `-1 name` ---
+// This is the operator-required feature: a pre-2023 CIP-25 handle (e.g. mainnet `$xar12345`) has
+// no label prefix at all, so it cannot be represented by kind 0 (100+222) or kind 1 (000). Before
+// this change, `is_virtual: 2` traps in `parse_bool_from_int` ("Invalid bool value") -- every test
+// below fails without the fix, which is the required negative control.
+
+// happy path: root advances {handle} -> empty, mint is exactly -1 of the bare handle_name asset
+test cip25_burn_ok() {
+  let handle = "xar12345"
+  let tx = make_transaction(
+    [make_minting_data_input(root_with(handle), minting_data_script_hash)],
+    [],
+    [make_minting_data_output(empty_root(), minting_data_script_hash)],
+    cip25_mint_value(handle, -1),
+    [],
+    [],
+  )
+  can_burn_legacy_handles(
+    tx,
+    spending_ref(),
+    [cip25_proof(handle)],
+    legacy_policy,
+  )
+}
+
+// failure: burning a DIFFERENT asset than the one the proof deletes must be rejected
+test cip25_burn_wrong_asset_fails() fail {
+  let handle = "xar12345"
+  let tx = make_transaction(
+    [make_minting_data_input(root_with(handle), minting_data_script_hash)],
+    [],
+    [make_minting_data_output(empty_root(), minting_data_script_hash)],
+    cip25_mint_value("someoneelse", -1),
+    [],
+    [],
+  )
+  can_burn_legacy_handles(
+    tx,
+    spending_ref(),
+    [cip25_proof(handle)],
+    legacy_policy,
+  )
+}
+
+// failure: burning an EXTRA asset alongside the correct one must be rejected (mint == expected_mint_value
+// is an exact match, not a superset check)
+test cip25_burn_extra_asset_fails() fail {
+  let handle = "xar12345"
+  let tx = make_transaction(
+    [make_minting_data_input(root_with(handle), minting_data_script_hash)],
+    [],
+    [make_minting_data_output(empty_root(), minting_data_script_hash)],
+    cip25_mint_value(handle, -1) |> value.add(legacy_policy, "extra", -1),
+    [],
+    [],
+  )
+  can_burn_legacy_handles(
+    tx,
+    spending_ref(),
+    [cip25_proof(handle)],
+    legacy_policy,
+  )
+}
+
+// failure: a non-inclusion (key-absent) proof cannot delete a key that was never inserted --
+// deleting against the empty root with the mint-only-child proof mpt.delete traps
+test cip25_burn_key_absent_fails() fail {
+  let handle = "xar12345"
+  let tx = make_transaction(
+    [make_minting_data_input(empty_root(), minting_data_script_hash)],
+    [],
+    [make_minting_data_output(empty_root(), minting_data_script_hash)],
+    cip25_mint_value(handle, -1),
+    [],
+    [],
+  )
+  can_burn_legacy_handles(
+    tx,
+    spending_ref(),
+    [cip25_proof(handle)],
+    legacy_policy,
+  )
+}
+
+// failure: the burn must be under the LEGACY policy -- a mint claiming a different policy id is rejected
+test cip25_burn_wrong_policy_fails() fail {
+  let handle = "xar12345"
+  let other_policy = #"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  let tx = make_transaction(
+    [make_minting_data_input(root_with(handle), minting_data_script_hash)],
+    [],
+    [make_minting_data_output(empty_root(), minting_data_script_hash)],
+    value.zero |> value.add(other_policy, handle, -1),
+    [],
+    [],
+  )
+  can_burn_legacy_handles(
+    tx,
+    spending_ref(),
+    [cip25_proof(handle)],
+    legacy_policy,
+  )
+}
+
+// edge: a CIP-25 (kind 2) proof can NEVER be used to MINT -- there must be no path to a fresh
+// bare-name asset under the legacy policy. This is the deliberate asymmetry vs. kinds 0/1.
+test cip25_mint_rejected_fails() fail {
+  let handle = "newhandle"
+  let tx = make_transaction(
+    [make_minting_data_input(empty_root(), minting_data_script_hash)],
+    [
+      make_settings_reference_input(),
+      make_handle_policies_reference_input(
+        legacy_policy,
+        legacy_policy,
+        (0, 0, 0),
+      ),
+    ],
+    [make_minting_data_output(root_with(handle), minting_data_script_hash)],
+    cip25_mint_value(handle, 1),
+    [],
+    [],
+  )
+  can_mint_legacy_handles(
+    tx,
+    spending_ref(),
+    [cip25_proof(handle)],
+    legacy_policy,
+    0,
+    0,
+    1000,
+  )
+}
+
+// edge: kinds 0 (root/nft) and 1 (virtual) are unaffected -- a virtual sub handle burn still
+// mints/burns the 000 token, not the bare name (guards against the kind-mapping regressing)
+test legacy_virtual_burn_still_uses_000_not_bare_name() {
+  let handle = "sub@root"
+  let virtual_proof = LegacyHandleProof {
+    mpt_proof: [],
+    handle_name: handle,
+    is_virtual: 1,
+  }
+  let virtual_mint_value = value.zero
+    |> value.add(legacy_policy, bytearray.concat(prefix_000, handle), -1)
+  let tx = make_transaction(
+    [make_minting_data_input(root_with(handle), minting_data_script_hash)],
+    [],
+    [make_minting_data_output(empty_root(), minting_data_script_hash)],
+    virtual_mint_value,
+    [],
+    [],
+  )
+  can_burn_legacy_handles(tx, spending_ref(), [virtual_proof], legacy_policy)
 }

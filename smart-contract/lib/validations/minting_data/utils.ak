@@ -338,21 +338,26 @@ pub fn all_proofs_are_valid(
   when proofs is {
     [] -> continuation(root, expected_mint_value)
     [proof, ..rest_proofs] -> {
-      let LegacyHandleProof { mpt_proof, handle_name, is_virtual } = proof
-      let is_virtual_bool = parse_bool_from_int(is_virtual)
+      let LegacyHandleProof { mpt_proof, handle_name, is_virtual: kind } = proof
 
-      // check handle is valid
-      expect check_legacy_handle_validity(handle_name, is_virtual_bool)
+      // kind: 0 = non-virtual CIP-68-style root/nft under the legacy policy (100+222), 1 = virtual
+      // sub (000), 2 = bare CIP-25 legacy handle (no label prefix). Kind 2 is burn-only: a mint
+      // (amount == 1) can never target a bare-name asset under the legacy policy.
+      expect kind == 0 || kind == 1 || kind == 2
+      expect kind != 2 || amount == -1
+
+      // check handle is valid (kinds 0 and 2 are both non-virtual root handles)
+      expect check_legacy_handle_validity(handle_name, kind == 1)
 
       // update the handle's MPT key (insert on mint, delete on burn)
       let new_root = update_root(root, handle_name, amount, mpt_proof)
 
       // update mint value (positive on mint, negative on burn)
-      let new_mint_value = update_mint_value(
+      let new_mint_value = update_legacy_mint_value(
         expected_mint_value,
         legacy_policy_id,
         handle_name,
-        is_virtual_bool,
+        kind,
         amount,
       )
 
@@ -738,6 +743,40 @@ fn update_mint_value(
     mint_value
       |> value.add(policy_id, bytearray.concat(prefix_100, handle_name), amount)
       |> value.add(policy_id, bytearray.concat(prefix_222, handle_name), amount)
+  }
+}
+
+// Mirror of `update_mint_value` for `LegacyHandleProof`'s 3-way kind (see the type's doc comment):
+// 0/1 behave exactly like the non-virtual/virtual branches above; 2 is a bare CIP-25 legacy handle
+// with no label prefix at all -- the tx must mint/burn exactly `amount` of the bare handle_name asset.
+fn update_legacy_mint_value(
+  mint_value: Value,
+  policy_id: PolicyId,
+  handle_name: ByteArray,
+  kind: Int,
+  amount: Int,
+) -> Value {
+  when kind is {
+    0 ->
+      mint_value
+        |> value.add(
+            policy_id,
+            bytearray.concat(prefix_100, handle_name),
+            amount,
+          )
+        |> value.add(
+            policy_id,
+            bytearray.concat(prefix_222, handle_name),
+            amount,
+          )
+    1 ->
+      mint_value
+        |> value.add(
+            policy_id,
+            bytearray.concat(prefix_000, handle_name),
+            amount,
+          )
+    _ -> mint_value |> value.add(policy_id, handle_name, amount)
   }
 }
 

@@ -276,9 +276,19 @@ pub fn can_mint_legacy_handles(
 //
 // Mirror of `can_mint_legacy_handles` with amount -1: each proof deletes its
 // handle from the MPT and the tx must burn exactly the corresponding assets.
-// Used to keep the MPT root in sync when a (virtual) legacy sub handle is burned
-// (the legacy policy native script authorizes the actual burn; this enforces
-// the root update when minting_data is spent).
+// Used to keep the MPT root in sync when a legacy handle is burned -- a virtual
+// sub handle (000), a CIP-68-style root/nft handle under the legacy policy
+// (100+222), or a bare CIP-25 legacy handle with no label prefix at all (kind 2,
+// e.g. mainnet `$xar12345`; see `LegacyHandleProof`). The legacy policy native
+// script still authorizes the actual burn (its required signer); this enforces
+// the root update when minting_data is spent, and the ledger's value balance
+// already forces the holder's UTxO holding that exact asset to be a spent input.
+//
+// Kind 2 is burn-only -- `can_mint_legacy_handles` rejects it, so there is no path
+// to mint a fresh bare-name asset under the legacy policy.
+//
+// NOTE: LegacyHandleProof.is_virtual doubles as this 3-way kind selector; the ABI
+// field name is unchanged, only its accepted domain widened from {0,1} to {0,1,2}.
 //
 pub fn can_burn_legacy_handles(
   transaction: Transaction,
