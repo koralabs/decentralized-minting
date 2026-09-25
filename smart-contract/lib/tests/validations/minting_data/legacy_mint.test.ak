@@ -162,9 +162,25 @@ test legacy_root_burn_ok() {
 
 // --- CIP-25 legacy handle burn (kind 2): delete the bare-name key, burn exactly `-1 name` ---
 // This is the operator-required feature: a pre-2023 CIP-25 handle (e.g. mainnet `$xar12345`) has
-// no label prefix at all, so it cannot be represented by kind 0 (100+222) or kind 1 (000). Before
-// this change, `is_virtual: 2` traps in `parse_bool_from_int` ("Invalid bool value") -- every test
-// below fails without the fix, which is the required negative control.
+// no label prefix at all, so it cannot be represented by kind 0 (100+222) or kind 1 (000). On
+// master (before this change) `is_virtual: 2` traps in `parse_bool_from_int` immediately, so EVERY
+// test below does fail on master -- but that only proves kind 2 doesn't exist yet, not that each
+// test exercises the specific mechanism its name claims. Verified instead by mutation testing
+// against the committed fix (each mutation applied in an isolated /tmp scratch copy, not committed):
+//   - cip25_mint_rejected_fails   <- deleting `expect kind != 2 || amount == -1` turns it red
+//   - cip25_burn_ok               <- changing the kind-2 branch to emit 100+222 turns it red
+//   - cip25_burn_wrong_asset_fails / cip25_burn_extra_asset_fails / cip25_burn_wrong_policy_fails
+//                                 <- disabling `expect mint == expected_mint_value` turns all three
+//                                    red (cip25_burn_ok and cip25_burn_key_absent_fails, which don't
+//                                    depend on that check, are unaffected -- confirming the mapping)
+//   - cip25_burn_key_absent_fails <- exercises mpt.delete's own inclusion-proof requirement (the
+//                                    same call site kinds 0/1 already use for their burns)
+//   - cip25_burn_subhandle_shape_rejected_fails
+//                                 <- deleting `expect kind != 2 || !is_sub_handle_name(...)` turns
+//                                    it red
+//   - legacy_kind3_mint_fails / legacy_kind3_burn_fails
+//                                 <- STILL trap with both domain-guard `expect`s deleted, because
+//                                    `update_legacy_mint_value`'s match is exhaustive (`_ -> fail`)
 
 // happy path: root advances {handle} -> empty, mint is exactly -1 of the bare handle_name asset
 test cip25_burn_ok() {
@@ -292,6 +308,82 @@ test cip25_mint_rejected_fails() fail {
     0,
     1000,
   )
+}
+
+// edge: CIP-25 predates SubHandles, so a kind-2 proof naming a `root@sub`-shaped asset is rejected
+// outright, rather than silently falling through to the bare-name branch
+test cip25_burn_subhandle_shape_rejected_fails() fail {
+  let handle = "sub@root"
+  let bad_proof = LegacyHandleProof {
+    mpt_proof: [],
+    handle_name: handle,
+    is_virtual: 2,
+  }
+  let tx = make_transaction(
+    [make_minting_data_input(root_with(handle), minting_data_script_hash)],
+    [],
+    [make_minting_data_output(empty_root(), minting_data_script_hash)],
+    cip25_mint_value(handle, -1),
+    [],
+    [],
+  )
+  can_burn_legacy_handles(tx, spending_ref(), [bad_proof], legacy_policy)
+}
+
+// defense-in-depth: kind 3+ is rejected twice over -- the domain guard in `all_proofs_are_valid`
+// (`expect kind == 0 || kind == 1 || kind == 2`), AND `update_legacy_mint_value`'s exhaustive match
+// (`_ -> fail @"INVALID_LEGACY_HANDLE_KIND"`) if that guard were ever removed/bypassed. Verified in
+// a scratch copy with the domain guard deleted that both tests below still fail on the exhaustive
+// match alone -- the mint-value builder is not a de-facto "anything else is CIP-25" catch-all.
+test legacy_kind3_mint_fails() fail {
+  let handle = "newhandle"
+  let bad_proof = LegacyHandleProof {
+    mpt_proof: [],
+    handle_name: handle,
+    is_virtual: 3,
+  }
+  let tx = make_transaction(
+    [make_minting_data_input(empty_root(), minting_data_script_hash)],
+    [
+      make_settings_reference_input(),
+      make_handle_policies_reference_input(
+        legacy_policy,
+        legacy_policy,
+        (0, 0, 0),
+      ),
+    ],
+    [make_minting_data_output(root_with(handle), minting_data_script_hash)],
+    value.zero |> value.add(legacy_policy, handle, 1),
+    [],
+    [],
+  )
+  can_mint_legacy_handles(
+    tx,
+    spending_ref(),
+    [bad_proof],
+    legacy_policy,
+    0,
+    0,
+    1000,
+  )
+}
+
+test legacy_kind3_burn_fails() fail {
+  let handle = "xar12345"
+  let bad_proof = LegacyHandleProof {
+    mpt_proof: [],
+    handle_name: handle,
+    is_virtual: 3,
+  }
+  let tx = make_transaction(
+    [make_minting_data_input(root_with(handle), minting_data_script_hash)],
+    [],
+    [make_minting_data_output(empty_root(), minting_data_script_hash)],
+    value.zero |> value.add(legacy_policy, handle, -1),
+    [],
+    [],
+  )
+  can_burn_legacy_handles(tx, spending_ref(), [bad_proof], legacy_policy)
 }
 
 // edge: kinds 0 (root/nft) and 1 (virtual) are unaffected -- a virtual sub handle burn still

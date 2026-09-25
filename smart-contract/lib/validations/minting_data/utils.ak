@@ -346,6 +346,11 @@ pub fn all_proofs_are_valid(
       expect kind == 0 || kind == 1 || kind == 2
       expect kind != 2 || amount == -1
 
+      // CIP-25 predates SubHandles: no bare `root@sub` asset was ever minted, so a kind-2 proof
+      // naming one can never have a real MPT key/mint to match anyway. Reject it explicitly rather
+      // than rely on that -- ambiguous handle shapes should never reach the value-shape branch below.
+      expect kind != 2 || !is_sub_handle_name(handle_name)
+
       // check handle is valid (kinds 0 and 2 are both non-virtual root handles)
       expect check_legacy_handle_validity(handle_name, kind == 1)
 
@@ -537,6 +542,13 @@ pub fn check_new_handle_validity_and_get_price(
   // we only consider the miniume price for user's sake
   let handle_price = math.min(current_price, prev_price)
   handle_price
+}
+
+fn is_sub_handle_name(handle_name: ByteArray) -> Bool {
+  let (_root_handle_name, is_sub_handle, _sub_handle_name) = parse_handle_name(
+    handle_name,
+  )
+  is_sub_handle
 }
 
 pub fn check_legacy_handle_validity(
@@ -776,7 +788,8 @@ fn update_legacy_mint_value(
             bytearray.concat(prefix_000, handle_name),
             amount,
           )
-    _ -> mint_value |> value.add(policy_id, handle_name, amount)
+    2 -> mint_value |> value.add(policy_id, handle_name, amount)
+    _ -> fail @"INVALID_LEGACY_HANDLE_KIND"
   }
 }
 
