@@ -93,6 +93,7 @@ The `mpt_root_hash` field changes frequently and is ignored by default for deplo
 
 ## SubHandle Rules
 - A script hash change uses the committed `deployment_handle_slug` values and allocates the next `<slug><ordinal>@handlecontract` name.
+- An allocated SubHandle is minted by the minting engine: the Deployment Plan's "Ensure handlecontract sessions" step (`scripts/ensure_handlecontract_sessions.py`) POSTs `{ handle }` to the network's engine `/handlecontract-session` with Bearer `<NETWORK>_KORA_BOT_MINT_SECRET` (GitHub secret; same value as the engine's `KORA_BOT_MINT_SECRET`). The engine pays the 2 ADA root-owner fee from its own POLICY_KEY wallets and writes the session in its box-local store; the call is idempotent. CI never holds POLICY_KEY for this step and never touches the session table.
 - Existing legacy live handles can remain attached to older contracts during the transition.
 - Handles assigned to settings or contracts must reside alone in their UTxO — never bundled with other handles. Each settings/contract handle carries its own inline datum and optionally a reference script; combining handles in a single UTxO loses per-handle datum association and complicates downstream UTxO selection.
 

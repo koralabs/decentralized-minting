@@ -7,6 +7,14 @@ on:
   pull_request:
 
 jobs:
+  python-scripts-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deployment-plan script tests
+        run: python3 scripts/ensure_handlecontract_sessions_test.py -v
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10

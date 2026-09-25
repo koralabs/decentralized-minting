@@ -2,23 +2,27 @@
 import argparse
 import json
 import os
-import subprocess
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 
 SECTION_START = "<!-- HANDLECONTRACT_SESSIONS_START -->"
 SECTION_END = "<!-- HANDLECONTRACT_SESSIONS_END -->"
-NETWORK_PREFIX = {
-    "preview": "PREVIEW",
-    "preprod": "PREPROD",
-    "mainnet": "MAINNET",
+PAYMENT_SPACING_SECONDS = 60
+# The minting engine owns the handlecontract session: it pays the 2 ADA root-owner fee with its own
+# POLICY_KEY and writes the session row in its box-local store. CI only states intent over HTTP.
+ENGINE_BASE_URLS = {
+    "preview": "https://preview.minting.handle.me",
+    "preprod": "https://preprod.minting.handle.me",
+    "mainnet": "https://minting.handle.me",
 }
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--artifacts-dir", required=True)
-    parser.add_argument("--minting-repo", required=True)
     return parser.parse_args()
 
 
@@ -77,90 +81,32 @@ def handle_targets(summary: dict) -> list[str]:
     return sorted(set(handles))
 
 
-def network_env(network: str) -> dict[str, str]:
-    prefix = NETWORK_PREFIX[network]
-    required = {
-        "POLICY_KEY": os.environ.get("POLICY_KEY", ""),
-        "POLICY_ID": os.environ.get(f"{prefix}_POLICY_ID", ""),
-        "BLOCKFROST_API_KEY": os.environ.get(f"{prefix}_BLOCKFROST_API_KEY", ""),
-    }
-    missing = [name for name, value in required.items() if not value]
-    if missing:
-        raise RuntimeError(f"missing required env for {network}: {', '.join(missing)}")
+def ensure_session(network: str, handle: str) -> dict:
+    """POST { handle } to the engine's /handlecontract-session (Bearer KORA_BOT_MINT_SECRET).
 
-    env = os.environ.copy()
-    env.update(required)
-    env["NETWORK"] = network.upper()
-    env["NODE_ENV"] = "production" if network == "mainnet" else "development"
-    if not env.get("AWS_REGION"):
-        env["AWS_REGION"] = env.get("AWS_DEFAULT_REGION", "us-east-1")
-    return env
-
-
-# BREADCRUMB (regression 2026-04-19 → FIXED 2026-06-02): the script invoked
-# below, `src/scripts/ensureHandlecontractSession.ts`, was DELETED from the
-# minting engine by the Helios -> @cardano-sdk/core cutover (minting.handle.me
-# commit b95feb2: "Operator scripts bound to helios:
-# buildUnsignedHandlecontractPayment, ensureHandlecontractSession,
-# handlecontractPayment ... Replacements (if needed) should be written fresh
-# against the new cardano-sdk primitives") and not rewritten for ~6 weeks.
-#
-# It has been rebuilt against @cardano-sdk/core on branch
-# `fix/handlecontract-session-cardano-sdk` (commit 5ce3e3b, off origin/preview).
-# MUST be merged to the engine's network branches (preview/preprod/mainnet) for
-# this caller to work — the Deployment Plan workflow checks out
-# koralabs/minting.handle.me at `ref: <network>`.
-#
-# Effect: this step (the `Deployment Plan` workflow's "Ensure handlecontract
-# sessions" job) FAILS whenever a brand-new `<slug><ordinal>@handlecontract`
-# SubHandle must be minted (e.g. a 404 next-ordinal like demiord2@handlecontract).
-# This is the real reason DeMi contract deploys to preview stall at the
-# session step — NOT a missing multisig key.
-#
-# Correct model (from the ORIGINAL ensureHandlecontractSession.ts @ c3a8ecf):
-#   - the handlecontract ROOT-owner payment wallet is a POLICY_KEY derivation
-#     (getPolicyWalletDetails(HANDLECONTRACT_PAYMENT_WALLET_INDEX) ->
-#      getPolicyWallet(index) in src/helpers/cardano/wallet.ts). So the
-#     root-owner payment is AUTOMATABLE with POLICY_KEY; no Eternl needed for it.
-#   - the old script built+signed+submitted that 2 ADA payment, then created
-#     the pending session. The split replacement
-#     (createHandlecontractPendingSession.ts, which still exists but now needs
-#     a pre-existing --tx-hash) lost the payment-building half.
-#
-# The fix is upstream in minting.handle.me: rewrite the
-# build+sign+submit-payment step against @cardano-sdk/core and either restore
-# an `ensureHandlecontractSession.ts --handle` entrypoint or update this caller
-# to (1) build/submit the payment then (2) call createHandlecontractPendingSession
-# --handle --tx-hash. See adahandle-deployments/docs/deployment-automation-roadmap.md
-# (P2c-bis "Next-ordinal SubHandle allocation" claims this is automated — it
-# regressed) and demi-mainnet-cutover.md. Same stale call lives in
-# adahandle-deployments/common/ensure_handlecontract_sessions.py.
-def ensure_session(minting_repo: Path, network: str, handle: str) -> dict:
-    cmd = [
-        "node",
-        "--import",
-        "tsx",
-        "src/scripts/ensureHandlecontractSession.ts",
-        "--handle",
-        handle,
-    ]
-    result = subprocess.run(cmd, text=True, capture_output=True, cwd=minting_repo, env=network_env(network))
-    if result.returncode != 0:
-        print(f"ensure_session failed for {handle} on {network} (exit {result.returncode}):", flush=True)
-        if result.stdout.strip():
-            print(f"  stdout: {result.stdout.strip()}", flush=True)
-        if result.stderr.strip():
-            print(f"  stderr: {result.stderr.strip()}", flush=True)
-        result.check_returncode()
-    # The minting engine writes the JSON result as the last stdout line.
-    # Logger output may appear before it.
-    stdout_lines = [line for line in result.stdout.strip().splitlines() if line.strip()]
-    for line in reversed(stdout_lines):
-        try:
-            return json.loads(line)
-        except json.JSONDecodeError:
-            continue
-    raise RuntimeError(f"ensure_session for {handle} produced no JSON output: {result.stdout[:500]}")
+    Idempotent engine-side: existing session / already-minted handle returns without paying.
+    """
+    secret = os.environ.get("KORA_BOT_MINT_SECRET", "").strip()
+    if not secret:
+        raise RuntimeError("KORA_BOT_MINT_SECRET is required to request handlecontract sessions")
+    base_url = os.environ.get("MINTING_ENGINE_URL") or ENGINE_BASE_URLS[network]
+    request = urllib.request.Request(
+        f"{base_url}/handlecontract-session",
+        data=json.dumps({"handle": handle}).encode(),
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {secret}",
+            "Content-Type": "application/json",
+            # Cloudflare rejects urllib's default UA.
+            "User-Agent": "kora-deployment-plan/1.0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        body = error.read().decode(errors="replace")[:500]
+        raise RuntimeError(f"handlecontract-session for {handle} on {network} failed: HTTP {error.code} {body}") from None
 
 
 def update_plan_files(network_dir: Path, summary: dict, deployment_plan: dict, results: list[dict]) -> None:
@@ -195,7 +141,6 @@ def update_plan_files(network_dir: Path, summary: dict, deployment_plan: dict, r
 def main() -> None:
     args = parse_args()
     artifacts_dir = Path(args.artifacts_dir)
-    minting_repo = Path(args.minting_repo)
 
     for summary_path in sorted(artifacts_dir.glob("*/summary.json")):
         summary = load_json(summary_path)
@@ -210,13 +155,12 @@ def main() -> None:
         results = []
         for handle in handles:
             if results and results[-1].get("status") == "session_created":
-                # Wait for Blockfrost to index the previous payment tx's change UTxOs
-                # before submitting the next payment to avoid double-spend conflicts.
-                import time
-                print(f"Waiting 60s for fee wallet UTxO indexing before next session...", flush=True)
-                time.sleep(60)
+                # The engine pays from one fee wallet; let Blockfrost index the previous payment's
+                # change before the next request so it doesn't reselect the spent UTxO.
+                print("Waiting 60s for fee wallet UTxO indexing before next session...", flush=True)
+                time.sleep(PAYMENT_SPACING_SECONDS)
             print(f"Ensuring session for {handle}...", flush=True)
-            result = ensure_session(minting_repo, network, handle)
+            result = ensure_session(network, handle)
             status = result.get("status", "unknown")
             print(f"  {handle}: {status}" + (" (no mint needed)" if status != "session_created" else " (NEW MINT)"), flush=True)
             results.append(result)
