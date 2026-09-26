@@ -24,7 +24,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: 83d1a3c701d88332edad6df0cc0cffcb7412be02774d38ff33e2302b
+      mint_governor: aa9d62d4bfd182fb4e220d634a984e711ec8c1f8b67341c4ce24a468
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -35,7 +35,9 @@ settings:
       treasury_fee_percentage: 10
       pz_script_address: addr1w9aqgcq0y2n3q8426h7msmg2j8rchawgav57seuehk5rpmgdk7k9e
       order_script_hash: d9b3709892158087eceb93c4fd46d112d1f81c76a874e052d1e671cb
-      minting_data_script_hash: f2799138a412ce749f50fab3ae1537400cc3ce7099bbd850a6dec03c
+      # CIP-25 legacy burn (decentralized-minting #50, 2026-09-26): demimntmpt + governor rebuilt;
+      # handles reused (nothing stays locked at the old addresses once the root migrates).
+      minting_data_script_hash: 10db6dde1525e8263373be65f64df7f02fda91df6ad5ad8d0abd20e4
     handle_root@handle_settings:
       mpt_root_hash: 81e6b0e8a08c65e3b3dfaf2085a0ac1e6b82d937cc54d7ed2a3095a04fc696cc
     kora@handle_prices:

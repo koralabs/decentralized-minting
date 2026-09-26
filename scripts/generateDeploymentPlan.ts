@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { projectPendingTransaction } from "../src/helpers/cardano-sdk/blockfrostUtxo.js";
+
 import {
   assertPzScriptAddressIsCurrentProxy,
   buildUnsignedDeploymentTxArtifact,
@@ -145,6 +147,12 @@ const main = async () => {
   console.log(`Resolved deployer from $${currentSubhandle}: ${deployerAddress} (${deployer.utxos.length} UTxOs)`);
   await writePlanFiles();
 
+  // Plan on the projected ledger: PENDING_TX_FILES (comma-separated unsigned/signed tx CBOR hex files
+  // not yet on chain) are applied first, and every tx this plan generates is applied as it is built,
+  // so later txs chain on earlier change instead of colliding with pending or sibling txs.
+  for (const file of (process.env.PENDING_TX_FILES ?? "").split(",").map((f) => f.trim()).filter(Boolean)) {
+    console.log(`Planning on top of pending tx ${projectPendingTransaction(await fs.readFile(file, "utf8"))} (${file})`);
+  }
   // Track consumed UTxOs across all txs to prevent input conflicts
   const consumedUtxoRefs = new Set<string>();
   // Track which contract slugs actually got a reference-script deploy tx this
@@ -175,6 +183,7 @@ const main = async () => {
       const fileName = `tx-${String(txIndex).padStart(2, "0")}.cbor`;
       await fs.writeFile(path.join(args["artifacts-dir"], fileName), txArtifact.cborBytes);
       await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${txArtifact.cborHex}\n`);
+      projectPendingTransaction(txArtifact.cborHex);
       generatedArtifacts.push(fileName, `${fileName}.hex`);
       transactionOrder.push(fileName);
       txArtifactGenerated = true;
@@ -227,6 +236,7 @@ const main = async () => {
       const fileName = `tx-${String(txIndex).padStart(2, "0")}.cbor`;
       await fs.writeFile(path.join(args["artifacts-dir"], fileName), settingsTxArtifact.cborBytes);
       await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${settingsTxArtifact.cborHex}\n`);
+      projectPendingTransaction(settingsTxArtifact.cborHex);
       generatedArtifacts.push(fileName, `${fileName}.hex`);
       transactionOrder.push(fileName);
       txArtifactGenerated = true;
@@ -308,6 +318,7 @@ const main = async () => {
           const prepCborBytes = Buffer.from(prepTx.cborHex, "hex");
           await fs.writeFile(path.join(args["artifacts-dir"], prepFileName), prepCborBytes);
           await fs.writeFile(path.join(args["artifacts-dir"], `${prepFileName}.hex`), `${prepTx.cborHex}\n`);
+          projectPendingTransaction(prepTx.cborHex);
           generatedArtifacts.push(prepFileName, `${prepFileName}.hex`);
           transactionOrder.push(prepFileName);
           txArtifactGenerated = true;
@@ -367,6 +378,7 @@ const main = async () => {
           const cborBytes = Buffer.from(migrationTx.cborHex, "hex");
           await fs.writeFile(path.join(args["artifacts-dir"], fileName), cborBytes);
           await fs.writeFile(path.join(args["artifacts-dir"], `${fileName}.hex`), `${migrationTx.cborHex}\n`);
+          projectPendingTransaction(migrationTx.cborHex);
           generatedArtifacts.push(fileName, `${fileName}.hex`);
           transactionOrder.push(fileName);
           txArtifactGenerated = true;

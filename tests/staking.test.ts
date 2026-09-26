@@ -64,4 +64,22 @@ describe("registerStakingAddress", () => {
     // leaving zero for the deposit and failing this exact conservation equation.
     expect(INPUT_COINS).not.toBe(change + tx.body.fee);
   });
+
+  it("registers a script reward account with a script credential, and a key account with a key credential", async () => {
+    // Invariant: the certificate names exactly the credential in the reward address.
+    // Failure caught: the credential type was read from the bech32 prefix ("stake_script" never occurs),
+    // so every script (governor) reward account was registered as a KEY credential with the same hash.
+    // Negative control: reverting to the prefix check makes the script case below come out KeyHash.
+    const register = async (bech32StakingAddress: string) => {
+      const cbor = await registerStakingAddress({
+        network: "mainnet", changeAddress: ADDRESS, spareUtxos: [input], bech32StakingAddress,
+        blockfrostApiKey: "unused", getBuildContext: async () => ({ protocolParameters, validityInterval: {} })
+      });
+      return (Serialization.Transaction.fromCbor(cbor as CardanoTypes.HexBlob).toCore().body.certificates?.[0] as CardanoTypes.StakeAddressCertificate).stakeCredential;
+    };
+    expect(await register(REWARD)).toEqual({ type: Cardano.CredentialType.ScriptHash, hash: "83d1a3c701d88332edad6df0cc0cffcb7412be02774d38ff33e2302b" });
+    const keyHash = "aa".repeat(28);
+    const keyReward = Cardano.RewardAddress.fromCredentials(Cardano.NetworkId.Mainnet, { type: Cardano.CredentialType.KeyHash, hash: keyHash as never }).toAddress().toBech32();
+    expect(await register(keyReward)).toEqual({ type: Cardano.CredentialType.KeyHash, hash: keyHash });
+  });
 });
