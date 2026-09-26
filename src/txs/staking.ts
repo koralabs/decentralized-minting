@@ -39,19 +39,14 @@ const registerStakingAddress = async ({
   const buildContext = await getBuildContext(network, blockfrostApiKey);
   const changeAddressBech32 = asPaymentAddress(changeAddress);
 
-  // Parse staking credential from the reward account bech32
-  const rewardAccount = bech32StakingAddress as CardanoTypes.RewardAccount;
-  const credential = Cardano.RewardAccount.toHash(rewardAccount);
-  const credentialType = Cardano.RewardAccount(rewardAccount).startsWith("stake_script")
-    ? Cardano.CredentialType.ScriptHash
-    : Cardano.CredentialType.KeyHash;
+  // The credential type lives in the reward address header (0xe_ key, 0xf_ script); the bech32
+  // prefix is "stake"/"stake_test" for both, so it cannot tell a script account from a key account.
+  const stakeCredential = Cardano.Address.fromBech32(bech32StakingAddress).asReward()?.getPaymentCredential();
+  if (!stakeCredential) throw new Error(`${bech32StakingAddress} is not a reward address`);
 
   const certificate: CardanoTypes.StakeAddressCertificate = {
     __typename: Cardano.CertificateType.StakeRegistration,
-    stakeCredential: {
-      type: credentialType,
-      hash: credential as CardanoTypes.Credential["hash"],
-    },
+    stakeCredential,
   };
 
   return finalizeTx({

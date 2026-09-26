@@ -58,6 +58,29 @@ const blockfrostUtxoToCore = (
   return [txIn, txOut];
 };
 
+// Projected ledger: transactions that are built (and possibly signed) but not yet on chain. A plan
+// built on top of them must neither re-spend their inputs nor miss their outputs — e.g. a mainnet
+// deploy batch co-signed together with other pending multisig txs, or a plan's own earlier txs.
+const projectedSpent = new Set<string>();
+const projectedCreated: CardanoTypes.Utxo[] = [];
+const refOf = (txIn: { txId: string; index: number }) => `${txIn.txId}#${txIn.index}`;
+
+export const projectPendingTransaction = (cborHex: string): string => {
+  const tx = Serialization.Transaction.fromCbor(cborHex.trim() as unknown as HexBlob as never);
+  const txId = tx.getId();
+  const body = tx.toCore().body;
+  for (const input of body.inputs) projectedSpent.add(refOf(input));
+  body.outputs.forEach((output, index) =>
+    projectedCreated.push([{ txId, index, address: output.address }, output]),
+  );
+  return txId;
+};
+
+export const resetProjectedLedger = () => {
+  projectedSpent.clear();
+  projectedCreated.length = 0;
+};
+
 export interface FetchBlockfrostUtxosOptions {
   excludeWithReferenceScripts?: boolean;
 }
@@ -92,5 +115,9 @@ export const fetchBlockfrostUtxos = async (
     page += 1;
   }
 
-  return allUtxos;
+  const projected = projectedCreated.filter(
+    ([txIn, txOut]) =>
+      txIn.address === address && !(options.excludeWithReferenceScripts && txOut.scriptReference),
+  );
+  return [...allUtxos, ...projected].filter(([txIn]) => !projectedSpent.has(refOf(txIn)));
 };

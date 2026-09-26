@@ -25,10 +25,10 @@ const PINNED_HASHES = {
   // demimntmpt.spend — Plutus V3 applied hash with the 5 params
   // (legacy_policy_id, admin_vkh + WS7 slot anchor: anchor_slot,
   // anchor_time_ms, slot_length_ms), aiken v1.1.22 build — WS7 fail-closed
-  // policy_window (unapplied demimntmpt e2c9ee52; the prior dc4efa43 pin was
-  // the stale pre-fail-closed a63af4b2 build that shipped in v3.0.2).
+  // policy_window + CIP-25 legacy burn kind (#50; unapplied demimntmpt 92db92ea,
+  // was e2c9ee52 before #50).
   mintingDataSpend5Params:
-    "db0220954dafc3f6f17b11a24274eee4503ed407ba9b8f40e64ffef8",
+    "de68b15380627d7c73b57c6c7b1075fe6b18e5225fbdb0995fa1fff3",
 };
 
 const findValidator = (title: string) => {

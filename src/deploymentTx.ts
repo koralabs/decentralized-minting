@@ -692,16 +692,18 @@ export const buildPreparationTx = async ({
     blockfrostApiKey,
     desired.network,
   );
-  const adminBalance = adminUtxos.reduce(
-    (sum, u) => sum + (u[1].value.coins ?? 0n),
-    0n,
-  );
+  // Only ADA-only UTxOs are spendable for the migration's fee and collateral; ADA sitting under
+  // tokens is min-UTxO the wallet cannot spend. When short, send the full target as one clean UTxO
+  // (topping up just the gap produced an output below min-UTxO, e.g. 0.32 ADA on preview).
+  const spendableBalance = adminUtxos
+    .filter((u) => !(u[1].value.assets?.size ?? 0))
+    .reduce((sum, u) => sum + (u[1].value.coins ?? 0n), 0n);
 
-  if (adminBalance >= targetLovelace) {
+  if (spendableBalance >= targetLovelace) {
     return null;
   }
 
-  const needed = targetLovelace - adminBalance;
+  const needed = targetLovelace;
 
   // Find a script address to source funds from — use the first settings handle's address
   const settingsHandleName = "demi@handle_settings";
