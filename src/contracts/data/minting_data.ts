@@ -53,6 +53,8 @@ const buildBurnProofData = (proof: BurnProof): PlutusData =>
   ]);
 
 // LegacyHandleProof { mpt_proof, handle_name, is_virtual } (constructor 0). No free-virtual.
+// `is_virtual` is a plain int encoded as-is: 0/1 keep their original bool meaning, 2 is the new
+// bare-CIP-25 burn-only kind (feat/burn-legacy-cip25-handles) -- no encoding change needed here.
 const buildLegacyHandleProofData = (proof: LegacyHandleProof): PlutusData => {
   const { mpt_proof, handle_name, is_virtual } = proof;
   return mkConstr(0, [
