@@ -28,11 +28,17 @@ type BurnProof = {
 // Legacy handle proof (mirrors validations/minting_data/types.LegacyHandleProof). Legacy mints
 // enforce only uniqueness + correct tokens — no free-virtual allowance (that is DeMi-path-only),
 // so there is NO per-proof free-virtual data here.
+//
+// `is_virtual` was widened to a 3-way kind selector (feat/burn-legacy-cip25-handles, NOT deployed
+// anywhere yet — see docs/spec/cip25-legacy-handle-burn.md): 0 = CIP-68-style root/nft handle
+// (100+222, the original is_virtual=false), 1 = virtual sub handle (000, the original
+// is_virtual=true), 2 = bare CIP-25 legacy handle (no label prefix at all, burn-only). Kinds 0/1
+// keep their exact original bool semantics, so every existing mint/burn tx is unaffected.
 type LegacyHandleProof = {
   mpt_proof: MPTProof;
   // handle name as hex format without asset name label
   handle_name: string;
-  // whether it's virtual handle or not (1 or 0)
+  // kind selector: 0 = CIP-68-style (100+222), 1 = virtual (000), 2 = bare CIP-25 (burn-only)
   is_virtual: bigint;
 };
 
