@@ -747,6 +747,23 @@ export const buildPreparationTx = async ({
   });
 };
 
+// A demimntmpt migration is an address move: the root must be carried forward unchanged. The new
+// root is recomputed from the Handles API, so an API one mint behind the chain would silently
+// rewrite the on-chain root (and the MPT would stop matching the handles that exist).
+export const assertMigrationPreservesRoot = (inlineDatumHex: string | undefined, newMptRootHash: string): void => {
+  const datum = inlineDatumHex
+    ? (Serialization.PlutusData.fromCbor(inlineDatumHex as HexBlob).toCore() as { fields?: { items?: unknown[] } })
+    : undefined;
+  const root = datum?.fields?.items?.[0];
+  const currentRoot = root instanceof Uint8Array ? Buffer.from(root).toString("hex") : "";
+  if (currentRoot !== newMptRootHash) {
+    throw new Error(
+      `refusing MPT root migration: recomputed root ${newMptRootHash} != on-chain root ${currentRoot || "(none)"}; ` +
+        "the Handles API may lag the chain — retry once it has caught up",
+    );
+  }
+};
+
 /**
  * Build an unsigned tx that migrates the handle_root@handle_settings UTxO
  * from the old minting data script address to the new one, updating the
@@ -816,6 +833,7 @@ export const buildMptRootMigrationTx = async ({
   };
   const output = txUtxos.outputs.find((o) => o.output_index === txIdx);
   if (!output) throw new Error(`UTxO ${handleData.utxo} not found`);
+  assertMigrationPreservesRoot(output.inline_datum ?? undefined, newMptRootHash);
 
   const handleHex = Buffer.from(handleName, "utf8").toString("hex");
   const handleAssetId = Cardano.AssetId.fromParts(
