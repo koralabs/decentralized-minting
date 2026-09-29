@@ -2,6 +2,7 @@ import { invariant } from "../../helpers/index.js";
 import {
   BurnProof,
   LabelAssetProof,
+  LabeledRootBurnProof,
   LegacyHandleProof,
   MintingData,
   MPTProof,
@@ -112,12 +113,26 @@ const buildMintingDataBurnDeMiHandlesRedeemer = (
   proofs: BurnProof[],
 ): PlutusData => mkConstr(5, [mkList(proofs.map(buildBurnProofData))]);
 
+// LabeledRootBurnProof { mpt_proof, handle_name, labels } (constructor 0).
+const buildLabeledRootBurnProofData = (proof: LabeledRootBurnProof): PlutusData => {
+  const { mpt_proof, handle_name, labels } = proof;
+  invariant(labels.length > 0 && labels.length % 8 === 0, "labels must be whole 4-byte CIP-67 prefixes");
+  return mkConstr(0, [buildMPTProofData(mpt_proof), mkBytes(handle_name), mkBytes(labels)]);
+};
+
+// BurnLabeledRoots (constructor 6): burn labeled legacy roots atomically with their label tokens.
+const buildMintingDataBurnLabeledRootsRedeemer = (
+  proofs: LabeledRootBurnProof[],
+): PlutusData => mkConstr(6, [mkList(proofs.map(buildLabeledRootBurnProofData))]);
+
 export {
   buildBurnProofData,
   buildLabelAssetProofData,
+  buildLabeledRootBurnProofData,
   buildLegacyHandleProofData,
   buildMintingData,
   buildMintingDataBurnDeMiHandlesRedeemer,
+  buildMintingDataBurnLabeledRootsRedeemer,
   buildMintingDataBurnLegacyHandlesRedeemer,
   buildMintingDataMintDeMiHandlesRedeemer,
   buildMintingDataMintLabelAssetsRedeemer,

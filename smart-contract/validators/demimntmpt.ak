@@ -2,17 +2,19 @@ use cardano/assets.{PolicyId}
 use cardano/transaction.{OutputReference, Transaction}
 use common/hashes.{VerificationKeyHash}
 use validations/minting_data/types.{
-  BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
+  BurnProof, LabelAssetProof, LabeledRootBurnProof, LegacyHandleProof,
+  OrderProof,
 }
 use validations/minting_data/validation.{
-  can_burn_demi_handles, can_burn_legacy_handles, can_mint_demi_handles,
-  can_mint_label_assets, can_mint_legacy_handles, can_update_mpt,
+  can_burn_demi_handles, can_burn_labeled_roots, can_burn_legacy_handles,
+  can_mint_demi_handles, can_mint_label_assets, can_mint_legacy_handles,
+  can_update_mpt,
 }
 
 // NOTE: constructor order is part of the on-chain ABI — the off-chain redeemer builders encode
 // these indices. New variants are APPENDED after `UpdateMPT` so existing indices (0–2) are
 // preserved: MintDeMiHandles=0, MintLegacyHandles=1, UpdateMPT=2, BurnLegacyHandles=3,
-// MintLabelAssets=4, BurnDeMiHandles=5.
+// MintLabelAssets=4, BurnDeMiHandles=5, BurnLabeledRoots=6.
 pub type MintingDataRedeemer {
   MintDeMiHandles(List<OrderProof>, Int)
   MintLegacyHandles(List<LegacyHandleProof>)
@@ -26,6 +28,9 @@ pub type MintingDataRedeemer {
   // Burn DeMi-policy handles (root, nft sub, virtual sub): delete from the MPT, burn the tokens,
   // reopen a free virtual's slot. Gated by the governor (can_burn_handles) + the pz contract.
   BurnDeMiHandles(List<BurnProof>)
+  // Burn a root legacy handle that holds registry labels together with every label token, deleting its
+  // key with the exact stored label set (docs/spec/root-burn-with-labels.md).
+  BurnLabeledRoots(List<LabeledRootBurnProof>)
 }
 
 // NOTE:
@@ -102,6 +107,13 @@ validator demimntmpt(
       UpdateMPT -> can_update_mpt(transaction, admin_verification_key_hash)
       BurnDeMiHandles(proofs) ->
         can_burn_demi_handles(transaction, spending_output_reference, proofs)
+      BurnLabeledRoots(proofs) ->
+        can_burn_labeled_roots(
+          transaction,
+          spending_output_reference,
+          proofs,
+          legacy_policy_id,
+        )
     }
   }
 

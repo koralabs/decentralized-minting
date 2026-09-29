@@ -13,12 +13,14 @@ use decentralized_minting/settings_v1.{
 }
 use validations/discount_eligibility.{DiscountContext, read_partner_root}
 use validations/minting_data/types.{
-  BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
+  BurnProof, LabelAssetProof, LabeledRootBurnProof, LegacyHandleProof,
+  OrderProof,
 }
 use validations/minting_data/utils.{
   all_burn_proofs_are_valid, all_label_proofs_are_valid,
-  all_orders_are_satisfied, all_proofs_are_valid,
-  calculate_treasury_fee_and_minter_fee, owner_fees_all_paid,
+  all_labeled_root_burns_are_valid, all_orders_are_satisfied,
+  all_proofs_are_valid, calculate_treasury_fee_and_minter_fee,
+  owner_fees_all_paid,
 }
 use validations/policy_window.{assert_mint_within_policy_window}
 
@@ -304,6 +306,47 @@ pub fn can_burn_legacy_handles(
     legacy_policy_id,
     -1,
   )
+}
+
+// Validation:
+// Burn a ROOT legacy handle that holds WS1 registry labels, atomically with all its label tokens
+// (docs/spec/root-burn-with-labels.md). Same authorization model as BurnLegacyHandles: the legacy native
+// policy (our policy key) gates every -1 in `mint`; this keeps the MPT root exact and makes it impossible
+// to leave a label token behind (every label in the stored value must be burned in this tx).
+pub fn can_burn_labeled_roots(
+  transaction: Transaction,
+  spending_output_reference: OutputReference,
+  proofs: List<LabeledRootBurnProof>,
+  legacy_policy_id: PolicyId,
+) -> Bool {
+  trace @"can_burn_labeled_roots"
+  let Transaction { inputs, outputs, mint, .. } = transaction
+
+  expect Some(spending_input) = find_input(inputs, spending_output_reference)
+  let Input { output: minting_data_input, .. } = spending_input
+  let MintingData { mpt_root_hash } = resolve_minting_data(minting_data_input)
+  expect [minting_data_output, ..] = outputs
+  expect list.length(proofs) > 0
+
+  let new_root, expected_mint_value <- all_labeled_root_burns_are_valid(
+    proofs,
+    mpt.from_root(mpt_root_hash),
+    legacy_policy_id,
+    value.zero,
+  )
+
+  expect minting_data_output.address == minting_data_input.address
+  expect
+    value.without_lovelace(minting_data_output.value) == value.without_lovelace(
+      minting_data_input.value,
+    )
+  expect
+    minting_data_output.datum == InlineDatum(
+      MintingData { mpt_root_hash: mpt.root(new_root) },
+    )
+  expect minting_data_output.reference_script == None
+  expect mint == expected_mint_value
+  True
 }
 
 // Shared mint/burn logic for legacy handles. `amount` is 1 for minting,
