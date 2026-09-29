@@ -28,7 +28,7 @@ because its holding contract has no burn path (`subh` requires the 001 to be re-
 |-------|------------|----------------------|----------------------------------------------------|-----------|
 | 001   | `00001070` | SubHandle settings   | `subh` (handles-subhandle-settings)                | new `subh` version adds `BURN` |
 | 002   | `000020e0` | Public datum         | `public_datum` (handles-public-datum)              | required before any 002 is minted |
-| 003   | `00003090` | **Unassigned — claimed by both chat.handle.me (messaging slot) and secrets.handle.me (guardian profile); operator must pick one** | not built | required in its first version |
+| 003   | `00003090` | Handle identity / messaging anchor (chat.handle.me: identity key + signed pre-key). secrets.handle.me uses the same key via chat; its own "(003) guardian profile" was superseded 2026-06-20 (secrets `1ae1a6c`, `poc-state.md`: "do not build") | chat.handle.me anchor contract (not built) | required in its first version |
 | 004   | `000041c0` | Reserved             | —                                                  | required in its first version |
 
 ## On-chain change (`demimntmpt`)
