@@ -19,7 +19,8 @@ use decentralized_minting/sub_handle.{
 }
 use validations/discount_eligibility.{DiscountContext, effective_handle_price}
 use validations/minting_data/types.{
-  BurnProof, LabelAssetProof, LegacyHandleProof, OrderProof,
+  BurnProof, LabelAssetProof, LabeledRootBurnProof, LegacyHandleProof,
+  OrderProof,
 }
 
 // WS6: root-handle character cap. Bumped 15 -> 28 (the on-chain gatekeeper that actually
@@ -790,6 +791,64 @@ fn update_legacy_mint_value(
           )
     2 -> mint_value |> value.add(policy_id, handle_name, amount)
     _ -> fail @"INVALID_LEGACY_HANDLE_KIND"
+  }
+}
+
+// Atomic teardown of labeled legacy roots (docs/spec/root-burn-with-labels.md): for each proof, delete
+// the root key with its EXACT stored label set and expect -1 of its 222, its 100 and every label token,
+// all under the legacy policy. No label token may outlive its root; the caller checks mint == expected.
+pub fn all_labeled_root_burns_are_valid(
+  proofs: List<LabeledRootBurnProof>,
+  root: mpt.MerklePatriciaForestry,
+  legacy_policy_id: PolicyId,
+  expected_mint_value: Value,
+  continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
+) -> result {
+  when proofs is {
+    [] -> continuation(root, expected_mint_value)
+    [proof, ..rest_proofs] -> {
+      let LabeledRootBurnProof { mpt_proof, handle_name, labels } = proof
+
+      // roots only, and only roots that actually hold labels (whole 4-byte prefixes)
+      expect !is_sub_handle_name(handle_name)
+      expect check_legacy_handle_validity(handle_name, False)
+      let labels_length = bytearray.length(labels)
+      expect labels_length > 0 && labels_length % 4 == 0
+
+      let new_root = mpt.delete(
+        root,
+        handle_name,
+        registry_value.encode(labels),
+        mpt_proof,
+      )
+      let new_mint_value = expected_mint_value
+        |> update_legacy_mint_value(legacy_policy_id, handle_name, 0, -1)
+        |> burn_label_tokens(labels, handle_name, legacy_policy_id)
+
+      all_labeled_root_burns_are_valid(
+        rest_proofs,
+        new_root,
+        legacy_policy_id,
+        new_mint_value,
+        continuation,
+      )
+    }
+  }
+}
+
+fn burn_label_tokens(
+  mint_value: Value,
+  labels: ByteArray,
+  handle_name: ByteArray,
+  policy_id: PolicyId,
+) -> Value {
+  if bytearray.length(labels) == 0 {
+    mint_value
+  } else {
+    let label = bytearray.take(labels, 4)
+    mint_value
+      |> value.add(policy_id, bytearray.concat(label, handle_name), -1)
+      |> burn_label_tokens(bytearray.drop(labels, 4), handle_name, policy_id)
   }
 }
 

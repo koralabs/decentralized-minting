@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildMintingDataBurnDeMiHandlesRedeemer,
+  buildMintingDataBurnLabeledRootsRedeemer,
   buildMintingDataBurnLegacyHandlesRedeemer,
   buildMintingDataMintDeMiHandlesRedeemer,
   buildMintingDataMintLabelAssetsRedeemer,
@@ -54,6 +55,27 @@ describe("MintingDataRedeemer constructor indices match on-chain ABI", () => {
     expect(
       plutusDataToCbor(buildMintingDataBurnDeMiHandlesRedeemer([])),
     ).toMatch(new RegExp(`^${tag(5)}`));
+  });
+
+  it("BurnLabeledRoots = 6 (labeled root teardown)", () => {
+    expect(
+      plutusDataToCbor(buildMintingDataBurnLabeledRootsRedeemer([])),
+    ).toMatch(new RegExp(`^${tag(6)}`));
+  });
+});
+
+describe("LabeledRootBurnProof encoding (matches LabeledRootBurnProof field order)", () => {
+  it("encodes constr 0 [ mpt_proof, handle_name, labels ]", () => {
+    const cbor = plutusDataToCbor(
+      buildMintingDataBurnLabeledRootsRedeemer([{ mpt_proof: [], handle_name: "616263", labels: "00001070" }]),
+    );
+    // constr6 [ [ constr0 [ [], h'616263', h'00001070' ] ] ]
+    expect(cbor).toBe(`${tag(6)}9f9f${tag(0)}9f80436162634400001070ffffff`);
+  });
+
+  it("refuses an empty or partial label set (unlabeled roots use BurnLegacyHandles)", () => {
+    expect(() => buildMintingDataBurnLabeledRootsRedeemer([{ mpt_proof: [], handle_name: "616263", labels: "" }])).toThrow(/whole 4-byte/);
+    expect(() => buildMintingDataBurnLabeledRootsRedeemer([{ mpt_proof: [], handle_name: "616263", labels: "000010" }])).toThrow(/whole 4-byte/);
   });
 });
 

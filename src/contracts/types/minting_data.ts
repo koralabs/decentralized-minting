@@ -56,9 +56,21 @@ type LabelAssetProof = {
   amount: bigint;
 };
 
+// Burn of a ROOT legacy handle that holds registry labels, together with every label token
+// (docs/spec/root-burn-with-labels.md). Mirrors validations/minting_data/types.LabeledRootBurnProof.
+type LabeledRootBurnProof = {
+  mpt_proof: MPTProof;
+  // root handle name as hex (the MPT key)
+  handle_name: string;
+  // the root's current canonical label set = its stored MPT value (hex, concatenated sorted
+  // 4-byte CIP-67 prefixes); non-empty. Every label in it must be burned in the same tx.
+  labels: string;
+};
+
 export type {
   BurnProof,
   LabelAssetProof,
+  LabeledRootBurnProof,
   LegacyHandleProof,
   MintingData,
   OrderProof,

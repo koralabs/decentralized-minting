@@ -33,6 +33,16 @@ pub type BurnProof {
 // Kind 2 is BURN-ONLY: `can_mint_legacy_handles` rejects it (there must never be a new bare-name
 // mint under the legacy policy), while `can_burn_legacy_handles` accepts it so a CIP-25 handle can
 // be burned and its key deleted from the MPT root, same as any other legacy handle.
+// Burn of a ROOT legacy handle that holds WS1 registry labels (docs/spec/root-burn-with-labels.md).
+//   labels: the root's current canonical label set = its stored MPT value (concatenated, sorted 4-byte
+//           CIP-67 prefixes). Non-empty; unlabeled roots keep using BurnLegacyHandles.
+// The tx must burn the 222 + 100 AND every label token, and delete the key with exactly `labels`.
+pub type LabeledRootBurnProof {
+  mpt_proof: mpt.Proof,
+  handle_name: ByteArray,
+  labels: ByteArray,
+}
+
 pub type LegacyHandleProof {
   mpt_proof: mpt.Proof,
   handle_name: ByteArray,
