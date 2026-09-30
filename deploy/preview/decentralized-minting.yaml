@@ -20,7 +20,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: ce46ee523fc31f5e669cdbede69dd98eacf58dd9f46471fbd1f1b19c
+      mint_governor: c39c2003135930864923aa0530b1401664e3585a97f1057852d4254f
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -58,7 +58,9 @@ settings:
       # from the new minting-data hash). demiord + proxy unchanged.
       # CIP-25 legacy burn (decentralized-minting #50, 2026-09-26): demimntmpt + governor rebuilt;
       # handles reused (nothing stays locked at the old addresses once the root migrates).
-      minting_data_script_hash: 92367457e3f279a83391d1d58d83ba552c6f9ca79de4aba031a7c6b9
+      # BurnLabeledRoots (decentralized-minting #53, docs/spec/root-burn-with-labels.md): demimntmpt
+      # 92367457 -> 336adf5d (unapplied 19e16f8a), governor follows (ce46ee52 -> c39c2003); demiord + proxy unchanged.
+      minting_data_script_hash: 336adf5dc9e1b2b0170bf835b36c0a4c41f9e725d2f1b2a31dd74925
       # WS5 discount config — all discounts off at launch; free virtuals REMOVED (count 0); no HAL policy.
       discount_config:
         partner_nft_bps: 0
