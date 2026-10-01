@@ -20,7 +20,7 @@ settings:
   type: decentralized_minting_settings
   values:
     demi@handle_settings:
-      mint_governor: 6ab08186f87aa36388bfcc8fff48f53fd8d505a40ebc4de99e33341a
+      mint_governor: d4bbd36e0b95a82603024a15754202c66e288a21c4efb2ebd473d2ec
       mint_version: 0
       policy_id: 6c32db33a422e0bc2cb535bb850b5a6e9a9572222056d6ddc9cbc26e
       allowed_minters:
@@ -34,8 +34,8 @@ settings:
       # CIP-25 legacy burn (decentralized-minting #50, 2026-09-26): demimntmpt + governor rebuilt;
       # handles reused (nothing stays locked at the old addresses once the root migrates).
       # BurnLabeledRoots (decentralized-minting #53, docs/spec/root-burn-with-labels.md): demimntmpt
-      # 74b2c62e -> f03c85fc (unapplied 19e16f8a), governor follows (a9edd503 -> 6ab08186); demiord + proxy unchanged.
-      minting_data_script_hash: f03c85fc64d6d90476ad345d0a0391ece07f33b522a0449104406633
+      # 74b2c62e -> 0cf78dc6 (unapplied 89b43778: DeMi roots + per-label policies), governor follows (a9edd503 -> d4bbd36e); demiord + proxy unchanged.
+      minting_data_script_hash: 0cf78dc6d33ed6033c849cce7a2d4470b896eed996fc9ad176ed9a8f
     handle_root@handle_settings:
       mpt_root_hash: 17d278ca48d0d6f8888a628ed734032e984e8fea13da611178d954f259a91b09
     kora@handle_prices:

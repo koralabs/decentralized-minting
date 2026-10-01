@@ -309,10 +309,11 @@ pub fn can_burn_legacy_handles(
 }
 
 // Validation:
-// Burn a ROOT legacy handle that holds WS1 registry labels, atomically with all its label tokens
-// (docs/spec/root-burn-with-labels.md). Same authorization model as BurnLegacyHandles: the legacy native
-// policy (our policy key) gates every -1 in `mint`; this keeps the MPT root exact and makes it impossible
-// to leave a label token behind (every label in the stored value must be burned in this tx).
+// Burn a ROOT handle (legacy or DeMi) that holds WS1 registry labels, atomically with all its label tokens
+// (docs/spec/root-burn-with-labels.md). The root's 222/100 burn under the policy that actually burns the 222;
+// each label under its own burn policy. Authorization: a legacy root's -1s are gated by the legacy native policy
+// (our policy key); a DeMi root's by the DeMi policy, and (like BurnDeMiHandles) an allowed minter must sign
+// because the burn mutates the registry root. Every label in the stored value must be burned in this tx.
 pub fn can_burn_labeled_roots(
   transaction: Transaction,
   spending_output_reference: OutputReference,
@@ -320,7 +321,25 @@ pub fn can_burn_labeled_roots(
   legacy_policy_id: PolicyId,
 ) -> Bool {
   trace @"can_burn_labeled_roots"
-  let Transaction { inputs, outputs, mint, .. } = transaction
+  let  
+      Transaction {
+        inputs,
+        reference_inputs,
+        outputs,
+        mint,
+        extra_signatories,
+        ..
+      }
+    = transaction
+
+  // settings -> the DeMi policy id + the allowed minters
+  let Settings { data: settings_data, .. } = find_settings(reference_inputs)
+  expect settings_datum: SettingsV1 = settings_data
+  let SettingsV1 { policy_id: new_policy_id, allowed_minters, .. } = settings_datum
+  let minter_signed = list.any(
+    allowed_minters,
+    fn(m) { list.has(extra_signatories, m) },
+  )
 
   expect Some(spending_input) = find_input(inputs, spending_output_reference)
   let Input { output: minting_data_input, .. } = spending_input
@@ -331,7 +350,10 @@ pub fn can_burn_labeled_roots(
   let new_root, expected_mint_value <- all_labeled_root_burns_are_valid(
     proofs,
     mpt.from_root(mpt_root_hash),
+    mint,
     legacy_policy_id,
+    new_policy_id,
+    minter_signed,
     value.zero,
   )
 
