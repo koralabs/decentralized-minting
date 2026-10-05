@@ -46,6 +46,9 @@ CIP-67 label-set hex string, or `""` when it has no labels. Both `buildTrie`
 and `fillHandles` require this shape. Label values are stored as raw bytes;
 discarding them or storing their hex text produces a different root.
 
+See [SDK 4 migration](./sdk-4-migration.md) for runtime validation, the sparse
+registry-label API contract, caller root verification and package checks.
+
 ## Guardrails
 
 - `src/store/index.ts` carries the DESIGN LAW as a header comment and contains

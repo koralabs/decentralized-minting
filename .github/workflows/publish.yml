@@ -73,7 +73,10 @@ jobs:
         run: npm run test
 
       - name: Build
-        run: npm run build && cp package.json ./lib/package.json
+        run: npm run build
+
+      - name: Validate packed and workspace SDK types and runtime
+        run: npm run validate:sdk-package
 
       - name: Publish to GitHub Packages
         env:
@@ -83,7 +86,7 @@ jobs:
           npm config set //npm.pkg.github.com/:_authToken ${DEPLOYMENT_ACCESS_TOKEN}
           set +e
           publish_log=$(mktemp)
-          (cd ./lib && npm publish --@koralabs:registry='https://npm.pkg.github.com') >"${publish_log}" 2>&1
+          (npm publish --@koralabs:registry='https://npm.pkg.github.com') >"${publish_log}" 2>&1
           status=$?
           set -e
           cat "${publish_log}"
@@ -111,7 +114,7 @@ jobs:
           set -eu
           set +e
           publish_log=$(mktemp)
-          (cd ./lib && npm publish --access public --ignore-scripts --provenance) >"${publish_log}" 2>&1
+          (npm publish --access public --ignore-scripts --provenance) >"${publish_log}" 2>&1
           status=$?
           set -e
           cat "${publish_log}"

@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 4.0.0
+
+Breaking: `buildTrie` and `fillHandles` require explicit `{ name, labels }`
+registry entries instead of names-only strings. They store canonical raw label
+bytes and reject missing/malformed, unsorted or duplicate labels at runtime.
+Both helpers validate the complete batch before construction or insertion.
+
+Export `HandleRegistryEntry`, declare the published `lib/index.d.ts`, and add an
+offline packed-package type/runtime check. Declare directly used Cardano SDK
+crypto/util packages at their existing locked versions. Align workspace and
+packed entry points under `lib/`, preserving existing deep imports through exports. See [the migration guide](./docs/spec/sdk-4-migration.md)
+for the sparse API label map, chain-root verification and dependent builders.
+
+
 ## 2.0.3
 
 Fix `prepareNewMintTransaction`: `Cardano.RewardAccount.fromCredentials`

@@ -9,10 +9,12 @@ This is Ada Handles' Decentralized Minting Smart contracts and its Off chain SDK
 - [Docs Index](./docs/index.md)
 - [Product Docs](./docs/product/index.md)
 - [Spec Docs](./docs/spec/index.md)
+- [SDK 4 migration](./docs/spec/sdk-4-migration.md)
 
 ## Local Validation
 - `npm test`
 - `npm run build`
+- `npm run validate:sdk-package` (offline packed-package type and runtime checks)
 - `npx vitest run tests/deploymentState.test.ts tests/deploymentPlan.test.ts`
 - `npx tsx scripts/generateDeploymentPlan.ts --desired deploy/preview/decentralized-minting.yaml --artifacts-dir /tmp/decentralized-minting-plan`
 
