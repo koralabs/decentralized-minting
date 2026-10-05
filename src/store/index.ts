@@ -1,5 +1,8 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 
+import { valueBuffer } from "./labelSet.js";
+import { encode as encodeRegistryValue } from "./registryValue.js";
+
 /**
  * DESIGN LAW — the handle MPT is API-only sourced, NEVER disk-cached.
  *
@@ -36,11 +39,22 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
  */
 
 /**
- * Build the handle MPT in-memory from a handle list (API-sourced). Mirrors
- * the production `buildApiRootTrie` (`Trie.fromList`). No disk Store.
+ * Build the handle MPT in-memory from the handle list + per-handle label sets (API-sourced).
+ * Mirrors the production `buildApiRootTrie`. No disk Store.
+ *
+ * LABEL-AWARE — labels are REQUIRED per handle (no bare-string overload, on purpose). The registry
+ * value at each key is the handle's sorted CIP-67 label set ({001-004}); "" only when it holds
+ * none. A names-only `value:""` trie silently computes the WRONG (label-blind) root and deadlocks
+ * every engine-verify mint (the on-chain `demimntmpt` root is label-aware), so the type forbids it.
+ * For a handle that genuinely has no labels, pass `{ name, labels: "" }`.
  */
-const buildTrie = async (handles: string[]): Promise<Trie> =>
-  Trie.fromList(handles.map((handle) => ({ key: handle, value: "" })));
+const buildTrie = async (handles: { name: string; labels: string }[]): Promise<Trie> =>
+  Trie.fromList(
+    handles.map(({ name, labels }) => ({
+      key: name,
+      value: labels ? valueBuffer(encodeRegistryValue(labels)) : "",
+    })),
+  );
 
 const inspect = async (db: Trie) => {
   // console.log(db.hash?.toString("hex") || Buffer.alloc(32).toString("hex"));
@@ -54,11 +68,13 @@ const inspect = async (db: Trie) => {
  */
 const fillHandles = async (
   db: Trie,
-  handles: string[],
+  handles: { name: string; labels: string }[],
   progress: () => void,
 ) => {
-  for (const handle of handles) {
-    await db.insert(handle, "");
+  for (const { name, labels } of handles) {
+    // LABEL-AWARE: insert the handle's CIP-67 label-set value ("" only when it holds none) —
+    // never a blanket "" (that builds the label-blind root that deadlocks the engine verify).
+    await db.insert(name, labels ? valueBuffer(encodeRegistryValue(labels)) : "");
     progress();
   }
   console.log(db);

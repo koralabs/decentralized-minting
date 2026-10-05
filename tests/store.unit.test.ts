@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+
 import { describe, expect, it, vi } from "vitest";
 
 describe("store helpers (in-memory, API-sourced — no disk)", () => {
@@ -34,7 +35,10 @@ describe("store helpers (in-memory, API-sourced — no disk)", () => {
 
     // buildTrie is API-only sourced: `Trie.fromList` over {key,value} pairs,
     // never a disk `Store`.
-    const db = await buildTrie(["a", "b"]);
+    const db = await buildTrie([
+      { name: "a", labels: "" },
+      { name: "b", labels: "" },
+    ]);
     expect(fromListMock).toHaveBeenCalledWith([
       { key: "a", value: "" },
       { key: "b", value: "" },
@@ -44,7 +48,10 @@ describe("store helpers (in-memory, API-sourced — no disk)", () => {
     expect(logSpy).toHaveBeenCalled();
 
     const progress = vi.fn();
-    await fillHandles(db as never, ["c", "d"], progress);
+    await fillHandles(db as never, [
+      { name: "c", labels: "" },
+      { name: "d", labels: "" },
+    ], progress);
     expect(insertMock).toHaveBeenCalledTimes(2);
     expect(progress).toHaveBeenCalledTimes(2);
 
