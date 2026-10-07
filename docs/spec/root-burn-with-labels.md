@@ -44,6 +44,11 @@ set (the stored value). For each proof:
   is the policy actually burning it (`find_label_burn_policy`);
 - `labels` must be non-empty (unlabeled roots keep using the existing redeemers, unchanged).
 
+Authorization and inputs: the tx references `demi@handle_settings` (the DeMi policy id and allowed minters).
+A legacy root's burns are gated by the legacy native policy (our policy key); a DeMi root (P = the DeMi policy)
+also requires an allowed minter's signature, like `BurnDeMiHandles`, because the burn mutates the registry root.
+The 222 and 100 must burn under the same P (a CIP-68 pair).
+
 Then, exactly as the other paths: the minting-data output keeps its address and non-ADA value, carries the new
 root, has no reference script; and `tx.mint == expected_mint_value` exactly (no other asset may be minted or
 burned).

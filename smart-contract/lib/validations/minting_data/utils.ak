@@ -794,13 +794,19 @@ fn update_legacy_mint_value(
   }
 }
 
-// Atomic teardown of labeled legacy roots (docs/spec/root-burn-with-labels.md): for each proof, delete
-// the root key with its EXACT stored label set and expect -1 of its 222, its 100 and every label token,
-// all under the legacy policy. No label token may outlive its root; the caller checks mint == expected.
+// Atomic teardown of labeled roots (docs/spec/root-burn-with-labels.md): for each proof, delete the root key
+// with its EXACT stored label set and expect -1 of its 222 and 100 under the policy that actually burns the 222
+// (legacy or DeMi; a CIP-68 pair shares its policy) and -1 of every label token under the policy that actually
+// burns THAT label (labels can be cross-pollinated: an f0ff label under a DeMi 222). A DeMi-policy root burn is
+// minter-authorized like BurnDeMiHandles (`minter_signed`); a legacy root keeps the legacy native policy key.
+// No label token may outlive its root; the caller checks mint == expected.
 pub fn all_labeled_root_burns_are_valid(
   proofs: List<LabeledRootBurnProof>,
   root: mpt.MerklePatriciaForestry,
+  mint: Value,
   legacy_policy_id: PolicyId,
+  new_policy_id: PolicyId,
+  minter_signed: Bool,
   expected_mint_value: Value,
   continuation: fn(mpt.MerklePatriciaForestry, Value) -> result,
 ) -> result {
@@ -821,14 +827,33 @@ pub fn all_labeled_root_burns_are_valid(
         registry_value.encode(labels),
         mpt_proof,
       )
+
+      // P: the policy actually burning the root's 222 (fails ROOT/LABEL_BURN_NOT_FOUND if neither)
+      let root_policy = find_label_burn_policy(
+        mint,
+        bytearray.concat(prefix_222, handle_name),
+        legacy_policy_id,
+        new_policy_id,
+      )
+      expect root_policy == legacy_policy_id || minter_signed
+
       let new_mint_value = expected_mint_value
-        |> update_legacy_mint_value(legacy_policy_id, handle_name, 0, -1)
-        |> burn_label_tokens(labels, handle_name, legacy_policy_id)
+        |> update_legacy_mint_value(root_policy, handle_name, 0, -1)
+        |> burn_label_tokens(
+            labels,
+            handle_name,
+            mint,
+            legacy_policy_id,
+            new_policy_id,
+          )
 
       all_labeled_root_burns_are_valid(
         rest_proofs,
         new_root,
+        mint,
         legacy_policy_id,
+        new_policy_id,
+        minter_signed,
         new_mint_value,
         continuation,
       )
@@ -836,19 +861,37 @@ pub fn all_labeled_root_burns_are_valid(
   }
 }
 
+// -1 of every label in `labels` (concatenated 4-byte prefixes), each under the policy that actually burns it.
 fn burn_label_tokens(
   mint_value: Value,
   labels: ByteArray,
   handle_name: ByteArray,
-  policy_id: PolicyId,
+  mint: Value,
+  legacy_policy_id: PolicyId,
+  new_policy_id: PolicyId,
 ) -> Value {
   if bytearray.length(labels) == 0 {
     mint_value
   } else {
-    let label = bytearray.take(labels, 4)
+    let label_asset_name = bytearray.concat(
+      bytearray.take(labels, 4),
+      handle_name,
+    )
+    let label_policy = find_label_burn_policy(
+      mint,
+      label_asset_name,
+      legacy_policy_id,
+      new_policy_id,
+    )
     mint_value
-      |> value.add(policy_id, bytearray.concat(label, handle_name), -1)
-      |> burn_label_tokens(bytearray.drop(labels, 4), handle_name, policy_id)
+      |> value.add(label_policy, label_asset_name, -1)
+      |> burn_label_tokens(
+          bytearray.drop(labels, 4),
+          handle_name,
+          mint,
+          legacy_policy_id,
+          new_policy_id,
+        )
   }
 }
 
