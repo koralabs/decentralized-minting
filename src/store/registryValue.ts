@@ -3,8 +3,8 @@
 // `old_value`/`new_value` match what the validator reconstructs (`mpt.update` verifies the old
 // bytes are in the trie).
 //
-// Representation: labels are a lowercase hex string of concatenated 4-byte CIP-67 prefixes (each
-// starting 0x00); `encode` returns that hex string ("" = empty value).
+// Representation: labels are a lowercase hex string of concatenated four-byte labels.
+// `encode` returns that hex string ("" = empty value); the contract does not whitelist label IDs.
 
 /**
  * Byte-identical to on-chain `registry_value.encode(labels)` — the value is exactly the label set.

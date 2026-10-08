@@ -56,8 +56,9 @@ Ada Handles requires deterministic mint orchestration for:
 - Register staking credential for `mint_v1` via `registerStakingAddress`.
 
 ### MPT Operations
-- Support local trie lifecycle: `init`, `fillHandles`, `addHandle`, `removeHandle`, `printProof`, `clear`.
-- Persist MPT roots to disk and reuse across CLI sessions.
+- Rebuild the handle trie in memory from API-sourced names and explicit per-handle labels using `buildTrie` or `fillHandles`; support `addHandle`, `removeHandle` and `printProof`.
+- Reject malformed registry entries and verify the rebuilt root against chain state before using proofs. Never persist or reload the handle trie from disk.
+- Require the [SDK 4 label-aware migration](../spec/sdk-4-migration.md) for names-only callers.
 
 ### External Integrations
 - Fetch handle/script/config data from `api.handle.me` via `fetchApi`.

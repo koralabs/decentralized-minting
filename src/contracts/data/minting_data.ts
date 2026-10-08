@@ -120,7 +120,8 @@ const buildLabeledRootBurnProofData = (proof: LabeledRootBurnProof): PlutusData 
   return mkConstr(0, [buildMPTProofData(mpt_proof), mkBytes(handle_name), mkBytes(labels)]);
 };
 
-// BurnLabeledRoots (constructor 6): burn labeled legacy roots atomically with their label tokens.
+// BurnLabeledRoots (constructor 6): burn labeled roots (legacy or DeMi) atomically with their label tokens.
+// The tx must reference demi@handle_settings; a DeMi root also needs an allowed minter's signature.
 const buildMintingDataBurnLabeledRootsRedeemer = (
   proofs: LabeledRootBurnProof[],
 ): PlutusData => mkConstr(6, [mkList(proofs.map(buildLabeledRootBurnProofData))]);

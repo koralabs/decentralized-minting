@@ -1,5 +1,5 @@
 // WS1 — TypeScript port of the on-chain `label_set.ak` value encoding. The MPT value for a
-// handle key is the canonical (sorted) concatenation of fixed 4-byte CIP-67 label prefixes,
+// handle key is the canonical (sorted) concatenation of fixed four-byte labels (including CIP-67 prefixes),
 // represented here as a lowercase hex string ("" = empty set). This MUST stay byte-identical
 // to the aiken encoding so the off-chain `old_value`/`new_value` match what the validator
 // reconstructs (`mpt.update` verifies the old bytes are in the trie).

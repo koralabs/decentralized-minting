@@ -40,7 +40,14 @@ cache.
    before it will build any mint proofs.
 
 The SDK helper `buildTrie(handles)` in `src/store/index.ts` mirrors this
-in-memory construction (`Trie.fromList`) for CLI / SDK consumers.
+in-memory construction (`Trie.fromList`) for CLI / SDK consumers. Pass each
+API-sourced handle as `{ name, labels }`, where `labels` is its canonical
+CIP-67 label-set hex string, or `""` when it has no labels. Both `buildTrie`
+and `fillHandles` require this shape. Label values are stored as raw bytes;
+discarding them or storing their hex text produces a different root.
+
+See [SDK 4 migration](./sdk-4-migration.md) for runtime validation, the sparse
+registry-label API contract, caller root verification and package checks.
 
 ## Guardrails
 

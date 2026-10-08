@@ -29,22 +29,11 @@ jobs:
           node-version: "22"
           check-latest: true
 
-      - name: Update npm
-        run: npm install -g npm@latest
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Libssl
-        run: |
-          wget https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
-          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
-
       - name: Install Aiken
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
-          ~/.aiken/bin/aikup install v1.1.22
-          sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
+        uses: ./.github/actions/setup-aiken
 
       - name: Lint
         run: npm run lint
@@ -62,22 +51,11 @@ jobs:
           node-version: "22"
           check-latest: true
 
-      - name: Update npm
-        run: npm install -g npm@latest
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Libssl
-        run: |
-          wget https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
-          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
-
       - name: Install Aiken
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
-          ~/.aiken/bin/aikup install v1.1.22
-          sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
+        uses: ./.github/actions/setup-aiken
 
       - name: Run tests
         run: npm run test:aiken
@@ -94,9 +72,6 @@ jobs:
         with:
           node-version: "22"
           check-latest: true
-
-      - name: Update npm
-        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci

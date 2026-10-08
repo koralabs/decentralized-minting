@@ -1,5 +1,8 @@
 import { Trie } from "@aiken-lang/merkle-patricia-forestry";
 
+import { valueBuffer } from "./labelSet.js";
+import { encode as encodeRegistryValue } from "./registryValue.js";
+
 /**
  * DESIGN LAW — the handle MPT is API-only sourced, NEVER disk-cached.
  *
@@ -35,12 +38,59 @@ import { Trie } from "@aiken-lang/merkle-patricia-forestry";
  * The `tests/store.unit.test.ts` guard fails CI if disk coupling returns.
  */
 
+/** An API-sourced handle and its explicit canonical registry label set. */
+export interface HandleRegistryEntry {
+  name: string;
+  labels: string;
+}
+
+// Validate the entire input before constructing or mutating a trie. The contract's
+// label_set.ak stores sorted, unique four-byte labels; it does not whitelist IDs.
+const registryEntries = (handles: readonly HandleRegistryEntry[]) => {
+  if (!Array.isArray(handles)) {
+    throw new TypeError("Registry handles must be an array of { name, labels } entries (SDK 4)");
+  }
+  const names = new Set<string>();
+  return Array.from(handles, (entry: unknown, index) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new TypeError(`Registry entry ${index} must be { name, labels }; names-only SDK 3 inputs are unsupported`);
+    }
+    const { name, labels } = entry as Partial<HandleRegistryEntry>;
+    if (typeof name !== "string" || name.length === 0) {
+      throw new TypeError(`Registry entry ${index} requires a nonempty string name`);
+    }
+    if (names.has(name)) {
+      throw new TypeError(`Registry entry ${index} repeats a handle name`);
+    }
+    names.add(name);
+    if (typeof labels !== "string") {
+      throw new TypeError(`Registry entry ${index} requires explicit string labels; use "" only for a known empty set`);
+    }
+    const canonical = encodeRegistryValue(labels);
+    if (!/^(?:[0-9a-f]{8})*$/.test(canonical)) {
+      throw new TypeError(`Registry labels at entry ${index} must contain complete four-byte hex labels`);
+    }
+    for (let offset = 8; offset < canonical.length; offset += 8) {
+      if (canonical.slice(offset - 8, offset) >= canonical.slice(offset, offset + 8)) {
+        throw new TypeError(`Registry labels at entry ${index} must be sorted and unique`);
+      }
+    }
+    return { key: name, value: canonical ? valueBuffer(canonical) : "" };
+  });
+};
+
 /**
- * Build the handle MPT in-memory from a handle list (API-sourced). Mirrors
- * the production `buildApiRootTrie` (`Trie.fromList`). No disk Store.
+ * Build the handle MPT in-memory from the handle list + per-handle label sets (API-sourced).
+ * Mirrors the production `buildApiRootTrie`. No disk Store.
+ *
+ * LABEL-AWARE — labels are REQUIRED per handle (no bare-string overload, on purpose). The registry
+ * value at each key is the handle's sorted, unique four-byte label set; "" only when it holds
+ * none. A names-only `value:""` trie silently computes the WRONG (label-blind) root and deadlocks
+ * every engine-verify mint (the on-chain `demimntmpt` root is label-aware), so the type forbids it.
+ * For a handle that genuinely has no labels, pass `{ name, labels: "" }`.
  */
-const buildTrie = async (handles: string[]): Promise<Trie> =>
-  Trie.fromList(handles.map((handle) => ({ key: handle, value: "" })));
+const buildTrie = async (handles: readonly HandleRegistryEntry[]): Promise<Trie> =>
+  Trie.fromList(registryEntries(handles));
 
 const inspect = async (db: Trie) => {
   // console.log(db.hash?.toString("hex") || Buffer.alloc(32).toString("hex"));
@@ -54,11 +104,12 @@ const inspect = async (db: Trie) => {
  */
 const fillHandles = async (
   db: Trie,
-  handles: string[],
+  handles: readonly HandleRegistryEntry[],
   progress: () => void,
 ) => {
-  for (const handle of handles) {
-    await db.insert(handle, "");
+  const entries = registryEntries(handles);
+  for (const { key, value } of entries) {
+    await db.insert(key, value);
     progress();
   }
   console.log(db);

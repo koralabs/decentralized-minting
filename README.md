@@ -46,8 +46,9 @@ npm install @koralabs/handles-decentralized-minting
 | 🎉 Mint the Handles | `mintNewHandles(...)` |
 | ♻️ Legacy Handles | `prepareLegacyMintTransaction(...)` |
 | 🚀 Deploy and stake contracts | `deploy(...)`, `registerStakingAddress(...)` |
+| 🌲 Rebuild the registry trie | `buildTrie([{ name, labels }])`, `fillHandles(trie, [{ name, labels }])` |
 
-The SDK reads Handle, script and settings data from [api.handle.me](https://github.com/koralabs/api.handle.me) and UTxOs from Blockfrost. The [PRD](docs/product/prd.md) and [feature matrix](docs/product/feature-matrix.md) list everything it exports.
+The SDK reads Handle, script and settings data from [api.handle.me](https://github.com/koralabs/api.handle.me) and UTxOs from Blockfrost. The [PRD](docs/product/prd.md) and [feature matrix](docs/product/feature-matrix.md) list everything it exports. Upgrading from 3.x? See the [SDK 4 migration](docs/spec/sdk-4-migration.md).
 
 ## 🚢 Deploying contracts
 
@@ -65,6 +66,7 @@ See [scripts/README.md](scripts/README.md) for required environment variables an
 npm test               # SDK tests (vitest)
 npm run test:aiken     # contract tests (aiken check)
 npm run build
+npm run validate:sdk-package   # packed-package type and runtime checks
 npx vitest run tests/deploymentState.test.ts tests/deploymentPlan.test.ts
 ```
 
