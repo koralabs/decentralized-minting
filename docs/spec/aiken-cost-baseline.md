@@ -8,9 +8,10 @@ not regress without reason. This mirrors the discipline used in `handles-persona
 
 ## Toolchain (pinned)
 
-- Compiler: **aiken v1.0.29-alpha** (`plutus = "v2"`). The PATH `aiken` (v1.1.21) is
-  Plutus-V3-only and will not load this project — use the pinned binary:
-  `~/.aiken/versions/v1.0.29-alpha/aiken-x86_64-unknown-linux-gnu/aiken`.
+- Compiler: **aiken v1.1.22** (`plutus = "v3"`) for `smart-contract/`; the frozen
+  `smart-contract-mint-proxy/` stays on **v1.0.29-alpha** (Plutus V2, needs libssl1.1).
+  CI installs v1.1.22 from the release asset (`.github/actions/setup-aiken`), not `aikup`,
+  whose unauthenticated GitHub API calls hit runner rate limits.
 - MPT library: **aiken-lang/merkle-patricia-forestry v1.2.0** — includes all proof-
   verification/root fixes (v1.1.1 leaf-fork, v1.1.2 terminal-fork, v1.2.0 non-empty-prefix
   forks) plus the `miss` non-membership proof.
@@ -18,7 +19,7 @@ not regress without reason. This mirrors the discipline used in `handles-persona
 ## Measure (run every contract-editing cycle)
 
 ```sh
-AIKEN=~/.aiken/versions/v1.0.29-alpha/aiken-x86_64-unknown-linux-gnu/aiken
+AIKEN=aiken   # v1.1.22, run inside smart-contract/
 # byte size per validator (Conway limit 16384)
 $AIKEN build --trace-level silent
 node -e "const d=require('./plutus.json'); for(const v of d.validators){console.log((v.compiledCode.length/2).toString().padStart(6),v.title)}"

@@ -321,7 +321,7 @@ pub fn can_burn_labeled_roots(
   legacy_policy_id: PolicyId,
 ) -> Bool {
   trace @"can_burn_labeled_roots"
-  let
+  let  
       Transaction {
         inputs,
         reference_inputs,

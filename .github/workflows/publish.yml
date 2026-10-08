@@ -23,13 +23,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.14"
+          node-version: "22"
           check-latest: true
           registry-url: "https://registry.npmjs.org"
 
       - name: Upgrade npm CLI
-        # Node 22.14 ships with npm 10.9.2, but npm's OIDC trusted-publisher
-        # flow requires npm >= 11.5.1. Install the latest npm over the top.
+        # npm's OIDC trusted-publisher flow requires npm >= 11.5.1, newer than
+        # the npm bundled with Node 22. npm@latest tracks Node's supported
+        # engines, so setup-node above resolves the latest Node 22 (check-latest).
         run: npm install -g npm@latest
 
       - name: Strip setup-node auth token placeholder
@@ -49,16 +50,8 @@ jobs:
           done
           echo "NODE_AUTH_TOKEN=" >> "$GITHUB_ENV"
 
-      - name: Install Libssl
-        run: |
-          wget -q https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
-          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
-
       - name: Install Aiken
-        run: |
-          curl --proto '=https' --tlsv1.2 -LsSf https://install.aiken-lang.org | sh
-          ~/.aiken/bin/aikup install v1.1.22
-          sudo ln -s ~/.aiken/bin/aiken /usr/local/bin/aiken
+        uses: ./.github/actions/setup-aiken
 
       - name: Install dependencies
         run: npm ci

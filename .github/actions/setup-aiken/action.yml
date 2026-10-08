@@ -1,0 +1,23 @@
+name: Set up Aiken
+description: >
+  Install the pinned Aiken compiler (smart-contract/aiken.toml) straight from its
+  GitHub release asset. aikup resolves versions through the unauthenticated GitHub
+  REST API, which shared runner IPs exhaust (HTTP 403 "API rate limit exceeded").
+  Release downloads are not API calls, so they are not subject to that limit.
+inputs:
+  version:
+    description: Aiken release tag
+    default: v1.1.22
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        dir="$RUNNER_TOOL_CACHE/aiken/${{ inputs.version }}"
+        mkdir -p "$dir"
+        curl --proto '=https' --tlsv1.2 -fsSL \
+          "https://github.com/aiken-lang/aiken/releases/download/${{ inputs.version }}/aiken-x86_64-unknown-linux-musl.tar.gz" \
+          | tar xz -C "$dir" --strip-components=1
+        echo "$dir" >> "$GITHUB_PATH"
+        "$dir/aiken" --version
