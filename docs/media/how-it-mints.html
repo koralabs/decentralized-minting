@@ -1,0 +1,51 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="size" content="1600x790"><link rel="stylesheet" href="handles.css"><style>
+  body { width: 1600px; height: 790px; padding: 48px 60px; }
+  h1 { font-size: 36px; font-weight: 900; letter-spacing: -0.6px; }
+  h1 + .muted { font-size: 19px; margin-top: 6px; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 36px; margin-top: 34px; }
+  .step { padding: 22px 22px 20px; position: relative; }
+  .step:not(:last-child)::after { content: "➜"; position: absolute; right: -30px; top: 40%; color: #22d17a; font-size: 26px; }
+  .num { font: 800 14px "JetBrains Mono", monospace; color: #22d17a; letter-spacing: 1px; }
+  .step .e { font-size: 42px; line-height: 1; margin-top: 8px; }
+  .step .t { font-weight: 800; font-size: 22px; margin-top: 12px; }
+  .step .d { color: #a8b3cb; font-size: 16px; margin-top: 8px; min-height: 92px; }
+  .step code { display: inline-block; margin-top: 12px; font: 600 14px "JetBrains Mono", monospace; color: #8fd0ff; background: #141d38; border: 1px solid #263252; padding: 4px 9px; border-radius: 8px; }
+  h2 { font-size: 15px; letter-spacing: 1.6px; text-transform: uppercase; color: #b49cff; margin: 34px 0 14px; }
+  .stack { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+  .v { padding: 18px 20px; }
+  .v .name { font: 800 18px "JetBrains Mono", monospace; }
+  .v .role { font-weight: 700; margin-top: 2px; }
+  .v .d { color: #a8b3cb; font-size: 15px; margin-top: 8px; min-height: 66px; }
+  .bar { height: 10px; border-radius: 6px; background: #1a2442; margin-top: 12px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #22d17a, #5cb8ff); }
+  .size { font: 600 13.5px "JetBrains Mono", monospace; color: #93a0bb; margin-top: 6px; }
+</style></head><body>
+  <h1>🪄 How a Handle gets minted</h1>
+  <div class="muted">Uniqueness, price and delivery are enforced by the contracts, not by the server that builds the transaction.</div>
+  <div class="steps">
+    <div class="panel step"><div class="num">STEP 1</div><div class="e">📝</div><div class="t">Order</div>
+      <div class="d">The buyer locks an order at the orders contract with the Handle name and enough ADA to pay for it.</div><code>request()</code></div>
+    <div class="panel step"><div class="num">STEP 2</div><div class="e">🌳</div><div class="t">Prove</div>
+      <div class="d">The minter rebuilds the Handle trie, confirms its root matches the chain, and proves each name isn't taken.</div><code>prepareNewMintTransaction()</code></div>
+    <div class="panel step"><div class="num">STEP 3</div><div class="e">⚖️</div><div class="t">Validate</div>
+      <div class="d">On-chain: proofs must advance the root, prices and fees must be paid, names must be valid, and an allowed minter must sign.</div><code>Aiken validators</code></div>
+    <div class="panel step"><div class="num">STEP 4</div><div class="e">🎉</div><div class="t">Deliver</div>
+      <div class="d">The Handle (222) lands in the buyer's wallet. Its reference token (100) goes to the personalization contract.</div><code>mintNewHandles()</code></div>
+  </div>
+  <h2>⚙️ The contracts</h2>
+  <div class="stack">
+    <div class="panel v"><div class="name green">demimntprx</div><div class="role">🔒 Minting policy</div>
+      <div class="d">Frozen policy ID. Allows a mint only when the governor runs in the same transaction.</div>
+      <div class="bar"><i style="width:4.6%"></i></div><div class="size">747 B of 16,384</div></div>
+    <div class="panel v"><div class="name green">demimnt</div><div class="role">🧭 Governor</div>
+      <div class="d">No mint or burn unless the registry UTxO is spent too.</div>
+      <div class="bar"><i style="width:4.9%"></i></div><div class="size">796 B of 16,384</div></div>
+    <div class="panel v"><div class="name green">demimntmpt</div><div class="role">🌳 Registry</div>
+      <div class="d">Holds the trie root. Checks every proof, price, fee, name and signature.</div>
+      <div class="bar"><i style="width:89.7%"></i></div><div class="size">14,700 B of 16,384</div></div>
+    <div class="panel v"><div class="name green">demiord</div><div class="role">🧾 Orders</div>
+      <div class="d">Spent only by a real mint. Owners can cancel. Refunds can only go back to the owner.</div>
+      <div class="bar"><i style="width:7.3%"></i></div><div class="size">1,197 B of 16,384</div></div>
+  </div>
+</body></html>
