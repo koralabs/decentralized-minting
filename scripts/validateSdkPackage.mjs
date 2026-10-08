@@ -24,7 +24,8 @@ try {
   }
   await mkdir(path.join(packageRoot, "docs", "spec"), { recursive: true });
   await cp(path.join(root, "docs", "spec", "sdk-4-migration.md"), path.join(packageRoot, "docs", "spec", "sdk-4-migration.md"));
-  const [packed] = JSON.parse(run("npm", ["pack", "--json", "--ignore-scripts", "--pack-destination", artifacts], packageRoot).toString());
+  // npm <= 11 prints an array of packs; npm 12 prints an object keyed by package name.
+  const [packed] = Object.values(JSON.parse(run("npm", ["pack", "--json", "--ignore-scripts", "--pack-destination", artifacts], packageRoot).toString()));
   const tarball = path.join(artifacts, packed.filename);
   const consumer = path.join(artifacts, "consumer");
   const modules = path.join(consumer, "node_modules");
