@@ -1,43 +1,37 @@
-# decentralized-minting enclave manifest (proposal, ecosystem-ownership-plan row 5.2).
-#
-# Changes to these paths merging into master need operator approval
-# (K.O.R.A.'s merge_pr cards them). Everything else merges freely.
-# Format: one path per line; trailing "/" = directory prefix. "#" = comment.
-# Why each entry is here: CANONICAL_CONTRACT.md. This file is enclaved itself.
+# decentralized-minting enclave manifest (proposal; independent review pending).
+# Decision 2 clarification 2026-10-13: exact Aiken/Helios on-chain source only.
+# Test-only sources, npm/JS/TS/builders/config/artifacts/workflows are normal agent review.
+# Embedded test-only hunks are outside policy scope; path-only enforcement cannot distinguish them.
+# Signing/settings/irreversible/double-mint authority remains in CANONICAL_CONTRACT.md.
 
 .enclave
 CANONICAL_CONTRACT.md
-
-# C1-C4 validators: demimntprx (frozen policy), demimnt, demimntmpt (MPT root), demiord
-smart-contract/aiken.toml
-smart-contract/aiken.lock
-smart-contract/plutus.json
-smart-contract/validators/
-smart-contract/lib/common/
-smart-contract/lib/decentralized_minting/
-smart-contract/lib/validations/
-smart-contract-mint-proxy/
-
-# C5 desired on-chain state: settings datums, script CBOR, pending migration txs
-deploy/
-
-# C6 off-chain tx builders and datum codecs used by minting.handle.me (published SDK)
-src/contracts/
-src/txs/
-src/helpers/cardano-sdk/
-cardano-sdk-input-selection-0.14.28.tgz
-cardano-sdk-tx-construction-0.28.10.tgz
-
-# C3 MPT is API-sourced, never disk-cached (AGENTS.md DESIGN LAW) + its CI guard
-src/store/
-tests/store.unit.test.ts
-
-# Deployment plan / state / tx (what goes on chain and who signs)
-src/deploymentPlan.ts
-src/deploymentState.ts
-src/deploymentTx.ts
-scripts/generateDeploymentPlan.ts
-scripts/buildDemimntStakeReg.ts
-
-# Deploy and publish path
-.github/workflows/
+smart-contract-mint-proxy/lib/common/hashes.ak
+smart-contract-mint-proxy/lib/common/utils.ak
+smart-contract-mint-proxy/lib/decentralized_minting/settings.ak
+smart-contract-mint-proxy/validators/demimntprx.ak
+smart-contract/lib/common/cip68.ak
+smart-contract/lib/common/handle.ak
+smart-contract/lib/common/hashes.ak
+smart-contract/lib/common/utils.ak
+smart-contract/lib/decentralized_minting/discount.ak
+smart-contract/lib/decentralized_minting/discounts.ak
+smart-contract/lib/decentralized_minting/handle_policies.ak
+smart-contract/lib/decentralized_minting/handle_price.ak
+smart-contract/lib/decentralized_minting/label_set.ak
+smart-contract/lib/decentralized_minting/minting_data.ak
+smart-contract/lib/decentralized_minting/orders.ak
+smart-contract/lib/decentralized_minting/registry_value.ak
+smart-contract/lib/decentralized_minting/settings.ak
+smart-contract/lib/decentralized_minting/settings_v1.ak
+smart-contract/lib/decentralized_minting/sub_handle.ak
+smart-contract/lib/validations/discount_eligibility.ak
+smart-contract/lib/validations/mint_v1/validation.ak
+smart-contract/lib/validations/minting_data/types.ak
+smart-contract/lib/validations/minting_data/utils.ak
+smart-contract/lib/validations/minting_data/validation.ak
+smart-contract/lib/validations/orders/validation.ak
+smart-contract/lib/validations/policy_window.ak
+smart-contract/validators/demimnt.ak
+smart-contract/validators/demimntmpt.ak
+smart-contract/validators/demiord.ak
