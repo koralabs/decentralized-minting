@@ -14,3 +14,6 @@
 - [Data Model](./spec/data-model.md)
 - [Aiken Cost Baseline & Optimization Step](./spec/aiken-cost-baseline.md)
 - [Burning bare CIP-25 legacy handles through the MPT root](./spec/cip25-legacy-handle-burn.md)
+
+## Canonical contract
+- [Canonical contract (must-never-violate rules)](../CANONICAL_CONTRACT.md)

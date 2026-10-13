@@ -18,3 +18,7 @@ A self-fix (PR #43, denied) once tried exactly that against dead code — see
 [`docs/spec/mpt-trie-sourcing.md`](./docs/spec/mpt-trie-sourcing.md) for the
 full law, the production path (`minting.handle.me` `verifyRootHash` /
 `buildApiRootTrie`), and the CI guard in `tests/store.unit.test.ts`.
+
+## Canonical contract and enclave
+- Read [`CANONICAL_CONTRACT.md`](./CANONICAL_CONTRACT.md): the behaviour this repo must never violate.
+- [`.enclave`](./.enclave) lists the code that holds it. Changes there need operator approval before merging into `master`.

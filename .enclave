@@ -1,0 +1,43 @@
+# decentralized-minting enclave manifest (proposal, ecosystem-ownership-plan row 5.2).
+#
+# Changes to these paths merging into master need operator approval
+# (K.O.R.A.'s merge_pr cards them). Everything else merges freely.
+# Format: one path per line; trailing "/" = directory prefix. "#" = comment.
+# Why each entry is here: CANONICAL_CONTRACT.md. This file is enclaved itself.
+
+.enclave
+CANONICAL_CONTRACT.md
+
+# C1-C4 validators: demimntprx (frozen policy), demimnt, demimntmpt (MPT root), demiord
+smart-contract/aiken.toml
+smart-contract/aiken.lock
+smart-contract/plutus.json
+smart-contract/validators/
+smart-contract/lib/common/
+smart-contract/lib/decentralized_minting/
+smart-contract/lib/validations/
+smart-contract-mint-proxy/
+
+# C5 desired on-chain state: settings datums, script CBOR, pending migration txs
+deploy/
+
+# C6 off-chain tx builders and datum codecs used by minting.handle.me (published SDK)
+src/contracts/
+src/txs/
+src/helpers/cardano-sdk/
+cardano-sdk-input-selection-0.14.28.tgz
+cardano-sdk-tx-construction-0.28.10.tgz
+
+# C3 MPT is API-sourced, never disk-cached (AGENTS.md DESIGN LAW) + its CI guard
+src/store/
+tests/store.unit.test.ts
+
+# Deployment plan / state / tx (what goes on chain and who signs)
+src/deploymentPlan.ts
+src/deploymentState.ts
+src/deploymentTx.ts
+scripts/generateDeploymentPlan.ts
+scripts/buildDemimntStakeReg.ts
+
+# Deploy and publish path
+.github/workflows/
