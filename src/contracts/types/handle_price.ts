@@ -30,11 +30,12 @@ const convertHandlePricesToHandlePriceData = (
 const convertHandlePriceDataToHandlePrices = (
   handlePriceData: HandlePriceData
 ): HandlePrices => {
+  // Same [ultraRare, rare, common, basic] order as HandlePriceData.
   return {
-    basic: Number(handlePriceData[0]) / 1_000_000,
-    common: Number(handlePriceData[1]) / 1_000_000,
-    rare: Number(handlePriceData[2]) / 1_000_000,
-    ultraRare: Number(handlePriceData[3]) / 1_000_000,
+    ultraRare: Number(handlePriceData[0]) / 1_000_000,
+    rare: Number(handlePriceData[1]) / 1_000_000,
+    common: Number(handlePriceData[2]) / 1_000_000,
+    basic: Number(handlePriceData[3]) / 1_000_000,
   };
 };
 
