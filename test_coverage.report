@@ -1,618 +1,2933 @@
 FORMAT_VERSION=1
 REPO=decentralized-minting
-TIMESTAMP_UTC=2026-02-22T18:40:38Z
+TIMESTAMP_UTC=2026-10-28T15:28:44Z
 THRESHOLD_LINES=90
 THRESHOLD_BRANCHES=90
-TOTAL_LINES_PCT=98.14
-TOTAL_BRANCHES_PCT=91.96
-STATUS=partial
+TOTAL_LINES_PCT=57.76
+TOTAL_BRANCHES_PCT=47.23
+STATUS=fail
 SOURCE_PATHS=src/**/*.ts,scripts/**/*.ts,smart-contract/**/*.ak
-EXCLUDED_PATHS=scripts/**/*.ts:repo_policy_scripts_scope_exempt_from_required_coverage;smart-contract/**/*.ak:aiken_check_failed_local_parser_incompatibility
-LANGUAGE_SUMMARY=typescript:lines=98.14,branches=91.96,tool=vitest-v8,status=pass;aiken:lines=NA,branches=NA,tool=aiken-check,status=na;scripts:lines=NA,branches=NA,tool=npm-test,status=na
+EXCLUDED_PATHS=scripts/**/*.ts:repo_policy_scripts_scope_exempt_from_required_coverage;smart-contract/**/*.ak:aiken_tests_passed_but_line_branch_coverage_not_available
+LANGUAGE_SUMMARY=typescript:lines=57.76,branches=47.23,tool=vitest-v8,status=fail;aiken:lines=NA,branches=NA,tool=aiken-check,status=na;scripts:lines=NA,branches=NA,tool=npm-test,status=na
 
 === RAW_OUTPUT_NPM_TEST ===
 
-> @koralabs/handles-decentralized-minting@1.1.4 test
+> @koralabs/handles-decentralized-minting@4.0.0 test
 > vitest run
 
 
- RUN  v3.2.4 /home/jesse/src/koralabs/decentralized-minting
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/tmp/covgaps/dm[39m
 
- ✓ tests/store.unit.test.ts > store helpers > initializes, mutates, and clears trie store 14ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fetches settings successfully 31ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fails settings fetch when datum is missing 5ms
- ✓ tests/configs.unit.test.ts > configs fetchers > returns Err when settings decode fails 6ms
- ✓ tests/configs.unit.test.ts > configs fetchers > returns Err when settings-v1 decode fails 5ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fetches minting data successfully 5ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fails minting data fetch when datum is missing 4ms
- ✓ tests/configs.unit.test.ts > configs fetchers > returns Err when minting data decode fails 5ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fetches handle price info successfully 8ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fails handle price fetch when datum is missing 6ms
- ✓ tests/configs.unit.test.ts > configs fetchers > returns Err when handle price decode fails 5ms
- ✓ tests/txs.unit.test.ts > txs/deploy > covers deploy contract variants and default validation 55ms
- ✓ tests/txs.unit.test.ts > txs/deploy > fetches all deployed scripts and handles failures 6ms
- ✓ tests/txs.unit.test.ts > txs/order > covers request happy path and error branches 17ms
- ✓ tests/txs.unit.test.ts > txs/order > covers cancel flow, fetchOrdersTxInputs, and order validation 8ms
- ✓ tests/txs.unit.test.ts > txs/staking > registers staking address and returns tx cbor 9ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds and decodes credential/address data 2ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds and decodes datum variants 0ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds void/redeemer/bool helper data 1ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds and decodes settings and settings-v1 1ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds and decodes handle price / minting data / order data 1ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds sub-handle and mpt proof helper data 1ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds contract parameter helper values and datums 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > converts errors and wraps sync failures 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > wraps async failures and successes 0ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > supports invariant variants 0ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > loads env and reads typed env values 0ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers handle price helpers and parsing helpers 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers bigint helpers 0ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers handle price type conversions 0ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > parses MPT proof JSON and validates error branches 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > fetches network params, account registration status, and always-fail uplc program 38ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers API helper request header composition 4ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers blockfrost network/client helpers 4ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > builds and decodes settings-v1 data round-trip 3ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
-1 Handles are ordered
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22mcontains[32m 1[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22minsert keeps canonical sorted order[32m 0[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22minsert is order-independent (canonical)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22minsert duplicate throws[32m 1[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22mremove[32m 0[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22mapply couples to mint(+1)/burn(-1)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/store.unit.test.ts[2m > [22mstore helpers (in-memory, API-sourced — no disk)[2m > [22mbuilds the trie from a handle list and mutates/proves in memory[32m 15[2mms[22m[39m
+ [32m✓[39m tests/store.unit.test.ts[2m > [22mstore helpers (in-memory, API-sourced — no disk)[2m > [22msource has NO disk-backed Store or fs coupling (API-only law guard)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/registryValue.test.ts[2m > [22mregistryValue.encode (byte-identical to on-chain registry_value.encode)[2m > [22mempty -> empty value[32m 1[2mms[22m[39m
+ [32m✓[39m tests/registryValue.test.ts[2m > [22mregistryValue.encode (byte-identical to on-chain registry_value.encode)[2m > [22mlabels -> the label set itself (identity)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/registryValue.test.ts[2m > [22mregistryValue.encode (byte-identical to on-chain registry_value.encode)[2m > [22mnormalizes to lowercase[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips uint direct value[32m 1[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips uint 1-byte encoding[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips uint 2/4/8-byte encodings[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips definite byte string[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips definite text string[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips definite-length array[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips definite-length map[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips indefinite-length array[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips tag[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mthrows on reserved additional info[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mlocateWitnessSet[2m > [22mlocates empty body + empty ws[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mspliceVkeysIntoWitnessSet[2m > [22mreturns sig-only when ws is empty[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mspliceVkeysIntoWitnessSet[2m > [22mdrops the stale key=0 entry from the original ws[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mspliceVkeysIntoWitnessSet[2m > [22mpreserves non-vkey entries byte-for-byte[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mmergeVkeysIntoTxCbor[2m > [22mmerges vkeys into a full tx CBOR while preserving other bytes[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentState.test.ts[2m > [22mdecentralized minting deployment state[2m > [22mloads preview, preprod, and mainnet desired-state YAML fixtures[32m 22[2mms[22m[39m
+ [32m✓[39m tests/deploymentState.test.ts[2m > [22mdecentralized minting deployment state[2m > [22mrejects observed-only fields in desired-state YAML[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mAPI-sourced label-aware trie helpers[2m > [22mpreserves labeled and unlabeled handle values in a real in-memory trie[32m 14[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mAPI-sourced label-aware trie helpers[2m > [22mpreserves labels when filling the trie incrementally[32m 4[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mAPI-sourced label-aware trie helpers[2m > [22mrejects a duplicate handle and retains the original root and value[32m 5[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'names-only v3 input' before constructing or inserting[32m 2[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'repeated handle name' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'missing labels' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'null labels' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'numeric labels' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'odd hex width' before constructing or inserting[32m 2[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'incomplete second label' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'non-hex bytes' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'hex prefix' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'unsorted labels' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'duplicate labels' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'missing name' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'empty name' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'null entry' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'sparse input' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'non-array input' before constructing or inserting[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mvalidates the entire batch before mutating the trie[32m 1[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mnormalizes uppercase hex without changing the canonical bytes or root[32m 2[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22maccepts future four-byte labels allowed by the on-chain label set[32m 0[2mms[22m[39m
+ [32m✓[39m tests/computeScriptDataHash.test.ts[2m > [22mcomputeScriptDataHash[2m > [22mreturns undefined when no redeemers and no datums[32m 1[2mms[22m[39m
+ [32m✓[39m tests/computeScriptDataHash.test.ts[2m > [22mcomputeScriptDataHash[2m > [22mreturns a 32-byte blake2b hash (hex) when redeemers are present[32m 1[2mms[22m[39m
+ [32m✓[39m tests/computeScriptDataHash.test.ts[2m > [22mcomputeScriptDataHash[2m > [22mis deterministic for the same inputs[32m 1[2mms[22m[39m
+ [32m✓[39m tests/computeScriptDataHash.test.ts[2m > [22mcomputeScriptDataHash[2m > [22mdiffers from upstream Alonzo-array-style hash[32m 1[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mDiscountClaim constructor indices match discount.ak[2m > [22mRarityClaim = 0[32m 2[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mDiscountClaim constructor indices match discount.ak[2m > [22mOgClaim = 1[32m 1[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mDiscountClaim constructor indices match discount.ak[2m > [22mPartnerClaim = 2[32m 1[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mDiscountClaim constructor indices match discount.ak[2m > [22mHalClaim = 3[32m 0[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mdecodeDiscountClaimInfo round-trips the identity[2m > [22mrarity / og / hal[32m 1[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mdecodeDiscountClaimInfo round-trips the identity[2m > [22mpartner (policy + asset name, proof omitted)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/projectedLedger.test.ts[2m > [22mprojected ledger[2m > [22mpending txs remove the inputs they spend and add their outputs at the queried address[32m 24[2mms[22m[39m
+ [32m✓[39m tests/projectedLedger.test.ts[2m > [22mprojected ledger[2m > [22mwithout a projection the chain view is returned unchanged (negative control)[32m 1[2mms[22m[39m
+ [32m✓[39m tests/projectedLedger.test.ts[2m > [22mprojected ledger[2m > [22ma later pending tx that spends an earlier one's output removes it (chaining)[32m 5[2mms[22m[39m
+ [32m✓[39m tests/orderProofs.test.ts[2m > [22mbuildOrderProofs (mirrors all_orders_are_satisfied trie maintenance)[2m > [22morder: inserts the handle key with empty value[32m 4[2mms[22m[39m
+ [32m✓[39m tests/orderProofs.test.ts[2m > [22mbuildOrderProofs (mirrors all_orders_are_satisfied trie maintenance)[2m > [22mprocesses multiple orders in sequence, advancing the trie for each[32m 5[2mms[22m[39m
+ [32m✓[39m tests/burnProofs.test.ts[2m > [22mbuildBurnProofs (mirrors all_burn_proofs_are_valid trie maintenance)[2m > [22mnft/root burn: deletes the key; BurnProof carries handle_name + is_virtual[32m 13[2mms[22m[39m
+ [32m✓[39m tests/burnProofs.test.ts[2m > [22mbuildBurnProofs (mirrors all_burn_proofs_are_valid trie maintenance)[2m > [22mvirtual burn sets is_virtual=1[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mMintDeMiHandles = 0[32m 2[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mMintLegacyHandles = 1[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mUpdateMPT = 2[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mBurnLegacyHandles = 3 (WS2)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mMintLabelAssets = 4 (WS1)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mBurnDeMiHandles = 5 (DeMi burn)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mBurnLabeledRoots = 6 (labeled root teardown)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mLabeledRootBurnProof encoding (matches LabeledRootBurnProof field order)[2m > [22mencodes constr 0 [ mpt_proof, handle_name, labels ][32m 1[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mLabeledRootBurnProof encoding (matches LabeledRootBurnProof field order)[2m > [22mrefuses an empty or partial label set (unlabeled roots use BurnLegacyHandles)[32m 1[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mOrderProof encoding (matches OrderProof field order)[2m > [22morder encodes constr 0 [ mpt_proof ][32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mBurnProof encoding (matches BurnProof field order)[2m > [22mnft/root burn (no root_absence) = constr 0 [proof, name, is_virtual, None][32m 0[2mms[22m[39m
+ [32m✓[39m tests/staking.test.ts[2m > [22mregisterStakingAddress[2m > [22mreserves the stake-key deposit during coin selection[32m 14[2mms[22m[39m
+ [32m✓[39m tests/staking.test.ts[2m > [22mregisterStakingAddress[2m > [22mregisters a script reward account with a script credential, and a key account with a key credential[32m 8[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mapplyParamsToScript (scalus)[2m > [22mmatches the pinned V2 hash for the (frozen) mint proxy with an int param[32m 13[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mapplyParamsToScript (scalus)[2m > [22mmatches the pinned V3 hash for mint v1 withdraw with a bytes param[32m 3[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mapplyParamsToScript (scalus)[2m > [22mmatches the pinned V3 hash for minting data spend with its 5 params (2 bytes + 3 ints)[32m 64[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mplutusV3ScriptHash vs plutusV2ScriptHash (Plutus version-tag bug)[2m > [22mhashing the V3 persprx as V2 reproduces the phantom fd517730 (the bug)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mplutusV3ScriptHash vs plutusV2ScriptHash (Plutus version-tag bug)[2m > [22mhashing the V3 persprx as V3 gives the real on-chain 7cf10558 (the fix)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mplutusV3ScriptHash vs plutusV2ScriptHash (Plutus version-tag bug)[2m > [22mV2 and V3 hashes of the same cbor differ[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mhandle pricing by length[2m > [22mprices each length tier from the on-chain price info (2 / 3 / 4-7 / 8-15 / 16+)[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mhandle pricing by length[2m > [22mprices each length tier from human-readable ADA prices[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mhandle pricing by length[2m > [22mrefuses to price a handle shorter than 2 characters[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mhandle pricing by length[2m > [22mconverts ADA prices to lovelace price data and back without swapping tiers[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22msub handle tier pricing[2m > [22muses the price of the highest tier whose minimum length the sub handle reaches[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22msub handle tier pricing[2m > [22mis free below the first tier and with no tiers[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mparseHandle[2m > [22msplits a sub handle at the first @[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mparseHandle[2m > [22mreports a root handle as not a sub handle[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mbigint min/max[2m > [22mreturns the extreme value, including negatives[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mbigint min/max[2m > [22mthrows with no values[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22merror helpers[2m > [22mconvertError renders every thrown shape as a readable string[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22merror helpers[2m > [22mmayFail returns Ok for a value and Err (with the handler called) for a throw[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22merror helpers[2m > [22mmayFailAsync calls only the last attached handler, and only on failure[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22merror helpers[2m > [22mBuildTxError.from keeps the original message, stack and cause with the failed tx[32m 2[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mmaps legacy script types to api slugs and accepts the flat response shape[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mpicks the latest entry of the exact slug from the address-keyed shape[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mfalls back to any entry of the slug when none is marked latest, and passes unknown types through[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mfails loud when nothing is deployed[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mresolves by the settings-pinned hash (case-insensitive), not by api latest[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22maccepts a flat response only when its hash is the pinned one[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mfails loud when the pinned hash is not deployed[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22morder datum encoding[2m > [22mround-trips a base-address order with a discount claim and the virtual flag[32m 5[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22morder datum encoding[2m > [22mround-trips a script enterprise address with no claim, defaulting to a root mint[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22morder datum encoding[2m > [22mdecodes the address for the requested network and rejects a missing or malformed datum[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22morder datum encoding[2m > [22mencodes the order redeemers as Execute=0, Cancel=1, Refund=2[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deployTargets.test.ts[2m > [22mtestnet deploy targets match the committed blueprint[2m > [22mpreview: minting_data_script_hash and mint_governor are derived from the blueprint[32m 155[2mms[22m[39m
+ [32m✓[39m tests/mptMigrationRoot.test.ts[2m > [22mMPT root migration[2m > [22maccepts a recomputed root equal to the on-chain root[32m 4[2mms[22m[39m
+ [32m✓[39m tests/mptMigrationRoot.test.ts[2m > [22mMPT root migration[2m > [22mrefuses a recomputed root that differs from the on-chain root (API behind the chain)[32m 1[2mms[22m[39m
+ [32m✓[39m tests/mptMigrationRoot.test.ts[2m > [22mMPT root migration[2m > [22mrefuses when the root UTxO carries no datum[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deployTargets.test.ts[2m > [22mtestnet deploy targets match the committed blueprint[2m > [22mpreprod: minting_data_script_hash and mint_governor are derived from the blueprint[32m 82[2mms[22m[39m
+ [32m✓[39m tests/adminFunding.test.ts[2m > [22madmin funding prep tx[2m > [22mADA held under tokens is not spendable: the wallet gets the full target as one clean UTxO[32m 24[2mms[22m[39m
+ [32m✓[39m tests/adminFunding.test.ts[2m > [22madmin funding prep tx[2m > [22menough ADA-only balance needs no prep tx[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mderives expected script hashes from buildContracts output[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mfetches live scripts for each desired contract (address-keyed api shape + old-slug fallback)[32m 8[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mdecodes the live settings handles into comparable YAML-shaped values[32m 6[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mignores the configured minting-data root while still tracking real drift[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mdiscoverNextContractSubhandles delegates to the canonical Python helper[32m 36[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mbuilds raw CBOR bytes and a matching hex artifact for the unsigned deployment tx[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mrejects unsigned deployment tx artifacts that would exceed max tx size after signing[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mcomputes MPT root hash from the API handle set[32m 8[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mcomputes a root for handles named like Object prototype properties[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mrejects malformed owned registry-label values instead of computing a corrupt root[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mfetches old validator CBOR from Handle API script endpoint[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mrenders transaction order markdown from generated artifacts[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22massertPzScriptAddressIsCurrentProxy[2m > [22maccepts the current persprx address[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22massertPzScriptAddressIsCurrentProxy[2m > [22mrefuses any other address[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22massertPzScriptAddressIsCurrentProxy[2m > [22mrefuses when the registry has no single current proxy[32m 0[2mms[22m[39m
 
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
-[1m[32mmem: 1111325 (7.938 %), cpu: 355720416 (3.557 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
-ba8f..[56 digits]..a017 #5f4e60fabb42 { demi-1 →  }
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
-2 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
-[1m[32mmem: 1753801 (12.527 %), cpu: 557881612 (5.579 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #fef7babbfd6e55e1282c21510ee44cffcacd9e11932b8c60a4847ad04b386ef3 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ a #885c50f94a44
- ├─ b #ed37babdfaae
- └─ c #4a94e8a3ee1c
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_1 orders new handle - <demi-1> 8ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1> 74ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_3 orders new handle - <demi-3> 6ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders new handle - <demi-2> 6ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3> 95ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2>
-[1m[32mmem: 696709 (4.976 %), cpu: 207895898 (2.079 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #887366cb90196b27ce48a9e5b62b2fdcea4889b6797fa370bea5ab359fd2200b ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- └─ c #4a94e8a3ee1c
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
-2 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
-[1m[32mmem: 1692521 (12.089 %), cpu: 534458491 (5.345 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2> 38ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders new handle - <demi-4> 7ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_3 orders new handle - <demi-5> 6ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5> 58ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4>
-1 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop>
-1 Handles are ordered
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 orders new sub handle which is not supported - <demi-6@user_4> 6ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4> 44ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 cancel his order, because sub handle is not supported - <demi-6@user_4> 14ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 orders new handle, but handle is too long - <abcdefghijklmnop> 6ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #3b5891fdfe2a7a689ba3b1465c4cbf516f90b232a020c5b11b405da6b89127f6 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 0 #5e1e289632c7
- ├─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1>
-[1m[32mmem: 484898 (3.464 %), cpu: 147810095 (1.478 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #21e4be1f4bdeddc253e0e19ddbeb5f7f8f0abe250392645477b10f54344b2513 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1>
-[1m[32mmem: 393651 (2.812 %), cpu: 118804920 (1.188 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ 9 #9236b7f23e87
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop> 36ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 cancel his order, because handle is too long - <abcdefghijklmnop> 12ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4> 30ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1> 34ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1> 29ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if sub handle is too long - <abcdefghijklmnopqrstuv@user_1>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ 9 #9236b7f23e87
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if root handle is too long - <legacy-1@abcdefghijklmnop>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ 9 #9236b7f23e87
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy virtual sub handle, if minted value is not correct (must be prefix_000) - <legacy-virtual-2@user_1
-╔═══════════════════════════════════════════════════════════════════╗
-║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ 9 #9236b7f23e87
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if sub handle is too long - <abcdefghijklmnopqrstuv@user_1> 23ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if root handle is too long - <legacy-1@abcdefghijklmnop> 23ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy virtual sub handle, if minted value is not correct (must be prefix_000) - <legacy-virtual-2@user_1 24ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders many handle - <12 random handles> 70ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
-12 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
-[1m[32mmem: 8614984 (61.536 %), cpu: 2651229863 (26.512 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #679d7cb07eedbeb4b0c8ef2484d27711cddc9c1736bf4833f9dc3db88920f66c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 0 #e016e0944cb2
- ├─ 1 #751157a5dffc
- ├─ 2 #25df85ec549d
- ├─ 3 #5c9869c34b7f
- ├─ 4 #ada1a09ba253
- ├─ 5 #f3f246bfbb70
- ├─ 7 #731ff23b74bf
- ├─ 8 #f232bf7497b8
- ├─ 9 #9236b7f23e87
- ├─ a #722434c3d34a
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- ├─ d #33a269d4d0c8
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles> 174ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles>
-[1m[32mmem: 9633485 (68.811 %), cpu: 2732616653 (27.326 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #086886a7959efce90835ce557332cf6de425365e5f84f2557853d58711ea59c3 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 0 #dcbffe1d32fe
- ├─ 1 #12837ef605fd
- ├─ 2 #7e634b93b538
- ├─ 3 #74bec55982d6
- ├─ 4 #ada1a09ba253
- ├─ 5 #889064e650d0
- ├─ 6 #4f7c0a49bf46
- ├─ 7 #bd540a47eec1
- ├─ 8 #acb5172eae01
- ├─ 9 #9236b7f23e87
- ├─ a #cc2bff029d13
- ├─ b #a88d6c880ca6
- ├─ c #d530a56fbc97
- ├─ d #33a269d4d0c8
- └─ e #07a14e9bf838
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles> 189ms
-
- Test Files  6 passed (6)
-      Tests  59 passed (59)
-   Start at  10:40:30
-   Duration  2.93s (transform 518ms, setup 0ms, collect 2.65s, tests 1.26s, environment 1ms, prepare 378ms)
+[2m Test Files [22m [1m[32m19 passed[39m[22m[90m (19)[39m
+[2m      Tests [22m [1m[32m133 passed[39m[22m[90m (133)[39m
+[2m   Start at [22m 08:28:25
+[2m   Duration [22m 911ms[2m (transform 1.42s, setup 0ms, import 7.98s, tests 627ms, environment 2ms)[22m
 
 
 === RAW_OUTPUT_VITEST_COVERAGE ===
 
- RUN  v3.2.4 /home/jesse/src/koralabs/decentralized-minting
-      Coverage enabled with v8
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/tmp/covgaps/dm[39m
+      [2mCoverage enabled with [22m[33mv8[39m
 
- ✓ tests/store.unit.test.ts > store helpers > initializes, mutates, and clears trie store 16ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fetches settings successfully 33ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fails settings fetch when datum is missing 5ms
- ✓ tests/configs.unit.test.ts > configs fetchers > returns Err when settings decode fails 5ms
- ✓ tests/configs.unit.test.ts > configs fetchers > returns Err when settings-v1 decode fails 6ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fetches minting data successfully 5ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fails minting data fetch when datum is missing 4ms
- ✓ tests/configs.unit.test.ts > configs fetchers > returns Err when minting data decode fails 4ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fetches handle price info successfully 8ms
- ✓ tests/configs.unit.test.ts > configs fetchers > fails handle price fetch when datum is missing 5ms
- ✓ tests/configs.unit.test.ts > configs fetchers > returns Err when handle price decode fails 5ms
- ✓ tests/txs.unit.test.ts > txs/deploy > covers deploy contract variants and default validation 55ms
- ✓ tests/txs.unit.test.ts > txs/deploy > fetches all deployed scripts and handles failures 6ms
- ✓ tests/txs.unit.test.ts > txs/order > covers request happy path and error branches 15ms
- ✓ tests/txs.unit.test.ts > txs/order > covers cancel flow, fetchOrdersTxInputs, and order validation 6ms
- ✓ tests/txs.unit.test.ts > txs/staking > registers staking address and returns tx cbor 6ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds and decodes credential/address data 3ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds and decodes datum variants 0ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds void/redeemer/bool helper data 1ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds and decodes settings and settings-v1 1ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds and decodes handle price / minting data / order data 1ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds sub-handle and mpt proof helper data 0ms
- ✓ tests/contracts-data.unit.test.ts > contracts data encoders/decoders > builds contract parameter helper values and datums 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > converts errors and wraps sync failures 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > wraps async failures and successes 0ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > supports invariant variants 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > loads env and reads typed env values 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers handle price helpers and parsing helpers 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers bigint helpers 0ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers handle price type conversions 0ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > parses MPT proof JSON and validates error branches 1ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > fetches network params, account registration status, and always-fail uplc program 39ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers API helper request header composition 5ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > covers blockfrost network/client helpers 2ms
- ✓ tests/helpers-utils.unit.test.ts > helpers and utils > builds and decodes settings-v1 data round-trip 3ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
-1 Handles are ordered
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22mcontains[32m 2[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22minsert keeps canonical sorted order[32m 0[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22minsert is order-independent (canonical)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22minsert duplicate throws[32m 1[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22mremove[32m 0[2mms[22m[39m
+ [32m✓[39m tests/labelSet.test.ts[2m > [22mlabelSet (matches on-chain label_set.ak)[2m > [22mapply couples to mint(+1)/burn(-1)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/store.unit.test.ts[2m > [22mstore helpers (in-memory, API-sourced — no disk)[2m > [22mbuilds the trie from a handle list and mutates/proves in memory[32m 64[2mms[22m[39m
+ [32m✓[39m tests/store.unit.test.ts[2m > [22mstore helpers (in-memory, API-sourced — no disk)[2m > [22msource has NO disk-backed Store or fs coupling (API-only law guard)[32m 1[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips uint direct value[32m 2[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips uint 1-byte encoding[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips uint 2/4/8-byte encodings[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips definite byte string[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips definite text string[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips definite-length array[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips definite-length map[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips indefinite-length array[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mskips tag[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mskipCborItem[2m > [22mthrows on reserved additional info[32m 1[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mlocateWitnessSet[2m > [22mlocates empty body + empty ws[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mspliceVkeysIntoWitnessSet[2m > [22mreturns sig-only when ws is empty[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mspliceVkeysIntoWitnessSet[2m > [22mdrops the stale key=0 entry from the original ws[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mspliceVkeysIntoWitnessSet[2m > [22mpreserves non-vkey entries byte-for-byte[32m 0[2mms[22m[39m
+ [32m✓[39m tests/cborSplice.test.ts[2m > [22mmergeVkeysIntoTxCbor[2m > [22mmerges vkeys into a full tx CBOR while preserving other bytes[32m 0[2mms[22m[39m
+ [32m✓[39m tests/registryValue.test.ts[2m > [22mregistryValue.encode (byte-identical to on-chain registry_value.encode)[2m > [22mempty -> empty value[32m 4[2mms[22m[39m
+ [32m✓[39m tests/registryValue.test.ts[2m > [22mregistryValue.encode (byte-identical to on-chain registry_value.encode)[2m > [22mlabels -> the label set itself (identity)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/registryValue.test.ts[2m > [22mregistryValue.encode (byte-identical to on-chain registry_value.encode)[2m > [22mnormalizes to lowercase[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentState.test.ts[2m > [22mdecentralized minting deployment state[2m > [22mloads preview, preprod, and mainnet desired-state YAML fixtures[32m 18[2mms[22m[39m
+ [32m✓[39m tests/deploymentState.test.ts[2m > [22mdecentralized minting deployment state[2m > [22mrejects observed-only fields in desired-state YAML[32m 2[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mAPI-sourced label-aware trie helpers[2m > [22mpreserves labeled and unlabeled handle values in a real in-memory trie[32m 21[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mAPI-sourced label-aware trie helpers[2m > [22mpreserves labels when filling the trie incrementally[32m 9[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mAPI-sourced label-aware trie helpers[2m > [22mrejects a duplicate handle and retains the original root and value[32m 10[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'names-only v3 input' before constructing or inserting[32m 4[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'repeated handle name' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'missing labels' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'null labels' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'numeric labels' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'odd hex width' before constructing or inserting[32m 4[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'incomplete second label' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'non-hex bytes' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'hex prefix' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'unsorted labels' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'duplicate labels' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'missing name' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'empty name' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'null entry' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'sparse input' before constructing or inserting[32m 4[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mrejects 'non-array input' before constructing or inserting[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mvalidates the entire batch before mutating the trie[32m 3[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22mnormalizes uppercase hex without changing the canonical bytes or root[32m 8[2mms[22m[39m
+ [32m✓[39m tests/storeLabels.test.ts[2m > [22mregistry entry validation[2m > [22maccepts future four-byte labels allowed by the on-chain label set[32m 1[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mDiscountClaim constructor indices match discount.ak[2m > [22mRarityClaim = 0[32m 3[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mDiscountClaim constructor indices match discount.ak[2m > [22mOgClaim = 1[32m 0[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mDiscountClaim constructor indices match discount.ak[2m > [22mPartnerClaim = 2[32m 0[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mDiscountClaim constructor indices match discount.ak[2m > [22mHalClaim = 3[32m 0[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mdecodeDiscountClaimInfo round-trips the identity[2m > [22mrarity / og / hal[32m 1[2mms[22m[39m
+ [32m✓[39m tests/discountClaim.test.ts[2m > [22mdecodeDiscountClaimInfo round-trips the identity[2m > [22mpartner (policy + asset name, proof omitted)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/projectedLedger.test.ts[2m > [22mprojected ledger[2m > [22mpending txs remove the inputs they spend and add their outputs at the queried address[32m 25[2mms[22m[39m
+ [32m✓[39m tests/projectedLedger.test.ts[2m > [22mprojected ledger[2m > [22mwithout a projection the chain view is returned unchanged (negative control)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/projectedLedger.test.ts[2m > [22mprojected ledger[2m > [22ma later pending tx that spends an earlier one's output removes it (chaining)[32m 6[2mms[22m[39m
+ [32m✓[39m tests/computeScriptDataHash.test.ts[2m > [22mcomputeScriptDataHash[2m > [22mreturns undefined when no redeemers and no datums[32m 2[2mms[22m[39m
+ [32m✓[39m tests/computeScriptDataHash.test.ts[2m > [22mcomputeScriptDataHash[2m > [22mreturns a 32-byte blake2b hash (hex) when redeemers are present[32m 2[2mms[22m[39m
+ [32m✓[39m tests/computeScriptDataHash.test.ts[2m > [22mcomputeScriptDataHash[2m > [22mis deterministic for the same inputs[32m 1[2mms[22m[39m
+ [32m✓[39m tests/computeScriptDataHash.test.ts[2m > [22mcomputeScriptDataHash[2m > [22mdiffers from upstream Alonzo-array-style hash[32m 1[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mMintDeMiHandles = 0[32m 3[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mMintLegacyHandles = 1[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mUpdateMPT = 2[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mBurnLegacyHandles = 3 (WS2)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mMintLabelAssets = 4 (WS1)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mBurnDeMiHandles = 5 (DeMi burn)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mMintingDataRedeemer constructor indices match on-chain ABI[2m > [22mBurnLabeledRoots = 6 (labeled root teardown)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mLabeledRootBurnProof encoding (matches LabeledRootBurnProof field order)[2m > [22mencodes constr 0 [ mpt_proof, handle_name, labels ][32m 1[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mLabeledRootBurnProof encoding (matches LabeledRootBurnProof field order)[2m > [22mrefuses an empty or partial label set (unlabeled roots use BurnLegacyHandles)[32m 1[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mOrderProof encoding (matches OrderProof field order)[2m > [22morder encodes constr 0 [ mpt_proof ][32m 0[2mms[22m[39m
+ [32m✓[39m tests/mintingDataRedeemers.test.ts[2m > [22mBurnProof encoding (matches BurnProof field order)[2m > [22mnft/root burn (no root_absence) = constr 0 [proof, name, is_virtual, None][32m 0[2mms[22m[39m
+ [32m✓[39m tests/orderProofs.test.ts[2m > [22mbuildOrderProofs (mirrors all_orders_are_satisfied trie maintenance)[2m > [22morder: inserts the handle key with empty value[32m 8[2mms[22m[39m
+ [32m✓[39m tests/orderProofs.test.ts[2m > [22mbuildOrderProofs (mirrors all_orders_are_satisfied trie maintenance)[2m > [22mprocesses multiple orders in sequence, advancing the trie for each[32m 12[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mapplyParamsToScript (scalus)[2m > [22mmatches the pinned V2 hash for the (frozen) mint proxy with an int param[32m 15[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mapplyParamsToScript (scalus)[2m > [22mmatches the pinned V3 hash for mint v1 withdraw with a bytes param[32m 4[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mapplyParamsToScript (scalus)[2m > [22mmatches the pinned V3 hash for minting data spend with its 5 params (2 bytes + 3 ints)[32m 97[2mms[22m[39m
+ [32m✓[39m tests/burnProofs.test.ts[2m > [22mbuildBurnProofs (mirrors all_burn_proofs_are_valid trie maintenance)[2m > [22mnft/root burn: deletes the key; BurnProof carries handle_name + is_virtual[32m 17[2mms[22m[39m
+ [32m✓[39m tests/burnProofs.test.ts[2m > [22mbuildBurnProofs (mirrors all_burn_proofs_are_valid trie maintenance)[2m > [22mvirtual burn sets is_virtual=1[32m 1[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mplutusV3ScriptHash vs plutusV2ScriptHash (Plutus version-tag bug)[2m > [22mhashing the V3 persprx as V2 reproduces the phantom fd517730 (the bug)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mplutusV3ScriptHash vs plutusV2ScriptHash (Plutus version-tag bug)[2m > [22mhashing the V3 persprx as V3 gives the real on-chain 7cf10558 (the fix)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/scriptParams.test.ts[2m > [22mplutusV3ScriptHash vs plutusV2ScriptHash (Plutus version-tag bug)[2m > [22mV2 and V3 hashes of the same cbor differ[32m 1[2mms[22m[39m
+ [32m✓[39m tests/staking.test.ts[2m > [22mregisterStakingAddress[2m > [22mreserves the stake-key deposit during coin selection[32m 19[2mms[22m[39m
+ [32m✓[39m tests/staking.test.ts[2m > [22mregisterStakingAddress[2m > [22mregisters a script reward account with a script credential, and a key account with a key credential[32m 6[2mms[22m[39m
+ [32m✓[39m tests/deployTargets.test.ts[2m > [22mtestnet deploy targets match the committed blueprint[2m > [22mpreview: minting_data_script_hash and mint_governor are derived from the blueprint[32m 295[2mms[22m[39m
+ [32m✓[39m tests/mptMigrationRoot.test.ts[2m > [22mMPT root migration[2m > [22maccepts a recomputed root equal to the on-chain root[32m 3[2mms[22m[39m
+ [32m✓[39m tests/mptMigrationRoot.test.ts[2m > [22mMPT root migration[2m > [22mrefuses a recomputed root that differs from the on-chain root (API behind the chain)[32m 0[2mms[22m[39m
+ [32m✓[39m tests/mptMigrationRoot.test.ts[2m > [22mMPT root migration[2m > [22mrefuses when the root UTxO carries no datum[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mhandle pricing by length[2m > [22mprices each length tier from the on-chain price info (2 / 3 / 4-7 / 8-15 / 16+)[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mhandle pricing by length[2m > [22mprices each length tier from human-readable ADA prices[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mhandle pricing by length[2m > [22mrefuses to price a handle shorter than 2 characters[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mhandle pricing by length[2m > [22mconverts ADA prices to lovelace price data and back without swapping tiers[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22msub handle tier pricing[2m > [22muses the price of the highest tier whose minimum length the sub handle reaches[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22msub handle tier pricing[2m > [22mis free below the first tier and with no tiers[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mparseHandle[2m > [22msplits a sub handle at the first @[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mparseHandle[2m > [22mreports a root handle as not a sub handle[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mbigint min/max[2m > [22mreturns the extreme value, including negatives[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mbigint min/max[2m > [22mthrows with no values[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22merror helpers[2m > [22mconvertError renders every thrown shape as a readable string[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22merror helpers[2m > [22mmayFail returns Ok for a value and Err (with the handler called) for a throw[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22merror helpers[2m > [22mmayFailAsync calls only the last attached handler, and only on failure[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22merror helpers[2m > [22mBuildTxError.from keeps the original message, stack and cause with the failed tx[32m 3[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mmaps legacy script types to api slugs and accepts the flat response shape[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mpicks the latest entry of the exact slug from the address-keyed shape[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mfalls back to any entry of the slug when none is marked latest, and passes unknown types through[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mfails loud when nothing is deployed[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mresolves by the settings-pinned hash (case-insensitive), not by api latest[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22maccepts a flat response only when its hash is the pinned one[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22mdeployed script discovery[2m > [22mfails loud when the pinned hash is not deployed[32m 0[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22morder datum encoding[2m > [22mround-trips a base-address order with a discount claim and the virtual flag[32m 5[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22morder datum encoding[2m > [22mround-trips a script enterprise address with no claim, defaulting to a root mint[32m 1[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22morder datum encoding[2m > [22mdecodes the address for the requested network and rejects a missing or malformed datum[32m 2[2mms[22m[39m
+ [32m✓[39m tests/pureHelpers.test.ts[2m > [22morder datum encoding[2m > [22mencodes the order redeemers as Execute=0, Cancel=1, Refund=2[32m 0[2mms[22m[39m
+ [32m✓[39m tests/adminFunding.test.ts[2m > [22madmin funding prep tx[2m > [22mADA held under tokens is not spendable: the wallet gets the full target as one clean UTxO[32m 39[2mms[22m[39m
+ [32m✓[39m tests/adminFunding.test.ts[2m > [22madmin funding prep tx[2m > [22menough ADA-only balance needs no prep tx[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mderives expected script hashes from buildContracts output[32m 2[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mfetches live scripts for each desired contract (address-keyed api shape + old-slug fallback)[32m 10[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mdecodes the live settings handles into comparable YAML-shaped values[32m 8[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mignores the configured minting-data root while still tracking real drift[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mdiscoverNextContractSubhandles delegates to the canonical Python helper[32m 39[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mbuilds raw CBOR bytes and a matching hex artifact for the unsigned deployment tx[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mrejects unsigned deployment tx artifacts that would exceed max tx size after signing[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mcomputes MPT root hash from the API handle set[32m 10[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mcomputes a root for handles named like Object prototype properties[32m 2[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mrejects malformed owned registry-label values instead of computing a corrupt root[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mfetches old validator CBOR from Handle API script endpoint[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22mdecentralized minting deployment plan[2m > [22mrenders transaction order markdown from generated artifacts[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22massertPzScriptAddressIsCurrentProxy[2m > [22maccepts the current persprx address[32m 1[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22massertPzScriptAddressIsCurrentProxy[2m > [22mrefuses any other address[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deploymentPlan.test.ts[2m > [22massertPzScriptAddressIsCurrentProxy[2m > [22mrefuses when the registry has no single current proxy[32m 0[2mms[22m[39m
+ [32m✓[39m tests/deployTargets.test.ts[2m > [22mtestnet deploy targets match the committed blueprint[2m > [22mpreprod: minting_data_script_hash and mint_governor are derived from the blueprint[32m 175[2mms[22m[39m
 
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
-[1m[32mmem: 1236951 (8.835 %), cpu: 394990330 (3.950 %)[39m[22m
+[2m Test Files [22m [1m[32m19 passed[39m[22m[90m (19)[39m
+[2m      Tests [22m [1m[32m133 passed[39m[22m[90m (133)[39m
+[2m   Start at [22m 08:28:26
+[2m   Duration [22m 1.37s[2m (transform 1.85s, setup 0ms, import 9.30s, tests 1.06s, environment 2ms)[22m
 
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1>
-ba8f..[56 digits]..a017 #5f4e60fabb42 { demi-1 →  }
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_1 orders new handle - <demi-1> 10ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handle - <demi-1> 103ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
-2 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
-[1m[32mmem: 1890609 (13.504 %), cpu: 599320836 (5.993 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #fef7babbfd6e55e1282c21510ee44cffcacd9e11932b8c60a4847ad04b386ef3 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ a #885c50f94a44
- ├─ b #ed37babdfaae
- └─ c #4a94e8a3ee1c
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_3 orders new handle - <demi-3> 9ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders new handle - <demi-2> 8ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles - <demi-2, demi-3> 105ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2>
-[1m[32mmem: 696709 (4.976 %), cpu: 207895898 (2.079 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #887366cb90196b27ce48a9e5b62b2fdcea4889b6797fa370bea5ab359fd2200b ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- └─ c #4a94e8a3ee1c
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
-2 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
-[1m[32mmem: 1829329 (13.067 %), cpu: 575897715 (5.759 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <legacy-1, legacy-2> 59ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders new handle - <demi-4> 8ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_3 orders new handle - <demi-5> 8ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint new handles after minting legacy handles - <demi-4, demi-5> 94ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4>
-1 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop>
-1 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 orders new sub handle which is not supported - <demi-6@user_4> 8ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is sub handle - <demi-6@user_4> 64ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 cancel his order, because sub handle is not supported - <demi-6@user_4> 18ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 orders new handle, but handle is too long - <abcdefghijklmnop> 7ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint new handle, because that is too long - <abcdefghijklmnop> 59ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #3b5891fdfe2a7a689ba3b1465c4cbf516f90b232a020c5b11b405da6b89127f6 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 0 #5e1e289632c7
- ├─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c75907d0f1096c53ca4e908b22d8d29260a00981c3bcc71ca9fe3d8904a7781c ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #4a94e8a3ee1c
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1>
-[1m[32mmem: 484898 (3.464 %), cpu: 147810095 (1.478 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #21e4be1f4bdeddc253e0e19ddbeb5f7f8f0abe250392645477b10f54344b2513 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_4 cancel his order, because handle is too long - <abcdefghijklmnop> 18ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy handles if minting value is not correct - <legacy-3, legacy-4> 47ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy sub handle - <legacy-1@user_1> 47ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1>
-[1m[32mmem: 393651 (2.812 %), cpu: 118804920 (1.188 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ 9 #9236b7f23e87
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if sub handle is too long - <abcdefghijklmnopqrstuv@user_1>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ 9 #9236b7f23e87
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy virtual sub handle - <legacy-virtual-1@user_1> 42ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if sub handle is too long - <abcdefghijklmnopqrstuv@user_1> 35ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if root handle is too long - <legacy-1@abcdefghijklmnop>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ 9 #9236b7f23e87
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy virtual sub handle, if minted value is not correct (must be prefix_000) - <legacy-virtual-2@user_1
-╔═══════════════════════════════════════════════════════════════════╗
-║ #2b7dfa7e84bd137010d02345917a57e84d42d50f63c8ebe62df71f7dad028cfb ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 2 #25df85ec549d
- ├─ 3 #8fa2b8c1c29a
- ├─ 9 #9236b7f23e87
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #519ecc45a5da
- └─ e #fb2b7e1d1a87
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy sub handle, if root handle is too long - <legacy-1@abcdefghijklmnop> 48ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > can not mint legacy virtual sub handle, if minted value is not correct (must be prefix_000) - <legacy-virtual-2@user_1 44ms
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > user_2 orders many handle - <12 random handles> 91ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
-12 Handles are ordered
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
-[1m[32mmem: 9175684 (65.541 %), cpu: 2813317502 (28.133 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #09aa21ae9e8a870c4ce4f0f200422a37252b5093c888885fe5eafc58163fbb63 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 0 #946c3fb74cb5
- ├─ 1 #20c25627371d
- ├─ 2 #2796f86713aa
- ├─ 3 #8fa2b8c1c29a
- ├─ 5 #4027d2310f50
- ├─ 7 #579cc789c5b4
- ├─ 8 #bf96b554faee
- ├─ 9 #1fa8a9e73714
- ├─ a #885c50f94a44
- ├─ b #711f16b2746f
- ├─ c #cecc5a61cbc7
- └─ e #68f56ab0a75b
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint many handles - <12 random handles> 309ms
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles>
-[1m[32mmem: 9803581 (70.026 %), cpu: 2786127575 (27.861 %)[39m[22m
-
-stdout | tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles>
-╔═══════════════════════════════════════════════════════════════════╗
-║ #c2dbdf32283b09c6e156cba965e01d58fb4ed16d0edf89ff27236672cf73a257 ║
-╚═══════════════════════════════════════════════════════════════════╝
- ┌─ 0 #0b38223fe9bb
- ├─ 1 #20c25627371d
- ├─ 2 #eac5bd402845
- ├─ 3 #c10a55ddc5c8
- ├─ 4 #851769703846
- ├─ 5 #8ef6093c4440
- ├─ 6 #5f321b10e0b6
- ├─ 7 #579cc789c5b4
- ├─ 8 #bf96b554faee
- ├─ 9 #1fa8a9e73714
- ├─ a #885c50f94a44
- ├─ b #aa877b6a96a5
- ├─ c #cecc5a61cbc7
- ├─ d #92f478ae5727
- ├─ e #3e9fd416cfab
- └─ f #34f5cf245a4d
-
- ✓ tests/mint.test.ts > Koralab Decentralized Minting Tests > mint legacy handles - <20 random handles> 336ms
-
- Test Files  6 passed (6)
-      Tests  59 passed (59)
-   Start at  10:40:33
-   Duration  4.27s (transform 460ms, setup 0ms, collect 3.15s, tests 1.83s, environment 1ms, prepare 430ms)
-
- % Coverage report from v8
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
 
 =============================== Coverage summary ===============================
-Statements   : 98.14% ( 2797/2850 )
-Branches     : 91.96% ( 309/336 )
-Functions    : 96.36% ( 106/110 )
-Lines        : 98.14% ( 2797/2850 )
+Statements   : 56.8% ( 1211/2132 )
+Branches     : 47.23% ( 538/1139 )
+Functions    : 62.5% ( 225/360 )
+Lines        : 57.76% ( 1138/1970 )
 ================================================================================
 
 === RAW_OUTPUT_AIKEN_CHECK ===
 
-> @koralabs/handles-decentralized-minting@1.1.4 test:aiken
+> @koralabs/handles-decentralized-minting@4.0.0 test:aiken
 > cd smart-contract &&  aiken check
 
-    Compiling kora/handle-mint 0.0.0 (/home/jesse/src/koralabs/decentralized-minting/smart-contract)
-    Compiling aiken-lang/stdlib 1.9.0 (/home/jesse/src/koralabs/decentralized-minting/smart-contract/build/packages/aiken-lang-stdlib)
-    Compiling aiken-lang/fuzz 1.0.0 (/home/jesse/src/koralabs/decentralized-minting/smart-contract/build/packages/aiken-lang-fuzz)
-[31m        Error aiken::parser[0m
-
-  [31m×[0m While parsing files...
-[31m  ╰─▶ [0mI found an unexpected token '"once"'.
-[31m      [0m
-     ╭─[[36;1;4m/home/jesse/src/koralabs/decentralized-minting/smart-contract/build/packages/aiken-lang-fuzz/lib/aiken/fuzz.test.ak[0m:159:1]
- [2m159[0m │ 
- [2m160[0m │ test prop_int_between_boundary_up(n via int_between(0, 2)) fail once {
-     · [35;1m                                                                ────[0m
- [2m161[0m │   n < 2
-     ╰────
-[36m  help: [0mTry removing it!
-
-      Summary 1 error, 0 warnings
+    Compiling kora/handle-mint 0.0.0 (.)
+    Resolving kora/handle-mint
+      Fetched 4 packages in 2.80s from cache
+    Compiling aiken-lang/stdlib v2 (./build/packages/aiken-lang-stdlib)
+    Compiling aiken-lang/fuzz v2 (./build/packages/aiken-lang-fuzz)
+    Compiling aiken-lang/merkle-patricia-forestry 2.1.0 (./build/packages/aiken-lang-merkle-patricia-forestry)
+    Compiling SundaeSwap-finance/aicone 769a33046ccd08a4950e8d647f3b0c1fbc01a941 (./build/packages/SundaeSwap-finance-aicone)
+   Collecting all tests scenarios across all modules
+      Testing ...
+{
+  "seed": 1238694898,
+  "summary": {
+    "total": 215,
+    "passed": 215,
+    "failed": 0,
+    "kind": {
+      "unit": 215,
+      "property": 0
+    }
+  },
+  "modules": [
+    {
+      "name": "common/handle",
+      "summary": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "kind": {
+          "unit": 3,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "charset_accepts_lowercase_digits_specials",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 108749,
+            "cpu": 27706254
+          }
+        },
+        {
+          "title": "charset_rejects_uppercase",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 71763,
+            "cpu": 18359399
+          }
+        },
+        {
+          "title": "charset_rejects_at_and_other_specials",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 78788,
+            "cpu": 20024388
+          }
+        }
+      ]
+    },
+    {
+      "name": "tests/common/handle.test",
+      "summary": {
+        "total": 7,
+        "passed": 7,
+        "failed": 0,
+        "kind": {
+          "unit": 7,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "parse_handle_name_0",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 18841,
+            "cpu": 5923908
+          }
+        },
+        {
+          "title": "parse_handle_name_1",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 44117,
+            "cpu": 13596819
+          }
+        },
+        {
+          "title": "parse_handle_name_2",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 20428,
+            "cpu": 7333962
+          }
+        },
+        {
+          "title": "parse_handle_name_3",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 33287,
+            "cpu": 10780884
+          }
+        },
+        {
+          "title": "parse_handle_name_4",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 33287,
+            "cpu": 10780884
+          }
+        },
+        {
+          "title": "parse_handle_name_5",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 8011,
+            "cpu": 3107973
+          }
+        },
+        {
+          "title": "parse_handle_name_6",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 40753,
+            "cpu": 11620690
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect index_of_at_symbol(root_handle_name) == None"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/common/utils.test",
+      "summary": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "kind": {
+          "unit": 5,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "parse_bool_from_int_0",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 2202,
+            "cpu": 488198
+          }
+        },
+        {
+          "title": "parse_bool_from_int_1",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 2402,
+            "cpu": 520198
+          }
+        },
+        {
+          "title": "parse_bool_from_int_negative",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 134,
+            "cpu": 211696
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "Invalid bool value"
+          ]
+        },
+        {
+          "title": "parse_bool_from_int_2",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 134,
+            "cpu": 211696
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "Invalid bool value"
+          ]
+        },
+        {
+          "title": "parse_bool_from_int_large",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 134,
+            "cpu": 211696
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "Invalid bool value"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/decentralized_minting/discount.test",
+      "summary": {
+        "total": 13,
+        "passed": 13,
+        "failed": 0,
+        "kind": {
+          "unit": 13,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "bps_partner",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 5295,
+            "cpu": 1417772
+          }
+        },
+        {
+          "title": "bps_hal",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 6629,
+            "cpu": 1835817
+          }
+        },
+        {
+          "title": "bps_og",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 7963,
+            "cpu": 2253862
+          }
+        },
+        {
+          "title": "bps_legendary_zero_today",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 9297,
+            "cpu": 2671907
+          }
+        },
+        {
+          "title": "bps_ultra_rare",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10631,
+            "cpu": 3089952
+          }
+        },
+        {
+          "title": "bps_rare",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10863,
+            "cpu": 3203615
+          }
+        },
+        {
+          "title": "apply_50_percent",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 2803,
+            "cpu": 636531
+          }
+        },
+        {
+          "title": "apply_75_percent",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 2803,
+            "cpu": 636531
+          }
+        },
+        {
+          "title": "apply_zero_is_full_price",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 3606,
+            "cpu": 997669
+          }
+        },
+        {
+          "title": "apply_full_is_free",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 2803,
+            "cpu": 636531
+          }
+        },
+        {
+          "title": "apply_floor_division",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 2803,
+            "cpu": 636531
+          }
+        },
+        {
+          "title": "apply_negative_bps_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 133,
+            "cpu": 135647
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect bps >= 0"
+          ]
+        },
+        {
+          "title": "apply_over_100_percent_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 134,
+            "cpu": 211696
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect bps <= 10000"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/decentralized_minting/discounts.test",
+      "summary": {
+        "total": 14,
+        "passed": 14,
+        "failed": 0,
+        "kind": {
+          "unit": 14,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "same_payment_credential_matches",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 17998,
+            "cpu": 6091409
+          }
+        },
+        {
+          "title": "same_stake_credential_matches",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 30427,
+            "cpu": 11846116
+          }
+        },
+        {
+          "title": "no_shared_credential",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 31028,
+            "cpu": 12018165
+          }
+        },
+        {
+          "title": "both_no_stake_not_a_match",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 21729,
+            "cpu": 7395714
+          }
+        },
+        {
+          "title": "payment_credential_kind_differs",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 11713,
+            "cpu": 4740842
+          }
+        },
+        {
+          "title": "ultra_rare_is_two",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 3924,
+            "cpu": 909064
+          }
+        },
+        {
+          "title": "rare_is_three",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 3924,
+            "cpu": 909064
+          }
+        },
+        {
+          "title": "rarity_discount_one_two_or_three",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 15110,
+            "cpu": 3890536
+          }
+        },
+        {
+          "title": "legendary_is_one",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 3924,
+            "cpu": 909064
+          }
+        },
+        {
+          "title": "og_number_positive_is_og",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 41927,
+            "cpu": 11929559
+          }
+        },
+        {
+          "title": "og_number_zero_not_og",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 21832,
+            "cpu": 6123555
+          }
+        },
+        {
+          "title": "missing_og_number_not_og",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 15113,
+            "cpu": 4034193
+          }
+        },
+        {
+          "title": "partner_policy_in_allowlist_root",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 32907,
+            "cpu": 8800040
+          }
+        },
+        {
+          "title": "partner_policy_not_in_allowlist_root",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 33408,
+            "cpu": 8956089
+          }
+        }
+      ]
+    },
+    {
+      "name": "tests/decentralized_minting/handle_policies.test",
+      "summary": {
+        "total": 23,
+        "passed": 23,
+        "failed": 0,
+        "kind": {
+          "unit": 23,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "open_window_always_allows",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 21357,
+            "cpu": 5678837
+          }
+        },
+        {
+          "title": "before_first_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 8125,
+            "cpu": 2189509
+          }
+        },
+        {
+          "title": "at_first_allowed",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10930,
+            "cpu": 2922571
+          }
+        },
+        {
+          "title": "before_sunset_allowed",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10930,
+            "cpu": 2922571
+          }
+        },
+        {
+          "title": "at_sunset_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 11431,
+            "cpu": 3078620
+          }
+        },
+        {
+          "title": "after_sunset_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 11431,
+            "cpu": 3078620
+          }
+        },
+        {
+          "title": "new_policy_inside_window",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10930,
+            "cpu": 2921118
+          }
+        },
+        {
+          "title": "new_policy_after_last_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10329,
+            "cpu": 2781281
+          }
+        },
+        {
+          "title": "new_policy_at_last_allowed",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10930,
+            "cpu": 2921118
+          }
+        },
+        {
+          "title": "finite_upper_bound",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 11708,
+            "cpu": 4612302
+          }
+        },
+        {
+          "title": "infinite_upper_bound",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10348,
+            "cpu": 3939664
+          }
+        },
+        {
+          "title": "mint_allowed_finite_inside",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 24827,
+            "cpu": 7524696
+          }
+        },
+        {
+          "title": "mint_rejected_finite_at_sunset",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 25328,
+            "cpu": 7680745
+          }
+        },
+        {
+          "title": "mint_open_window_unbounded_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 17338,
+            "cpu": 5208462
+          }
+        },
+        {
+          "title": "mint_bounded_window_unbounded_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 15176,
+            "cpu": 4511337
+          }
+        },
+        {
+          "title": "find_legacy_window",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 58725,
+            "cpu": 17793001
+          }
+        },
+        {
+          "title": "find_policy_2_window",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 62387,
+            "cpu": 18918544
+          }
+        },
+        {
+          "title": "find_unknown_policy_is_none",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 58175,
+            "cpu": 16754002
+          }
+        },
+        {
+          "title": "slot_at_anchor",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 200,
+            "cpu": 16100
+          }
+        },
+        {
+          "title": "slot_one_after_anchor",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 200,
+            "cpu": 16100
+          }
+        },
+        {
+          "title": "window_to_posix_converts_set_keeps_unset",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 18779,
+            "cpu": 7014964
+          }
+        },
+        {
+          "title": "posix_gate_before_sunset_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 39477,
+            "cpu": 12259874
+          }
+        },
+        {
+          "title": "posix_gate_after_sunset_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 40078,
+            "cpu": 12431923
+          }
+        }
+      ]
+    },
+    {
+      "name": "tests/decentralized_minting/handle_price.test",
+      "summary": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "kind": {
+          "unit": 2,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "get_handle_price_0",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 132782,
+            "cpu": 36755495
+          }
+        },
+        {
+          "title": "get_handle_price_1",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 42131,
+            "cpu": 11589631
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect has_valid_handle_price_asset"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/decentralized_minting/label_set.test",
+      "summary": {
+        "total": 18,
+        "passed": 18,
+        "failed": 0,
+        "kind": {
+          "unit": 18,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "contains_empty_is_false",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 3313,
+            "cpu": 738631
+          }
+        },
+        {
+          "title": "contains_present",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 9052,
+            "cpu": 2120946
+          }
+        },
+        {
+          "title": "contains_absent",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 12581,
+            "cpu": 3051253
+          }
+        },
+        {
+          "title": "insert_into_empty",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 4714,
+            "cpu": 992167
+          }
+        },
+        {
+          "title": "insert_appends_in_order",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 14120,
+            "cpu": 3430193
+          }
+        },
+        {
+          "title": "insert_prepends_smaller",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 8888,
+            "cpu": 2069968
+          }
+        },
+        {
+          "title": "insert_middle",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 37459,
+            "cpu": 9174419
+          }
+        },
+        {
+          "title": "insert_order_independent",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 59581,
+            "cpu": 14530536
+          }
+        },
+        {
+          "title": "insert_duplicate_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 221,
+            "cpu": 940551
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "LABEL_ALREADY_PRESENT"
+          ]
+        },
+        {
+          "title": "remove_only",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 8737,
+            "cpu": 1978045
+          }
+        },
+        {
+          "title": "remove_head",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 8737,
+            "cpu": 1978045
+          }
+        },
+        {
+          "title": "remove_tail",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 15174,
+            "cpu": 3499751
+          }
+        },
+        {
+          "title": "remove_absent_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 181,
+            "cpu": 858538
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect !bytearray.is_empty(set)"
+          ]
+        },
+        {
+          "title": "remove_from_empty_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 146,
+            "cpu": 362178
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect !bytearray.is_empty(set)"
+          ]
+        },
+        {
+          "title": "apply_add",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 16921,
+            "cpu": 3954242
+          }
+        },
+        {
+          "title": "apply_remove",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 18176,
+            "cpu": 4131849
+          }
+        },
+        {
+          "title": "apply_add_then_remove_roundtrip",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 19478,
+            "cpu": 4450588
+          }
+        },
+        {
+          "title": "apply_invalid_amount_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 134,
+            "cpu": 211696
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "INVALID_AMOUNT"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/decentralized_minting/registry_value.test",
+      "summary": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "kind": {
+          "unit": 3,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "encode_empty_is_empty",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 200,
+            "cpu": 16100
+          }
+        },
+        {
+          "title": "encode_is_pure_labels",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 200,
+            "cpu": 16100
+          }
+        },
+        {
+          "title": "encode_is_identity",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 200,
+            "cpu": 16100
+          }
+        }
+      ]
+    },
+    {
+      "name": "tests/decentralized_minting/sub_handle.test",
+      "summary": {
+        "total": 11,
+        "passed": 11,
+        "failed": 0,
+        "kind": {
+          "unit": 11,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "owner_credential_enterprise_key",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 7810,
+            "cpu": 3064735
+          }
+        },
+        {
+          "title": "owner_credential_enterprise_script",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 7810,
+            "cpu": 3064735
+          }
+        },
+        {
+          "title": "owner_credential_base_addr_payment_only",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 8221,
+            "cpu": 3131642
+          }
+        },
+        {
+          "title": "get_sub_handle_price_from_tier_pricing_0",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 11053,
+            "cpu": 2934273
+          }
+        },
+        {
+          "title": "get_sub_handle_price_from_tier_pricing_1",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 11053,
+            "cpu": 2934273
+          }
+        },
+        {
+          "title": "get_sub_handle_price_from_tier_pricing_2",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 15843,
+            "cpu": 4388803
+          }
+        },
+        {
+          "title": "get_sub_handle_price_from_tier_pricing_3",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 15843,
+            "cpu": 4388803
+          }
+        },
+        {
+          "title": "get_sub_handle_price_from_tier_pricing_4",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 18303,
+            "cpu": 5157017
+          }
+        },
+        {
+          "title": "get_sub_handle_price_from_tier_pricing_5",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 18303,
+            "cpu": 5157017
+          }
+        },
+        {
+          "title": "get_sub_handle_price_from_tier_pricing_6",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 18303,
+            "cpu": 5157017
+          }
+        },
+        {
+          "title": "get_sub_handle_price_zero_tier_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 8723,
+            "cpu": 2247957
+          }
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/discount_eligibility.test",
+      "summary": {
+        "total": 13,
+        "passed": 13,
+        "failed": 0,
+        "kind": {
+          "unit": 13,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "no_claim_is_zero",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 18611,
+            "cpu": 4172830
+          }
+        },
+        {
+          "title": "rarity_ultra_rare",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 87431,
+            "cpu": 27833807
+          }
+        },
+        {
+          "title": "rarity_legendary",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 86087,
+            "cpu": 27393662
+          }
+        },
+        {
+          "title": "rarity_rare",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 88975,
+            "cpu": 28305952
+          }
+        },
+        {
+          "title": "rarity_not_referenced_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 21066,
+            "cpu": 5464802
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "OWNER_222_NOT_REFERENCED"
+          ]
+        },
+        {
+          "title": "rarity_unshared_credential_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 64482,
+            "cpu": 23310882
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect shares_credential(holder, destination)"
+          ]
+        },
+        {
+          "title": "rarity_not_rare_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 84518,
+            "cpu": 26962328
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "RARITY_CLAIM_NOT_RARE"
+          ]
+        },
+        {
+          "title": "og_claim_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 196611,
+            "cpu": 60038461
+          }
+        },
+        {
+          "title": "og_claim_zero_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 189850,
+            "cpu": 58555826
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect is_og(ref_datum)"
+          ]
+        },
+        {
+          "title": "hal_claim_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 86964,
+            "cpu": 28196736
+          }
+        },
+        {
+          "title": "hal_wrong_policy_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 63413,
+            "cpu": 17772849
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "QUALIFYING_ASSET_NOT_REFERENCED"
+          ]
+        },
+        {
+          "title": "partner_claim_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 113376,
+            "cpu": 35702205
+          }
+        },
+        {
+          "title": "partner_not_in_root_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 104979,
+            "cpu": 34110896
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect partner_policy_in_root(partner_root, policy_id, value, proof)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/mint_v1.test",
+      "summary": {
+        "total": 4,
+        "passed": 4,
+        "failed": 0,
+        "kind": {
+          "unit": 4,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "governor_mint_requires_minting_data_spend",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 74767,
+            "cpu": 24456341
+          },
+          "traces": [
+            "Start Mint V1"
+          ]
+        },
+        {
+          "title": "governor_mint_rejects_minting_data_at_wrong_script_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 64699,
+            "cpu": 22899839
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "Start Mint V1",
+            "expect\n    minting_data_input.address.payment_credential == Script(\n      minting_data_script_hash,\n    )"
+          ]
+        },
+        {
+          "title": "governor_mint_rejects_no_minting_data_spend_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 21286,
+            "cpu": 6142799
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "Start Mint V1",
+            "expect Some(minting_data_input) = list.find(\n    inputs,\n    fn(input) {\n      value.quantity_of(\n        input.output.value,\n        minting_data_asset_policy_id,\n        minting_data_asset_name,\n      ) == 1\n    },\n  )"
+          ]
+        },
+        {
+          "title": "governor_burn_requires_minting_data_spend",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 74767,
+            "cpu": 24456341
+          },
+          "traces": [
+            "Start Burn V1"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/minting_data/burn_new.test",
+      "summary": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "kind": {
+          "unit": 6,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "burn_demi_handle_orphan_invalid_proof_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 583389,
+            "cpu": 170024819
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_demi_handles",
+            "expect\n        when root_absence is {\n          Some(root_proof) -> mpt.miss(root, root_name, root_proof)\n          None -> True\n        }"
+          ]
+        },
+        {
+          "title": "burn_demi_handle_mint_must_match_proofs_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 584430,
+            "cpu": 177743546
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_demi_handles",
+            "expect mint == expected_mint_value"
+          ]
+        },
+        {
+          "title": "burn_demi_handle_minter_signed_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 610016,
+            "cpu": 183294465
+          },
+          "traces": [
+            "can_burn_demi_handles"
+          ]
+        },
+        {
+          "title": "burn_demi_handle_unsigned_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 378711,
+            "cpu": 110399386
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_demi_handles",
+            "expect list.any(allowed_minters, fn(m) { list.has(extra_signatories, m) })"
+          ]
+        },
+        {
+          "title": "burn_demi_handle_wrong_signer_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 398971,
+            "cpu": 114446454
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_demi_handles",
+            "expect list.any(allowed_minters, fn(m) { list.has(extra_signatories, m) })"
+          ]
+        },
+        {
+          "title": "burn_demi_handle_with_live_label_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 522509,
+            "cpu": 152833276
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_demi_handles",
+            "expect including(key, value, proof) == self.root"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/minting_data/label_assets.test",
+      "summary": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "kind": {
+          "unit": 5,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "mint_label_asset_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 602375,
+            "cpu": 184566314
+          },
+          "traces": [
+            "can_mint_label_assets"
+          ]
+        },
+        {
+          "title": "mint_label_asset_without_owner_ref_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 524007,
+            "cpu": 154634064
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_mint_label_assets",
+            "OWNER_222_NOT_REFERENCED"
+          ]
+        },
+        {
+          "title": "mint_label_asset_unsigned_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 420169,
+            "cpu": 121095671
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_mint_label_assets",
+            "expect list.has(extra_signatories, allowed_minter)"
+          ]
+        },
+        {
+          "title": "burn_label_asset_under_legacy_no_owner_ref_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 554674,
+            "cpu": 170451721
+          },
+          "traces": [
+            "can_mint_label_assets"
+          ]
+        },
+        {
+          "title": "burn_label_asset_without_real_burn_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 482638,
+            "cpu": 144632110
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_mint_label_assets",
+            "LABEL_BURN_NOT_FOUND"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/minting_data/labeled_root_burn.test",
+      "summary": {
+        "total": 19,
+        "passed": 19,
+        "failed": 0,
+        "kind": {
+          "unit": 19,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "labeled_root_burn_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 711235,
+            "cpu": 212336125
+          },
+          "traces": [
+            "can_burn_labeled_roots"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_two_labels_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 812345,
+            "cpu": 240886993
+          },
+          "traces": [
+            "can_burn_labeled_roots"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_label_not_burned_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 627279,
+            "cpu": 180698660
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "LABEL_BURN_NOT_FOUND"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_hides_a_label_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 585946,
+            "cpu": 169337879
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect including(key, value, proof) == self.root"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_wrong_label_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 585946,
+            "cpu": 169337879
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect including(key, value, proof) == self.root"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_empty_labels_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 503398,
+            "cpu": 147123497
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect labels_length > 0 && labels_length % 4 == 0"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_partial_label_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 503400,
+            "cpu": 147307760
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect labels_length > 0 && labels_length % 4 == 0"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_subhandle_name_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 504548,
+            "cpu": 148219838
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect !is_sub_handle_name(handle_name)"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_extra_asset_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 753536,
+            "cpu": 224337451
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect mint == expected_mint_value"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_label_wrong_policy_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 648183,
+            "cpu": 186510599
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "LABEL_BURN_NOT_FOUND"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_root_not_advanced_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 691239,
+            "cpu": 205295251
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect\n    minting_data_output.datum == InlineDatum(\n      MintingData { mpt_root_hash: mpt.root(new_root) },\n    )"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_owner_kept_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 544352,
+            "cpu": 157734507
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "LABEL_BURN_NOT_FOUND"
+          ]
+        },
+        {
+          "title": "legacy_burn_of_labeled_root_still_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 271866,
+            "cpu": 78539282
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_legacy_handles",
+            "expect including(key, value, proof) == self.root"
+          ]
+        },
+        {
+          "title": "demi_root_burn_with_minter_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 728232,
+            "cpu": 217261855
+          },
+          "traces": [
+            "can_burn_labeled_roots"
+          ]
+        },
+        {
+          "title": "demi_root_burn_without_minter_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 566098,
+            "cpu": 165810560
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect root_policy == legacy_policy_id || minter_signed"
+          ]
+        },
+        {
+          "title": "legacy_root_with_demi_label_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 707689,
+            "cpu": 211549038
+          },
+          "traces": [
+            "can_burn_labeled_roots"
+          ]
+        },
+        {
+          "title": "demi_root_mixed_label_policies_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 812494,
+            "cpu": 241659553
+          },
+          "traces": [
+            "can_burn_labeled_roots"
+          ]
+        },
+        {
+          "title": "root_pair_split_across_policies_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 711442,
+            "cpu": 213168766
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect mint == expected_mint_value"
+          ]
+        },
+        {
+          "title": "labeled_root_burn_without_settings_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 147032,
+            "cpu": 40207977
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_labeled_roots",
+            "expect Some(settings_input) = list.find(\n    reference_inputs,\n    fn(i) {\n      value.quantity_of(\n        i.output.value,\n        settings_asset_policy_id,\n        settings_asset_name,\n      ) == 1\n    },\n  )"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/minting_data/legacy_mint.test",
+      "summary": {
+        "total": 14,
+        "passed": 14,
+        "failed": 0,
+        "kind": {
+          "unit": 14,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "legacy_root_mint_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 485206,
+            "cpu": 148949295
+          },
+          "traces": [
+            "can_mint_legacy_handles"
+          ]
+        },
+        {
+          "title": "legacy_root_mint_wrong_output_root_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 462594,
+            "cpu": 139892732
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_mint_legacy_handles",
+            "expect\n    minting_data_output.datum == InlineDatum(\n      MintingData { mpt_root_hash: new_mpt_root_hash },\n    )"
+          ]
+        },
+        {
+          "title": "legacy_root_mint_unbacked_mint_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 482938,
+            "cpu": 148640793
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_mint_legacy_handles",
+            "expect mint == expected_mint_value"
+          ]
+        },
+        {
+          "title": "legacy_root_burn_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 312151,
+            "cpu": 96747480
+          },
+          "traces": [
+            "can_burn_legacy_handles"
+          ]
+        },
+        {
+          "title": "cip25_burn_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 334243,
+            "cpu": 101929863
+          },
+          "traces": [
+            "can_burn_legacy_handles"
+          ]
+        },
+        {
+          "title": "cip25_burn_wrong_asset_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 330175,
+            "cpu": 101333361
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_legacy_handles",
+            "expect mint == expected_mint_value"
+          ]
+        },
+        {
+          "title": "cip25_burn_extra_asset_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 351370,
+            "cpu": 107806866
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_legacy_handles",
+            "expect mint == expected_mint_value"
+          ]
+        },
+        {
+          "title": "cip25_burn_key_absent_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 268013,
+            "cpu": 76475047
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_legacy_handles",
+            "expect including(key, value, proof) == self.root"
+          ]
+        },
+        {
+          "title": "cip25_burn_wrong_policy_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 330175,
+            "cpu": 101333361
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_legacy_handles",
+            "expect mint == expected_mint_value"
+          ]
+        },
+        {
+          "title": "cip25_mint_rejected_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 317478,
+            "cpu": 95074218
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_mint_legacy_handles",
+            "expect kind != 2 || amount == -1"
+          ]
+        },
+        {
+          "title": "cip25_burn_subhandle_shape_rejected_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 187731,
+            "cpu": 55639255
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_legacy_handles",
+            "expect kind != 2 || !is_sub_handle_name(handle_name)"
+          ]
+        },
+        {
+          "title": "legacy_kind3_mint_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 297474,
+            "cpu": 91593738
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_mint_legacy_handles",
+            "expect kind == 0 || kind == 1 || kind == 2"
+          ]
+        },
+        {
+          "title": "legacy_kind3_burn_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 127018,
+            "cpu": 39715162
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_burn_legacy_handles",
+            "expect kind == 0 || kind == 1 || kind == 2"
+          ]
+        },
+        {
+          "title": "legacy_virtual_burn_still_uses_000_not_bare_name",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 316598,
+            "cpu": 97783461
+          },
+          "traces": [
+            "can_burn_legacy_handles"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/minting_data/mint_demi.test",
+      "summary": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "kind": {
+          "unit": 1,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "mint_demi_handles_unsigned_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 316571,
+            "cpu": 92246100
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "can_mint_demi_handles",
+            "expect list.has(extra_signatories, allowed_minter)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/minting_data/owner_fees.test",
+      "summary": {
+        "total": 6,
+        "passed": 6,
+        "failed": 0,
+        "kind": {
+          "unit": 6,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "add_owner_fee_merges_same_owner",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 20309,
+            "cpu": 7739631
+          }
+        },
+        {
+          "title": "add_owner_fee_keeps_distinct_owners",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 26029,
+            "cpu": 9763500
+          }
+        },
+        {
+          "title": "add_owner_fee_drops_zero_and_negative",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 10471,
+            "cpu": 4046153
+          }
+        },
+        {
+          "title": "owner_fees_merge_blocks_double_satisfaction",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 107580,
+            "cpu": 33912521
+          }
+        },
+        {
+          "title": "owner_fees_distinct_owners_need_separate_outputs",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 167478,
+            "cpu": 55321177
+          }
+        },
+        {
+          "title": "owner_fees_overpay_ok_and_empty_trivial",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 52492,
+            "cpu": 15880352
+          }
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/minting_data/update_mpt.test",
+      "summary": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0,
+        "kind": {
+          "unit": 3,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "update_mpt_admin_signed_no_mint_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 20413,
+            "cpu": 7657631
+          }
+        },
+        {
+          "title": "update_mpt_unsigned_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 1479,
+            "cpu": 4484252
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect list.has(extra_signatories, admin_verification_key_hash)"
+          ]
+        },
+        {
+          "title": "update_mpt_with_mint_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 21575,
+            "cpu": 7900476
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect mint == value.zero"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/minting_data/utils.test",
+      "summary": {
+        "total": 25,
+        "passed": 25,
+        "failed": 0,
+        "kind": {
+          "unit": 25,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "check_new_handle_validity_and_get_price_0",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 55976,
+            "cpu": 15495471
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_1",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 67103,
+            "cpu": 18423972
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_2",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 80434,
+            "cpu": 21944245
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_3",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 93765,
+            "cpu": 25464518
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_4",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 104892,
+            "cpu": 28393019
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_5",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 116019,
+            "cpu": 31321520
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_6",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 127146,
+            "cpu": 34250021
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_7",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 138273,
+            "cpu": 37178522
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_8",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 149400,
+            "cpu": 40107023
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_9",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 160527,
+            "cpu": 43035524
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_10",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 171654,
+            "cpu": 45964025
+          }
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_11",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 40858,
+            "cpu": 13364617
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect !is_sub_handle"
+          ]
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_12",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 356405,
+            "cpu": 94564998
+          }
+        },
+        {
+          "title": "check_new_handle_validity_28_chars",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 357106,
+            "cpu": 94753047
+          }
+        },
+        {
+          "title": "check_new_handle_validity_29_chars_fail",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 100632,
+            "cpu": 27624930
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect handle_length <= max_handle_length"
+          ]
+        },
+        {
+          "title": "check_new_handle_validity_and_get_price_13",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 343,
+            "cpu": 1184274
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect handle_length > 0"
+          ]
+        },
+        {
+          "title": "check_legacy_handle_validity_0",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 259332,
+            "cpu": 69347417
+          }
+        },
+        {
+          "title": "check_legacy_handle_validity_1",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 20542,
+            "cpu": 5706507
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect !is_virtual"
+          ]
+        },
+        {
+          "title": "check_legacy_handle_validity_2",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 100803,
+            "cpu": 28011326
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect handle_length <= max_handle_length"
+          ]
+        },
+        {
+          "title": "check_legacy_handle_validity_root_28_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 326443,
+            "cpu": 85551691
+          }
+        },
+        {
+          "title": "check_legacy_handle_validity_3",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 514,
+            "cpu": 1570670
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect handle_length > 0"
+          ]
+        },
+        {
+          "title": "check_legacy_handle_validity_4",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 20962,
+            "cpu": 8177672
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect root_handle_length > 0"
+          ]
+        },
+        {
+          "title": "check_legacy_handle_validity_5",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 20974,
+            "cpu": 8321111
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect sub_handle_length > 0"
+          ]
+        },
+        {
+          "title": "check_legacy_handle_validity_6",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 121208,
+            "cpu": 33002578
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect handle_length <= max_sub_handle_length"
+          ]
+        },
+        {
+          "title": "check_legacy_handle_validity_7",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 121208,
+            "cpu": 33002578
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect handle_length <= max_sub_handle_length"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/orders/validation.test",
+      "summary": {
+        "total": 12,
+        "passed": 12,
+        "failed": 0,
+        "kind": {
+          "unit": 12,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "refund_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 214226,
+            "cpu": 68400584
+          }
+        },
+        {
+          "title": "refund_overpay_ok",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 214226,
+            "cpu": 68400584
+          }
+        },
+        {
+          "title": "refund_without_admin_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 129118,
+            "cpu": 39927758
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "expect is_withdrawal_script_executed(withdrawals, mint_governor)"
+          ]
+        },
+        {
+          "title": "refund_underpay_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 215394,
+            "cpu": 67353506
+          }
+        },
+        {
+          "title": "refund_to_other_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 195948,
+            "cpu": 61472277
+          }
+        },
+        {
+          "title": "refund_to_script_credential_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 192520,
+            "cpu": 60136325
+          }
+        },
+        {
+          "title": "refund_untagged_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 192954,
+            "cpu": 60554307
+          }
+        },
+        {
+          "title": "refund_wrong_tag_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 216191,
+            "cpu": 68995290
+          }
+        },
+        {
+          "title": "order_execute_requires_governor_withdrawal",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 103043,
+            "cpu": 32882062
+          }
+        },
+        {
+          "title": "order_execute_rejects_without_governor_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 101477,
+            "cpu": 31197309
+          }
+        },
+        {
+          "title": "order_cancel_requires_owner_signature",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 25890,
+            "cpu": 8224715
+          }
+        },
+        {
+          "title": "order_cancel_rejects_without_owner_signature_fails",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 24324,
+            "cpu": 7775838
+          }
+        }
+      ]
+    },
+    {
+      "name": "tests/validations/policy_window.test",
+      "summary": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "kind": {
+          "unit": 8,
+          "property": 0
+        }
+      },
+      "tests": [
+        {
+          "title": "dormant_window_allows",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 119800,
+            "cpu": 36230163
+          }
+        },
+        {
+          "title": "before_sunset_allows",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 124542,
+            "cpu": 37892966
+          }
+        },
+        {
+          "title": "at_sunset_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 125243,
+            "cpu": 38081015
+          }
+        },
+        {
+          "title": "at_last_mint_slot_allowed",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 122935,
+            "cpu": 37298307
+          }
+        },
+        {
+          "title": "after_last_mint_slot_rejected",
+          "status": "pass",
+          "on_failure": "fail_immediately",
+          "execution_units": {
+            "mem": 122534,
+            "cpu": 37190470
+          }
+        },
+        {
+          "title": "no_ref_input_rejected",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 230,
+            "cpu": 487457
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "$handle_policies reference input with inline datum is required"
+          ]
+        },
+        {
+          "title": "no_datum_rejected",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 42295,
+            "cpu": 12696709
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "$handle_policies reference input with inline datum is required"
+          ]
+        },
+        {
+          "title": "policy_not_listed_rejected",
+          "status": "pass",
+          "on_failure": "succeed_eventually",
+          "execution_units": {
+            "mem": 84317,
+            "cpu": 24569058
+          },
+          "traces": [
+            "the validator crashed / exited prematurely",
+            "mint policy is not registered in $handle_policies"
+          ]
+        }
+      ]
+    }
+  ]
+}
