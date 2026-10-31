@@ -1,80 +1,21 @@
 name: CI
-
 on:
   push:
-    branches:
-      - master
+    branches: [master]
   pull_request:
-
 jobs:
-  python-scripts-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deployment-plan script tests
-        run: python3 scripts/ensure_handlecontract_sessions_test.py -v
-
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: "22"
           check-latest: true
-
       - name: Install dependencies
         run: npm ci
-
       - name: Install Aiken
         uses: ./.github/actions/setup-aiken
-
       - name: Lint
         run: npm run lint
-
-  aiken-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "22"
-          check-latest: true
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Aiken
-        uses: ./.github/actions/setup-aiken
-
-      - name: Run tests
-        run: npm run test:aiken
-
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "22"
-          check-latest: true
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm run test

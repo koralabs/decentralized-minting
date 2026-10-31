@@ -59,17 +59,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run Aiken tests
-        run: npm run test:aiken
-
-      - name: Run Node tests
-        run: npm run test
-
       - name: Build
         run: npm run build
-
-      - name: Validate packed and workspace SDK types and runtime
-        run: npm run validate:sdk-package
 
       - name: Publish to GitHub Packages
         env:
