@@ -1,0 +1,42 @@
+# decentralized-minting enclave manifest - DRAFT (ecosystem-ownership-plan Phase 5, row 5.2). NOT ACTIVE.
+# merge_pr reads only a root .enclave (or v3/.enclave); this copy under docs/proposals/phase5-decentralized-minting/ is inert.
+# Adoption = the operator moves it to the repo root. Paths are repo-root-relative.
+# Once adopted, changes to these paths merging into master need operator approval.
+# Format: one path per line; trailing "/" = directory prefix; "#" = comment.
+# Why each entry is here: CANONICAL_CONTRACT.md. This file is enclaved itself.
+# Decision 2 clarification 2026-10-13: exact Aiken/Helios on-chain source only.
+# Test-only sources, npm/JS/TS/builders/config/artifacts/workflows are normal agent review.
+# Embedded test-only hunks are outside policy scope; path-only enforcement cannot distinguish them.
+# Signing/settings/irreversible/double-mint authority remains in CANONICAL_CONTRACT.md.
+
+.enclave
+CANONICAL_CONTRACT.md
+smart-contract-mint-proxy/lib/common/hashes.ak
+smart-contract-mint-proxy/lib/common/utils.ak
+smart-contract-mint-proxy/lib/decentralized_minting/settings.ak
+smart-contract-mint-proxy/validators/demimntprx.ak
+smart-contract/lib/common/cip68.ak
+smart-contract/lib/common/handle.ak
+smart-contract/lib/common/hashes.ak
+smart-contract/lib/common/utils.ak
+smart-contract/lib/decentralized_minting/discount.ak
+smart-contract/lib/decentralized_minting/discounts.ak
+smart-contract/lib/decentralized_minting/handle_policies.ak
+smart-contract/lib/decentralized_minting/handle_price.ak
+smart-contract/lib/decentralized_minting/label_set.ak
+smart-contract/lib/decentralized_minting/minting_data.ak
+smart-contract/lib/decentralized_minting/orders.ak
+smart-contract/lib/decentralized_minting/registry_value.ak
+smart-contract/lib/decentralized_minting/settings.ak
+smart-contract/lib/decentralized_minting/settings_v1.ak
+smart-contract/lib/decentralized_minting/sub_handle.ak
+smart-contract/lib/validations/discount_eligibility.ak
+smart-contract/lib/validations/mint_v1/validation.ak
+smart-contract/lib/validations/minting_data/types.ak
+smart-contract/lib/validations/minting_data/utils.ak
+smart-contract/lib/validations/minting_data/validation.ak
+smart-contract/lib/validations/orders/validation.ak
+smart-contract/lib/validations/policy_window.ak
+smart-contract/validators/demimnt.ak
+smart-contract/validators/demimntmpt.ak
+smart-contract/validators/demiord.ak

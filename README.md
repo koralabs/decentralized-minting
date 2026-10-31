@@ -1,5 +1,9 @@
 <p align="center"><img src="docs/media/hero.png" alt="Decentralized Minting: a Merkle Patricia trie rooted at handle_root, with a new $your_name leaf proven absent before it mints"></p>
 
+## Contributor test policy
+
+All tests are local-only by owner directive. Preserve local test scripts. GitHub Actions must not run tests directly or indirectly through lifecycle hooks, composites, shared helpers, or renamed commands. Build, lint, publish, deployment, and production dispatch guards remain allowed; obsolete test-only required checks must be removed without weakening unrelated protections.
+
 <p align="center">
   <a href="#-how-a-handle-gets-minted">🪄 How it works</a> ·
   <a href="#-use-the-sdk">📦 SDK</a> ·
