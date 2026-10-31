@@ -1,0 +1,38 @@
+# decentralized-minting enclave: files whose change needs operator approval before merging to a protected branch.
+# Active when merged at the repo root (read by kora-bot merge_pr). Exact repo-root-relative paths, no wildcards.
+# Scope (operator decision 2, 2026-10-13): exact on-chain Aiken/Helios source, plus this manifest and CANONICAL_CONTRACT.md.
+# Tests, npm/JS/TS, builders, config, generated artifacts and workflows follow normal agent review.
+# Limit: path-only matching cannot tell embedded Aiken test blocks from production code in a listed file.
+# Why each path: CANONICAL_CONTRACT.md.
+
+.enclave
+CANONICAL_CONTRACT.md
+smart-contract-mint-proxy/lib/common/hashes.ak
+smart-contract-mint-proxy/lib/common/utils.ak
+smart-contract-mint-proxy/lib/decentralized_minting/settings.ak
+smart-contract-mint-proxy/validators/demimntprx.ak
+smart-contract/lib/common/cip68.ak
+smart-contract/lib/common/handle.ak
+smart-contract/lib/common/hashes.ak
+smart-contract/lib/common/utils.ak
+smart-contract/lib/decentralized_minting/discount.ak
+smart-contract/lib/decentralized_minting/discounts.ak
+smart-contract/lib/decentralized_minting/handle_policies.ak
+smart-contract/lib/decentralized_minting/handle_price.ak
+smart-contract/lib/decentralized_minting/label_set.ak
+smart-contract/lib/decentralized_minting/minting_data.ak
+smart-contract/lib/decentralized_minting/orders.ak
+smart-contract/lib/decentralized_minting/registry_value.ak
+smart-contract/lib/decentralized_minting/settings.ak
+smart-contract/lib/decentralized_minting/settings_v1.ak
+smart-contract/lib/decentralized_minting/sub_handle.ak
+smart-contract/lib/validations/discount_eligibility.ak
+smart-contract/lib/validations/mint_v1/validation.ak
+smart-contract/lib/validations/minting_data/types.ak
+smart-contract/lib/validations/minting_data/utils.ak
+smart-contract/lib/validations/minting_data/validation.ak
+smart-contract/lib/validations/orders/validation.ak
+smart-contract/lib/validations/policy_window.ak
+smart-contract/validators/demimnt.ak
+smart-contract/validators/demimntmpt.ak
+smart-contract/validators/demiord.ak
