@@ -55,7 +55,7 @@
     "vitest": "^4.0.18"
   },
   "overrides": {
-    "minimatch": "10.2.2"
+    "minimatch": "10.2.6"
   },
   "types": "lib/index.d.ts",
   "exports": {
