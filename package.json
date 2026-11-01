@@ -56,7 +56,8 @@
     "vitest": "^4.0.18"
   },
   "overrides": {
-    "minimatch": "10.2.6",
+    "minimatch": "11.0.1",
+    "glob": "14.0.2",
     "ip-address": "^10.3.1"
   },
   "types": "lib/index.d.ts",
