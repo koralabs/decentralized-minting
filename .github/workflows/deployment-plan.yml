@@ -153,7 +153,11 @@ jobs:
       # borrowing from a minting wallet via POLICY_KEY (idempotent; no-op when
       # enough usable UTxOs already exist). On testnet, if the minting wallets are
       # empty the engine script fails loudly with the addresses to faucet-fund.
+      # Preview is skipped: its deployer is K.O.R.A.'s single-key wallet, which funds
+      # the ref-script deploys itself (planner takes fee inputs from it); CI never
+      # holds POLICY_KEY.
       - name: Ensure deploy funding (seed UTxOs at script home)
+        if: matrix.network != 'preview'
         env:
           NETWORK: ${{ matrix.network }}
         run: |

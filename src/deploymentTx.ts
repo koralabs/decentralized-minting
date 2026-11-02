@@ -242,8 +242,8 @@ export const buildReferenceScriptDeploymentTx = async ({
   desired,
   contract,
   handleName,
-  changeAddress: _changeAddress,
-  spareUtxos: _spareUtxos,
+  changeAddress,
+  spareUtxos,
   nativeScriptCborHex,
   blockfrostApiKey,
   userAgent,
@@ -343,17 +343,24 @@ export const buildReferenceScriptDeploymentTx = async ({
   // into a change output with other handles.
   const handleUtxoRef = toUtxoRef(handleUtxo);
   const selectedUtxos = [handleUtxo];
-  const remainingUtxos = allScriptUtxos.filter((u) => {
-    if (toUtxoRef(u) === handleUtxoRef) return false;
-    const hasHandleToken = u[1].value.assets?.size ?? 0;
-    return !hasHandleToken;
-  });
+  const isCleanAdaOnly = (u: CardanoTypes.Utxo) =>
+    !(u[1].value.assets?.size ?? 0) && !u[1].scriptReference && !u[1].datum && !u[1].datumHash;
+  // Preview is funded by the deployer wallet itself (K.O.R.A.'s single-key wallet), not by
+  // the script home: fee inputs and change come from the deployer's clean ada-only UTxOs.
+  const fundFromDeployer = desired.network === "preview";
+  const remainingUtxos = fundFromDeployer
+    ? spareUtxos.filter(isCleanAdaOnly)
+    : allScriptUtxos.filter((u) => {
+        if (toUtxoRef(u) === handleUtxoRef) return false;
+        const hasHandleToken = u[1].value.assets?.size ?? 0;
+        return !hasHandleToken;
+      });
 
   return buildAndSerializeTx({
     selectedUtxos,
     remainingUtxos,
     requestedOutputs,
-    changeAddress: scriptAddress as string,
+    changeAddress: fundFromDeployer ? changeAddress : (scriptAddress as string),
     buildContext,
     nativeScript,
     excludeUtxoRefs,
