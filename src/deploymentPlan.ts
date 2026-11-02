@@ -342,27 +342,18 @@ const expectedScriptHashForContract = (
   }
 };
 
-// The handles api returns one of two shapes for `/scripts?latest=true&type=...`:
-//   flat:         { validatorHash, handle, ... }
-//   address-keyed: { "<scriptAddr>": { validatorHash, handle, latest, type, ... }, ... }
-// Extract the deployed (script hash, subhandle), preferring the entry flagged latest.
+// `/scripts` is keyed by script address and `type` is a prefix match (demimnt also returns
+// demimntmpt/demimntprx), so pick this contract's own latest entry by exact type.
 const extractDeployedScript = (
-  payload: unknown
+  payload: unknown,
+  scriptType: string
 ): { scriptHash: string; subhandle: string | null } | null => {
   if (!payload || typeof payload !== "object") return null;
-  const obj = payload as Record<string, unknown>;
-  const flatHash = String(obj.validatorHash ?? obj.scriptHash ?? "").trim();
-  if (flatHash) {
-    return { scriptHash: flatHash, subhandle: String(obj.handle ?? "").trim() || null };
-  }
-  const entries = Object.values(obj).filter(
-    (v): v is Record<string, unknown> => !!v && typeof v === "object"
+  const chosen = Object.values(payload as Record<string, Record<string, unknown>>).find(
+    (entry) => entry?.type === scriptType && entry.latest === true
   );
-  const candidates = entries.filter((e) => e.validatorHash || e.scriptHash);
-  if (candidates.length === 0) return null;
-  const chosen = candidates.find((e) => e.latest === true) ?? candidates[0];
-  const scriptHash = String(chosen.validatorHash ?? chosen.scriptHash ?? "").trim();
-  if (!scriptHash) return null;
+  const scriptHash = String(chosen?.validatorHash ?? "").trim();
+  if (!chosen || !scriptHash) return null;
   return { scriptHash, subhandle: String(chosen.handle ?? "").trim() || null };
 };
 
@@ -380,24 +371,14 @@ export const fetchLiveContractStates = async ({
   const baseUrl = handlesApiBaseUrlForNetwork(network);
   return Promise.all(
     contracts.map(async (contract) => {
-      // The api migrated from the legacy `demi_*` type slugs to the contract
-      // slug (e.g. demimntmpt). Prefer the current slug; fall back to the
-      // legacy slug only if the api hasn't migrated yet for this network.
-      const typeCandidates = [contract.scriptType, contract.oldScriptType].filter(
-        (t): t is string => !!t
+      const response = await fetchFn(
+        `${baseUrl}/scripts?latest=true&type=${encodeURIComponent(contract.scriptType)}`,
+        { headers: { "User-Agent": userAgent } }
       );
-      let deployed: { scriptHash: string; subhandle: string | null } | null = null;
-      for (const type of typeCandidates) {
-        const response = await fetchFn(
-          `${baseUrl}/scripts?latest=true&type=${encodeURIComponent(type)}`,
-          { headers: { "User-Agent": userAgent } }
-        );
-        if (!response.ok) {
-          throw new Error(`failed to load live ${contract.contractSlug} script: HTTP ${response.status}`);
-        }
-        deployed = extractDeployedScript(await response.json());
-        if (deployed) break;
+      if (!response.ok) {
+        throw new Error(`failed to load live ${contract.contractSlug} script: HTTP ${response.status}`);
       }
+      const deployed = extractDeployedScript(await response.json(), contract.scriptType);
       if (!deployed) {
         throw new Error(`live ${contract.contractSlug} script response missing validatorHash/scriptHash`);
       }
